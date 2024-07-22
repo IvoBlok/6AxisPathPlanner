@@ -118,7 +118,7 @@ struct MillingPass2_5DInfo {
 	double safeTraverseHeight;
 };
 
-double PI = 3.141592653;
-double TAU = PI * 2.f;
+const double PI = 3.141592653;
+const double TAU = PI * 2.f;
 
 #endif

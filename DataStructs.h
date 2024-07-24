@@ -12,6 +12,7 @@
 
 #include <vector>
 #include <utility>
+#include <functional>
 
 #include "cavc/vector2.hpp"
 #include "cavc/vector3.hpp"
@@ -116,6 +117,32 @@ struct MillingPass2_5DInfo {
 
 	// this describes the height in the direction of the plane normal, starting from the heighest 2.5D layer. In millimeters
 	double safeTraverseHeight;
+
+	// 'planeStartingHeight' is defined along the length of 'planeNormal', where the start of planeNormal is the zero point of the stock given in 'millingInfo'
+	// all material up to this height will be milled
+	double planeStartingHeight;
+
+	// 'planeEndingHeight' is defined along the length of 'planeNormal', where the start of planeNormal is the zero point of the stock given in 'millingInfo'
+	// starting from this height, material will be milled
+	double planeEndingHeight;
+};
+
+struct SceneInfo {
+	SceneInfo(
+		MillingPass2_5DInfo& millingPass2_5DInfoI)
+		:
+		robotInfo(millingPass2_5DInfoI.robotInfo),
+		toolInfo(millingPass2_5DInfoI.toolInfo),
+		stockInfo(millingPass2_5DInfoI.stockInfo),
+		millingPass2_5DInfo(millingPass2_5DInfoI)
+	{}
+
+	RobotInfo& robotInfo;
+	ToolInfo& toolInfo;
+	StockInfo& stockInfo;
+	MillingPass2_5DInfo& millingPass2_5DInfo;
+
+	std::function<void(MillingPass2_5DInfo&)> generateToolPath;
 };
 
 const double PI = 3.141592653;

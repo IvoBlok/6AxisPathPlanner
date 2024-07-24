@@ -85,11 +85,7 @@ const std::vector<const char*> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-#ifdef NDEBUG
 const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
 
 struct UniformBufferObject {
 	alignas(16) glm::mat4 model;
@@ -1032,7 +1028,7 @@ public:
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
 
-	void drawFrame() {
+	void drawFrame(SceneInfo& sceneInfo) {
 		// Wait for the previous frame to finish rendering
 		vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
@@ -1052,7 +1048,7 @@ public:
 		updateUniformBuffer(currentFrame);
 		handleUserInput();
 
-		recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
+		recordCommandBuffer(commandBuffers[currentFrame], imageIndex, sceneInfo);
 
 		// Only reset the fence if work will be submitted to the GPU
 		vkResetFences(device, 1, &inFlightFences[currentFrame]);
@@ -1180,7 +1176,7 @@ public:
 		return loadedLines.back();
 	}
 
-	void addGizmo(cavc::Vector3<double> position, float axisLength) {
+	void addGizmo(cavc::Vector3<double> position = cavc::Vector3<double>{0.f, 0.f, 0.f}, float axisLength = 0.1f) {
 		cavc::Polyline3D<double> axisPath;
 		axisPath.isClosed() = false;
 		std::vector<cavc::PlineVertex3D<double>>& axisPathVertexes = axisPath.vertexes();
@@ -1193,7 +1189,7 @@ public:
 		axisPathVertexes.push_back(cavc::PlineVertex3D{ position + cavc::Vector3<double>{0.f, 0.f, axisLength} });
 		axisPathVertexes.push_back(cavc::PlineVertex3D{ position + cavc::Vector3<double>{0.f, 0.f, 0.f} });
 
-		loadLine(axisPath, 1.f, cavc::Vector3<double>{ 1.f, 1.f, 0.f }, cavc::Vector3<double>{ 0.f, 0.f, -0.005f });
+		loadLine(axisPath, 1.f, cavc::Vector3<double>{ 1.f, 0.f, 0.f }, cavc::Vector3<double>{ 0.f, 0.f, -0.005f });
 	}
 
 	void handleUserInput() {
@@ -2182,7 +2178,7 @@ private:
 		}
 	}
 
-	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, SceneInfo& sceneInfo) {
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -2258,7 +2254,46 @@ private:
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		ImGui::ShowDemoWindow();
+		ImGui::Begin("Configuration");
+		
+		ImGui::Text("RobotInfo");
+		ImGui::Separator();
+		ImGui::InputDouble("robot home x", &sceneInfo.robotInfo.homePoint.x());
+		ImGui::InputDouble("robot home y", &sceneInfo.robotInfo.homePoint.y());
+		ImGui::InputDouble("robot home z", &sceneInfo.robotInfo.homePoint.z());
+		ImGui::InputDouble("robot zero x", &sceneInfo.robotInfo.zeroPoint.x());
+		ImGui::InputDouble("robot zero y", &sceneInfo.robotInfo.zeroPoint.y());
+		ImGui::InputDouble("robot zero z", &sceneInfo.robotInfo.zeroPoint.z());
+
+		ImGui::Text("ToolInfo");
+		ImGui::Separator();
+		ImGui::InputInt("flute count", &sceneInfo.toolInfo.fluteCount);
+		ImGui::InputDouble("tool radius", &sceneInfo.toolInfo.mainToolRadius);
+		ImGui::InputDouble("tool cutting height", &sceneInfo.toolInfo.toolCuttingHeight);
+		ImGui::Checkbox("ball end cutter", &sceneInfo.toolInfo.toolIsBallEnd);
+
+		ImGui::Text("StockInfo");
+		ImGui::Separator();
+		ImGui::InputDouble("stock x (width)", &sceneInfo.stockInfo.width);
+		ImGui::InputDouble("stock y (length)", &sceneInfo.stockInfo.length);
+		ImGui::InputDouble("stock z (height)", &sceneInfo.stockInfo.height);
+		ImGui::InputDouble("stock zero x", &sceneInfo.stockInfo.zeroPoint.x());
+		ImGui::InputDouble("stock zero y", &sceneInfo.stockInfo.zeroPoint.y());
+		ImGui::InputDouble("stock zero z", &sceneInfo.stockInfo.zeroPoint.z());
+
+		ImGui::Text("MillingInfo");
+		ImGui::Separator();
+		ImGui::InputDouble("depth of cut", &sceneInfo.millingPass2_5DInfo.depthOfCut);
+		ImGui::InputDouble("stepover", &sceneInfo.millingPass2_5DInfo.stepOver);
+		ImGui::InputDouble("traverse height", &sceneInfo.millingPass2_5DInfo.safeTraverseHeight);
+		ImGui::InputDouble("cutting height start", &sceneInfo.millingPass2_5DInfo.planeStartingHeight);
+		ImGui::InputDouble("cutting height end", &sceneInfo.millingPass2_5DInfo.planeEndingHeight);
+
+		ImGui::Separator();
+		if (ImGui::Button("Generate Path"))
+			sceneInfo.generateToolPath(sceneInfo.millingPass2_5DInfo);
+
+		ImGui::End();
 
 		ImGui::Render();
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer, 0, NULL);

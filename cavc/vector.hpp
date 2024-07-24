@@ -105,7 +105,6 @@ public:
     return m_data[2];
   }
 
-protected:
   std::array<Real, N> m_data;
 };
 

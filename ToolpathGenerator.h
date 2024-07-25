@@ -30,7 +30,7 @@ namespace ToolpathGenerator {
 		double remainingHeight = planeStartingHeight - planeEndingHeight;
 		while (remainingHeight > (double)0.f) {
 			// check if this is the last plane of the path, and update the remaining height variable accordingly
-			remainingHeight -= millingInfo.depthOfCut * 0.001f;
+			remainingHeight = remainingHeight - millingInfo.depthOfCut * 0.001f;
 
 			double localRemainingHeight = remainingHeight;
 			if (localRemainingHeight < 0.f)
@@ -50,23 +50,30 @@ namespace ToolpathGenerator {
 			// if this is the closest pass, do it with an offset of the radius of the cutting tool, since this is the pass that needs to closely match the actual desiredPath
 			std::vector<cavc::Polyline2D<double>> finalPass = cavc::parallelOffsetToClosedLoops(intersectPaths, millingInfo.toolInfo.mainToolRadius * 0.001f);
 
-			// add a new entree for this layer of the 2.5D pass, and initialize it with the final pass
-			offsetPaths.push_back(finalPass);
+			// add a new entree for this layer of the 2.5D pass, and initialize it with the boundary path, since the outside edge is the first bit of material that should be removed
+			offsetPaths.push_back(std::vector<cavc::Polyline2D<double>>{boundaryPath});
+
+			// total area of the inside curves, used later to check if the final loop has been found
+			// TODO only checking the area is probably not good enough, since different loops can have identical area's, but for now I'm fine with it
+			double totalInsideArea = 0.f;
+			for (cavc::Polyline2D<double>& insidePath : intersectPaths)
+				totalInsideArea += cavc::getArea(insidePath);
 
 			// as long as bigger offsets still generate paths, the whole surface that needs to be milled isn't covered yet, so keep generating paths with bigger offsets
-			bool newPassIsEmpty = false;
+			bool finished = false;
 			int loopCount = 0;
-			while (!newPassIsEmpty) {
+			while (!finished && loopCount < 14) {
 				loopCount++;
 				// create the offsets, with an offet value equal to a full multiple of the stepover of the cutting tool used
-				std::vector<cavc::Polyline2D<double>> offsetBoundaryPaths = cavc::parallelOffsetToClosedLoop(boundaryPath, (double)loopCount * millingInfo.stepOver * 0.001f);
-				std::vector<cavc::Polyline2D<double>> newPaths = pathGeneration.computeTwoSidedOffsets(finalPass, offsetBoundaryPaths, (double)loopCount * millingInfo.stepOver * 0.001f);
+				std::vector<cavc::Polyline2D<double>> newPaths = pathGeneration.computeOneSidedOffsets(finalPass, boundaryPath, (double)loopCount * millingInfo.stepOver * 0.001f);
 				offsetPaths.back().insert(offsetPaths.back().end(), newPaths.begin(), newPaths.end());
-				newPassIsEmpty = newPaths.size() == 0;
-			}
 
-			// add the boundaryPath to the final path, to ensure that all material to be removed will be
-			//offsetPaths.back().push_back(boundaryPath);
+				double totalOffsetPathsArea = 0.f;
+				for (cavc::Polyline2D<double>& path : newPaths)
+					totalOffsetPathsArea += cavc::getArea(path);
+				
+				finished = (newPaths.size() == 0 || (abs(totalInsideArea) == abs(totalOffsetPathsArea)));
+			}
 
 			// convert all the 2D paths to the 3D version
 			offsetPaths3D.push_back(std::vector<cavc::Polyline3D<double>>{});

@@ -142,27 +142,28 @@ void ParallelOffsetIslands<Real>::createOffsetLoops(const OffsetLoopSet<Real> &i
 template <typename Real>
 void ParallelOffsetIslands<Real>::createOneSidedOffsetLoops(OffsetLoopSet<Real>& input,
   Real absDelta) {
-  std::size_t parentIndex = 0;
   // create counter clockwise offset loops
   m_ccwOffsetLoops.clear();
-  auto offset = input.ccwLoops.front().polyline;
-  auto index = createApproxSpatialIndex(offset);
-  m_ccwOffsetLoops.push_back({ parentIndex, std::move(offset), std::move(index) });
-  parentIndex += 1;
+  std::size_t parentIndex = 0;
 
+  auto offsets = parallelOffset(input.ccwLoops.front().polyline, absDelta);
+  for (auto& offset : offsets) {
+    // must check if orientation inverted (due to collapse of very narrow or small input)
+    if (getArea(offset) < Real(0)) {
+      continue;
+    }
+    auto index = createApproxSpatialIndex(offset);
+    m_ccwOffsetLoops.push_back({ parentIndex, std::move(offset), std::move(index) });
+  }
+  parentIndex += 1;
+  
   // create clockwise offset loops (note counter clockwise loops may result from outward offset)
   m_cwOffsetLoops.clear();
   for (auto const& loop : input.cwLoops) {
-    auto offsets = parallelOffset(loop.polyline, absDelta);
-    for (auto& offset : offsets) {
-      auto index = createApproxSpatialIndex(offset);
-      if (getArea(offset) < Real(0)) {
-        m_cwOffsetLoops.push_back({ parentIndex, std::move(offset), std::move(index) });
-      }
-      else {
-        m_ccwOffsetLoops.push_back({ parentIndex, std::move(offset), std::move(index) });
-      }
-    }
+    auto offset = loop.polyline;
+    auto index = createApproxSpatialIndex(offset);
+    m_cwOffsetLoops.push_back({ parentIndex, std::move(offset), std::move(index) });
+    m_cwOffsetLoops.back().parentLoopIndex = parentIndex;
     parentIndex += 1;
   }
 }
@@ -448,7 +449,6 @@ OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeTwoSidedOffsets(const Of
   return result;
 }
 
-
 template <typename Real>
 OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeOneSidedOffsets(OffsetLoopSet<Real>& input,
   Real offsetDelta) {
@@ -456,57 +456,29 @@ OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeOneSidedOffsets(OffsetLo
   OffsetLoopSet<Real> result;
   Real absDelta = std::abs(offsetDelta);
   createOneSidedOffsetLoops(input, absDelta);
-  if (totalOffsetLoopsCount() == 0) {
+
+  // if the offset outside boundary path is non-existent, there is no path to be made, and thus return an empty path
+  if (m_ccwOffsetLoops.size() == 0) {
+    return result;
+  }
+  // if there is an offset boundary path, but not any inside paths, the offset boundary path should simply be returned
+  else if (m_cwOffsetLoops.size() == 0) {
+    for (OffsetLoop<Real>& loop : m_ccwOffsetLoops)
+    {
+      auto& r = loop.polyline;
+      auto spatial = createApproxSpatialIndex(r);
+      result.ccwLoops.push_back({ 0, std::move(r), std::move(spatial) });
+    }
     return result;
   }
 
-  createOffsetLoopsIndex();
-  createSlicePoints();
+  // if there are both inside and outside path(s), return the edge path of the union of all the surfaces enclosed by these input paths
+  CombineResult<Real> combineResult = combinePolylines(m_inputSet->cwLoops[0].polyline, m_ccwOffsetLoops[0].polyline, PlineCombineMode::Union);
 
-  std::vector<DissectedSlice> slices;
-  std::size_t totalOffsetsCount = totalOffsetLoopsCount();
+  auto& r = combineResult.remaining[0];
+  auto spatial = createApproxSpatialIndex(r);
 
-  std::vector<Polyline2D<Real>> resultSlices;
-
-  for (std::size_t i = 0; i < totalOffsetsCount; ++i) {
-    if (m_slicePointsLookup[i].size() == 0) {
-      // no intersects but still must test distance of one vertex position since it may be inside
-      // another offset (completely eclipsed by island offset)
-      auto& loop = getOffsetLoop(i);
-      if (!pointOnOffsetValid(loop.parentLoopIndex, loop.polyline[0].pos(), absDelta)) {
-        continue;
-      }
-      if (i < m_ccwOffsetLoops.size()) {
-        result.ccwLoops.push_back(std::move(loop));
-      }
-      else {
-        result.cwLoops.push_back(std::move(loop));
-      }
-      continue;
-    }
-    createSlicesFromLoop(i, absDelta, slices);
-  }
-
-  for (auto& slice : slices) {
-    resultSlices.push_back(std::move(slice.pline));
-  }
-
-  std::vector<Polyline2D<Real>> stitched =
-    internal::stitchOrderedSlicesIntoClosedPolylines(resultSlices);
-
-  for (auto& r : stitched) {
-    Real area = getArea(r);
-    if (std::abs(area) < 1e-4) {
-      continue;
-    }
-    auto spatialIndex = createApproxSpatialIndex(r);
-    if (area < Real(0)) {
-      result.cwLoops.push_back({ 0, std::move(r), std::move(spatialIndex) });
-    }
-    else {
-      result.ccwLoops.push_back({ 0, std::move(r), std::move(spatialIndex) });
-    }
-  }
+  result.ccwLoops.push_back({ 0, std::move(r), std::move(spatial) });
 
   return result;
 }
@@ -584,7 +556,6 @@ std::vector<cavc::Polyline2D<Real>> ParallelOffsetIslands<Real>::computeTwoSided
 }
 
 
-//TODO fix one sided compute thingie, it only works (I think) up untill it encounters a single collision
 template <typename Real>
 std::vector<cavc::Polyline2D<Real>> ParallelOffsetIslands<Real>::computeOneSidedOffsets(std::vector<cavc::Polyline2D<Real>> innerBounds, cavc::Polyline2D<Real> outerBound, Real offset) {
 
@@ -641,12 +612,6 @@ std::vector<cavc::Polyline2D<Real>> ParallelOffsetIslands<Real>::computeOneSided
     }
   }
   // if a full succesfull island offset set was found, reset the scale back
-  // while doing so, also:
-  // convert the offsetLoopSet format into a more usable format
-  for (auto& offsetLoop : resultingOffsets.cwLoops) {
-    scalePolyline(offsetLoop.polyline, (double)1.f / (double)scale);
-    result.push_back(offsetLoop.polyline);
-  }
   for (auto& offsetLoop : resultingOffsets.ccwLoops) {
     scalePolyline(offsetLoop.polyline, (double)1.f / (double)scale);
     result.push_back(offsetLoop.polyline);

@@ -227,6 +227,7 @@ template <typename Real> Real getArea(Polyline2D<Real> const &pline) {
 template <typename Real> bool isPathClockwise(Polyline2D<Real> const& pline) {
   return getArea(pline) < Real(0);
 }
+
 /// Class to compute the closest point and starting vertex index from a polyline to a point given.
 template <typename Real> class ClosestPoint {
 public:

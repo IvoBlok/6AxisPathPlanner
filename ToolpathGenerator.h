@@ -57,26 +57,16 @@ namespace ToolpathGenerator {
 			// add a new entree for this layer of the 2.5D pass, and initialize it with the boundary path, since the outside edge is the first bit of material that should be removed
 			offsetPaths.push_back(std::vector<cavc::Polyline2D<double>>{boundaryPath});
 
-			// total area of the inside curves, used later to check if the final loop has been found
-			// TODO only checking the area is probably not good enough, since different loops can have identical area's, but for now I'm fine with it
-			double totalInsideArea = 0.f;
-			for (cavc::Polyline2D<double>& insidePath : intersectPaths)
-				totalInsideArea += cavc::getArea(insidePath);
-
 			// as long as bigger offsets still generate paths, the whole surface that needs to be milled isn't covered yet, so keep generating paths with bigger offsets
 			bool finished = false;
 			int loopCount = 0;
-			while (!finished && loopCount < 14) {
+			while (!finished) {
 				loopCount++;
 				// create the offsets, with an offet value equal to a full multiple of the stepover of the cutting tool used
 				std::vector<cavc::Polyline2D<double>> newPaths = pathGeneration.computeOneSidedOffsets(finalPass, boundaryPath, (double)loopCount * millingInfo.stepOver * 0.001f);
 				offsetPaths.back().insert(offsetPaths.back().end(), newPaths.begin(), newPaths.end());
 
-				double totalOffsetPathsArea = 0.f;
-				for (cavc::Polyline2D<double>& path : newPaths)
-					totalOffsetPathsArea += cavc::getArea(path);
-				
-				finished = (newPaths.size() == 0 || (abs(totalInsideArea) == abs(totalOffsetPathsArea)));
+				finished = newPaths.size() == 0;
 			}
 
 			// To ensure that the final pass is fully passed over, add it to the end of the path for this layer

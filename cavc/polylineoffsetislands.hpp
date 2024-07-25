@@ -449,7 +449,6 @@ OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeTwoSidedOffsets(const Of
   return result;
 }
 
-// TODO this function works beautifully, but in a rare case, where there are 3(+) separate inside curves, it ignores one
 template <typename Real>
 OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeOneSidedOffsets(OffsetLoopSet<Real>& input,
   Real offsetDelta) {
@@ -480,7 +479,7 @@ OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeOneSidedOffsets(OffsetLo
   {
     // to check if a loop lays entirely outside another, we check if there are any intersects between the two
     // if there are no intersects, no union is required, the output can simply be the offset of the boundary path
-    internal::ProcessForCombineResult<Real> combineInfo = internal::processForCombine(unionPath, insideLoop.polyline, m_ccwOffsetLoops[0].spatialIndex);
+    internal::ProcessForCombineResult<Real> combineInfo = internal::processForCombine(m_ccwOffsetLoops[0].polyline, insideLoop.polyline, m_ccwOffsetLoops[0].spatialIndex);
     if (combineInfo.anyIntersects()) {
       CombineResult<Real> combineResult = combinePolylines(unionPath, insideLoop.polyline, PlineCombineMode::Union);
       unionPath = combineResult.remaining[0];

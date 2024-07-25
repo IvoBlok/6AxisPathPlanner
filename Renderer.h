@@ -72,6 +72,8 @@ static std::vector<char> readFile(const std::string& filename) {
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 const int MAX_FRAMES_IN_FLIGHT = 2;
+const int MAX_OBJECTS = 64;
+const int MAX_LINES = 1000;
 
 const float CAMERA_MOVE_VELOCITY = 0.7f;
 const float CAMERA_ROTATE_VELOCITY = 0.7f;
@@ -989,6 +991,9 @@ public:
 		initWindow();
 		initVulkan();
 		initImgui();
+
+		loadedObjects.reserve(MAX_OBJECTS);
+		loadedLines.reserve(MAX_LINES);
 	};
 
 	void initWindow() {
@@ -1171,6 +1176,9 @@ public:
 		cavc::Vector3<double> baseScale = cavc::Vector3<double>{ 1.f, 1.f, 1.f }, 
 		glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f) 
 	{
+		if (loadedObjects.size() >= MAX_OBJECTS)
+			throw std::runtime_error("Max object count has been reached, can't create a new object!\n");
+
 		loadedObjects.push_back(LoadedObject());
 		loadedObjects.back().load(modelPath, texturePath, basePosition, baseScale, rotationMatrix, modelTransparency);
 
@@ -1185,6 +1193,9 @@ public:
 		glm::mat4 rotationMatrix = glm::mat4{ 1.f }, 
 		float modelTransparency = 1.f) 
 	{
+		if (loadedObjects.size() >= MAX_OBJECTS)
+			throw std::runtime_error("Max object count has been reached, can't create a new object!\n");
+
 		loadedObjects.push_back(LoadedObject());
 		loadedObjects.back().load(modelPath, objectColor, basePosition, baseScale, rotationMatrix, modelTransparency);
 
@@ -1202,6 +1213,9 @@ public:
 
 	// TEMP
 	LoadedLine& loadLine(const char* path, float lineTransparency = 1.f) {
+		if (loadedLines.size() >= MAX_LINES)
+			throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
+
 		loadedLines.push_back(LoadedLine{});
 		loadedLines.back().load(path, lineTransparency);
 
@@ -1209,6 +1223,9 @@ public:
 	}
 
 	LoadedLine& loadLine(cavc::Polyline3D<double> path, float lineTransparency = 1.f, cavc::Vector3<double> lineColor = cavc::Vector3<double>{ 1.f, 0.f, 0.f }, cavc::Vector3<double> clippingOffset = cavc::Vector3<double>{ 0.f, 0.f, 0.f }) {
+		if (loadedLines.size() >= MAX_LINES)
+			throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
+
 		loadedLines.push_back(LoadedLine{});
 		loadedLines.back().load(path, lineTransparency, lineColor, clippingOffset);
 
@@ -1771,7 +1788,7 @@ private:
 
 		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterizer.lineWidth = 1.0f;
-		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizer.cullMode = VK_CULL_MODE_NONE;
 		rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
 		rasterizer.depthBiasEnable = VK_FALSE;

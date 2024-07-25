@@ -41,7 +41,46 @@ int main() {
 		// load object to be milled to the renderer
 		glm::mat4 rotationMatrix = glm::rotate(glm::mat4{ 1.f }, (float)(0.5f * PI), glm::vec3{ 0.f, 0.f, 1.f });
 		rotationMatrix = glm::rotate(rotationMatrix, (float)(0.5f * PI), glm::vec3{ 1.f, 0.f, 0.f });
-		LoadedObject& bikeShell = renderer.createObject("models/RACING_VELO_G_BIRD.obj", cavc::Vector3<double>{ 0.f, 0.f, 0.f }, cavc::Vector3<double>{ 0.f, 0.f, 0.f }, cavc::Vector3<double>{ 0.1f, 0.1f, 0.1f }, rotationMatrix, 0.4f);
+		LoadedObject& bikeShell = renderer.createObject(
+			"models/RACING_VELO_G_BIRD.obj",
+			cavc::Vector3<double>{ 0.3f, 0.3f, 0.3f },
+			cavc::Vector3<double>{ 0.f, 0.f, 0.f },
+			cavc::Vector3<double>{ 0.1f, 0.1f, 0.1f },
+			rotationMatrix,
+			1.f);
+
+		// load the visualization planes and cube
+		LoadedObject& safeTraversePlaneVisualization = renderer.createObject(
+			"models/unitPlane.obj",
+			cavc::Vector3<double>{ 1.f, 1.f, 0.f },
+			cavc::Vector3<double>{ 0.f, 0.f, 0.f },
+			cavc::Vector3<double>{ 1.f, 1.f, 1.f },
+			glm::mat4{ 1.f },
+			0.4f);
+
+		LoadedObject& finalCuttingPlaneVisualization = renderer.createObject(
+			"models/unitPlane.obj",
+			cavc::Vector3<double>{ 0.f, 0.f, 1.f },
+			cavc::Vector3<double>{ 0.f, 0.f, 0.f },
+			cavc::Vector3<double>{ 1.f, 1.f, 1.f },
+			glm::mat4{ 1.f },
+			0.4f);
+
+		LoadedObject& startCuttingPlaneVisualization = renderer.createObject(
+			"models/unitPlane.obj",
+			cavc::Vector3<double>{ 0.f, 0.2f, 1.f },
+			cavc::Vector3<double>{ 0.f, 0.f, 0.f },
+			cavc::Vector3<double>{ 1.f, 1.f, 1.f },
+			glm::mat4{ 1.f },
+			0.4f);
+
+		LoadedObject& stockVisualization = renderer.createObject(
+			"models/unitCube.obj",
+			cavc::Vector3<double>{ 0.f, 0.f, 0.f },
+			cavc::Vector3<double>{ 0.f, 0.f, 0.f },
+			cavc::Vector3<double>{ 1.f, 1.f, 1.f },
+			glm::mat4{ 1.f },
+			0.2f);
 
 		// load the object data into a more usable format
 		DesiredShape desiredShape;
@@ -87,6 +126,26 @@ int main() {
 		// form the actual rendering loop
 		while (!glfwWindowShouldClose(renderer.window)) {
 			glfwPollEvents();
+
+			// update visualization objects (planes + cube)
+			// STOCK
+			cavc::Vector3<double> stockSize{stockInfo.width * 0.001f, stockInfo.length * 0.001f, stockInfo.height * 0.001f};
+			cavc::Vector3<double> stockCenter = stockInfo.zeroPoint + (double)0.5f * stockSize;
+			stockVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), stockCenter.z() };
+			stockVisualization.scale = glm::vec3{ stockSize.x(), stockSize.y(), stockSize.z() };
+
+			// SAFE TRAVEL PLANE
+			safeTraversePlaneVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), stockInfo.zeroPoint.z() + millingInfo.planeStartingHeight + millingInfo.safeTraverseHeight * 0.001f };
+			safeTraversePlaneVisualization.scale = 1.1f * glm::vec3{ stockSize.x(), stockSize.y(), stockSize.z() };
+
+			// START MILLING PLANE
+			startCuttingPlaneVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), stockInfo.zeroPoint.z() + millingInfo.planeStartingHeight };
+			startCuttingPlaneVisualization.scale = 1.1f * glm::vec3{ stockSize.x(), stockSize.y(), stockSize.z() };
+
+			// END MILLING PLANE
+			finalCuttingPlaneVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), stockInfo.zeroPoint.z() + millingInfo.planeEndingHeight };
+			finalCuttingPlaneVisualization.scale = 1.1f * glm::vec3{ stockSize.x(), stockSize.y(), stockSize.z() };
+
 			renderer.drawFrame(sceneInfo);
 		}
 

@@ -41,7 +41,7 @@ int main() {
 		// load object to be milled to the renderer
 		glm::mat4 rotationMatrix = glm::rotate(glm::mat4{ 1.f }, (float)(0.5f * PI), glm::vec3{ 0.f, 0.f, 1.f });
 		rotationMatrix = glm::rotate(rotationMatrix, (float)(0.5f * PI), glm::vec3{ 1.f, 0.f, 0.f });
-		LoadedObject& bikeShell = renderer.createObject("models/RACING_VELO_G_BIRD.obj", "models/RACING_VELO_G_BIRD.png", cavc::Vector3<double>{ 0.f, 0.f, 0.f }, cavc::Vector3<double>{ 0.1f, 0.1f, 0.1f }, rotationMatrix, 0.4f);
+		LoadedObject& bikeShell = renderer.createObject("models/RACING_VELO_G_BIRD.obj", cavc::Vector3<double>{ 0.f, 0.f, 0.f }, cavc::Vector3<double>{ 0.f, 0.f, 0.f }, cavc::Vector3<double>{ 0.1f, 0.1f, 0.1f }, rotationMatrix, 0.4f);
 
 		// load the object data into a more usable format
 		DesiredShape desiredShape;

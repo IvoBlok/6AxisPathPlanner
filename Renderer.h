@@ -95,6 +95,8 @@ struct UniformBufferObject {
 
 struct ObjectShaderPushConstant {
 	glm::mat4 modelMatrix;
+	glm::vec3 color;
+	bool isOneColor;
 	float modelTransparency;
 };
 
@@ -664,6 +666,10 @@ public:
 	LoadedModel model;
 	LoadedTexture texture;
 
+	// an object either has a texture, or is one color. the bool signifies which case this object is. 
+	glm::vec3 color;
+	bool isOneColor;
+
 	glm::mat4 rotationMatrix;
 	glm::vec3 position;
 	glm::vec3 scale;
@@ -672,6 +678,17 @@ public:
 		model.load(modelPath, modelTransparency);
 		texture.load(texturePath);
 
+		isOneColor = false;
+		position = glm::vec3{ basePosition.x(), basePosition.y(), basePosition.z() };
+		scale = glm::vec3{ baseScale.x(), baseScale.y(), baseScale.z() };
+		rotationMatrix = baseRotationMatrix;
+	}
+
+	void load(const char* modelPath, cavc::Vector3<double> objectColor, cavc::Vector3<double> basePosition = cavc::Vector3<double>{ 0.f, 0.f, 0.f }, cavc::Vector3<double> baseScale = cavc::Vector3<double>{ 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f) {
+		model.load(modelPath, modelTransparency);
+
+		color = glm::vec3{ objectColor.x(), objectColor.y(), objectColor.z() };
+		isOneColor = true;
 		position = glm::vec3{ basePosition.x(), basePosition.y(), basePosition.z() };
 		scale = glm::vec3{ baseScale.x(), baseScale.y(), baseScale.z() };
 		rotationMatrix = baseRotationMatrix;
@@ -696,6 +713,8 @@ public:
 		ObjectShaderPushConstant pushConstant{};
 		pushConstant.modelMatrix = transformationMatrix;
 		pushConstant.modelTransparency = model.transparency;
+		pushConstant.color = color;
+		pushConstant.isOneColor = isOneColor;
 
 		// bind the right texture
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &texture.descriptorSet, 0, nullptr);
@@ -1145,9 +1164,29 @@ public:
 		glfwTerminate();
 	}
 
-	LoadedObject& createObject(const char* modelPath, const char* texturePath, cavc::Vector3<double> basePosition = cavc::Vector3<double>{ 0.f, 0.f, 0.f }, cavc::Vector3<double> baseScale = cavc::Vector3<double>{ 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f) {
+	LoadedObject& createObject(
+		const char* modelPath, 
+		const char* texturePath, 
+		cavc::Vector3<double> basePosition = cavc::Vector3<double>{ 0.f, 0.f, 0.f }, 
+		cavc::Vector3<double> baseScale = cavc::Vector3<double>{ 1.f, 1.f, 1.f }, 
+		glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f) 
+	{
 		loadedObjects.push_back(LoadedObject());
 		loadedObjects.back().load(modelPath, texturePath, basePosition, baseScale, rotationMatrix, modelTransparency);
+
+		return loadedObjects.back();
+	}
+
+	LoadedObject& createObject(
+		const char* modelPath, 
+		cavc::Vector3<double> objectColor = cavc::Vector3<double>{ 0.f, 0.f, 0.f },
+		cavc::Vector3<double> basePosition = cavc::Vector3<double>{ 0.f, 0.f, 0.f },
+		cavc::Vector3<double> baseScale = cavc::Vector3<double>{ 1.f, 1.f, 1.f }, 
+		glm::mat4 rotationMatrix = glm::mat4{ 1.f }, 
+		float modelTransparency = 1.f) 
+	{
+		loadedObjects.push_back(LoadedObject());
+		loadedObjects.back().load(modelPath, objectColor, basePosition, baseScale, rotationMatrix, modelTransparency);
 
 		return loadedObjects.back();
 	}

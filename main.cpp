@@ -82,36 +82,29 @@ int main() {
 			glm::mat4{ 1.f },
 			0.2f);
 
-		// load the object data into a more usable format
-		DesiredShape desiredShape;
-		bikeShell.model.loadModelDataIntoDesiredShapeContainer(desiredShape, bikeShell.getTransformationMatrix());
-
-		// set temp robotInfo settings
-		RobotInfo robotInfo;
-		robotInfo.homePoint = cavc::Vector3<double>{ 0.f, 0.f, 0.f };
-		robotInfo.zeroPoint = cavc::Vector3<double>{ 0.f, 0.f, 0.f };
-
-		// set temp toolInfo settings
-		ToolInfo toolInfo;
-		toolInfo.fluteCount = 2;
-		toolInfo.mainToolRadius = 10.f;
-		toolInfo.toolCuttingHeight = 50.f;
-		toolInfo.toolIsBallEnd = false;
-
-		// set temp stockInfo settings
-		StockInfo stockInfo;
-		stockInfo.zeroPoint = cavc::Vector3<double>{ -0.6f, -.25f, -.25f };
-		stockInfo.height = 750.f;
-		stockInfo.width = 1200.f;
-		stockInfo.length = 500.f;
-
 		// set general milling info struct variables
 		MillingPass2_5DInfo millingInfo;
-		millingInfo.desiredShape = desiredShape;
-		millingInfo.robotInfo = robotInfo;
-		millingInfo.toolInfo = toolInfo;
-		millingInfo.stockInfo = stockInfo;
 
+		// load the object data into a more usable format
+		bikeShell.model.loadModelDataIntoDesiredShapeContainer(millingInfo.desiredShape, bikeShell.getTransformationMatrix());
+
+		// set temp robotInfo settings
+		millingInfo.robotInfo.homePoint = cavc::Vector3<double>{ 0.f, 0.f, 0.f };
+		millingInfo.robotInfo.zeroPoint = cavc::Vector3<double>{ 0.f, 0.f, 0.f };
+
+		// set temp toolInfo settings
+		millingInfo.toolInfo.fluteCount = 2;
+		millingInfo.toolInfo.mainToolRadius = 10.f;
+		millingInfo.toolInfo.toolCuttingHeight = 50.f;
+		millingInfo.toolInfo.toolIsBallEnd = false;
+
+		// set temp stockInfo settings
+		millingInfo.stockInfo.zeroPoint = cavc::Vector3<double>{ -0.6f, -.25f, -.25f };
+		millingInfo.stockInfo.height = 750.f;
+		millingInfo.stockInfo.width = 1200.f;
+		millingInfo.stockInfo.length = 500.f;
+
+		// set general milling info
 		millingInfo.depthOfCut = 40.f;
 		millingInfo.stepOver = 18.f;
 		millingInfo.safeTraverseHeight = 100.f;
@@ -129,21 +122,21 @@ int main() {
 
 			// update visualization objects (planes + cube)
 			// STOCK
-			cavc::Vector3<double> stockSize{stockInfo.width * 0.001f, stockInfo.length * 0.001f, stockInfo.height * 0.001f};
-			cavc::Vector3<double> stockCenter = stockInfo.zeroPoint + (double)0.5f * stockSize;
+			cavc::Vector3<double> stockSize{ millingInfo.stockInfo.width * 0.001f, millingInfo.stockInfo.length * 0.001f, millingInfo.stockInfo.height * 0.001f};
+			cavc::Vector3<double> stockCenter = millingInfo.stockInfo.zeroPoint + (double)0.5f * stockSize;
 			stockVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), stockCenter.z() };
 			stockVisualization.scale = glm::vec3{ stockSize.x(), stockSize.y(), stockSize.z() };
 
 			// SAFE TRAVEL PLANE
-			safeTraversePlaneVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), stockInfo.zeroPoint.z() + millingInfo.planeStartingHeight + millingInfo.safeTraverseHeight * 0.001f };
+			safeTraversePlaneVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), millingInfo.stockInfo.zeroPoint.z() + millingInfo.planeStartingHeight + millingInfo.safeTraverseHeight * 0.001f };
 			safeTraversePlaneVisualization.scale = 1.1f * glm::vec3{ stockSize.x(), stockSize.y(), stockSize.z() };
 
 			// START MILLING PLANE
-			startCuttingPlaneVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), stockInfo.zeroPoint.z() + millingInfo.planeStartingHeight };
+			startCuttingPlaneVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), millingInfo.stockInfo.zeroPoint.z() + millingInfo.planeStartingHeight };
 			startCuttingPlaneVisualization.scale = 1.1f * glm::vec3{ stockSize.x(), stockSize.y(), stockSize.z() };
 
 			// END MILLING PLANE
-			finalCuttingPlaneVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), stockInfo.zeroPoint.z() + millingInfo.planeEndingHeight };
+			finalCuttingPlaneVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), millingInfo.stockInfo.zeroPoint.z() + millingInfo.planeEndingHeight };
 			finalCuttingPlaneVisualization.scale = 1.1f * glm::vec3{ stockSize.x(), stockSize.y(), stockSize.z() };
 
 			renderer.drawFrame(sceneInfo);

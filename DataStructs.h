@@ -13,6 +13,7 @@
 #include <vector>
 #include <utility>
 #include <functional>
+#include <string>
 
 #include "cavc/vector2.hpp"
 #include "cavc/vector3.hpp"
@@ -125,6 +126,9 @@ struct MillingPass2_5DInfo {
 	// 'planeEndingHeight' is defined along the length of 'planeNormal', where the start of planeNormal is the zero point of the stock given in 'millingInfo'
 	// starting from this height, material will be milled
 	double planeEndingHeight;
+
+	// name of the document that the path is exported to
+	char filename[64];
 };
 
 struct SceneInfo {

@@ -2346,6 +2346,7 @@ private:
 		ImGui::InputDouble("cutting height end", &sceneInfo.millingPass2_5DInfo.planeEndingHeight);
 
 		ImGui::Separator();
+		ImGui::InputText("file name", sceneInfo.millingPass2_5DInfo.filename, sizeof(sceneInfo.millingPass2_5DInfo.filename));
 		if (ImGui::Button("Generate Path"))
 			sceneInfo.generateToolPath(sceneInfo.millingPass2_5DInfo);
 

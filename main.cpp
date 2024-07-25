@@ -9,14 +9,14 @@
 
 VulkanRenderEngine renderer;
 
-void generatePath(MillingPass2_5DInfo& millingInfo) {
+void generate2_5DWallPath(MillingPass2_5DInfo& millingInfo) {
 	// calculate the toolpaths
 	cavc::Polyline3D<double> toolPath = ToolpathGenerator::generate2_5DOutsideToolPath(millingInfo, cavc::Vector3<double>{ 0.f, 0.f, 1.f}, millingInfo.planeStartingHeight, millingInfo.planeEndingHeight);
 	//cavc::Polyline3D<double> toolPath = ToolpathGenerator::generate2_5DOutsideToolPath(millingInfo, cavc::Vector3<double>{ 0.f, 0.f, 1.f}, .4f, .39f);
 
 	// remove all arcs by converting them to series of lines, since the robot arm can not move in arcs
 	cavc::Polyline3D<double> lineBasedToolPath = PathExporter::reducePathComplexity(toolPath);
-	PathExporter::export3DPath(toolPath, "testToolPath.txt");
+	PathExporter::export3DPath(toolPath, millingInfo.filename);
 
 	// to be properly displayed, the toolpath points need to be relative to the world zero, not the stock real zero
 	cavc::Vector3<double> stockRealZeroPoint = millingInfo.stockInfo.zeroPoint;
@@ -110,10 +110,11 @@ int main() {
 		millingInfo.safeTraverseHeight = 100.f;
 		millingInfo.planeStartingHeight = 0.4f;
 		millingInfo.planeEndingHeight = 0.39f;
+		std::strcpy(millingInfo.filename, "testToolPath1.txt");
 
 		// store all info that is to be set/modified in the GUI in the class
 		SceneInfo sceneInfo{millingInfo};
-		sceneInfo.generateToolPath = &generatePath;
+		sceneInfo.generateToolPath = &generate2_5DWallPath;
 
 		#pragma region rendering loop and cleanup
 		// form the actual rendering loop

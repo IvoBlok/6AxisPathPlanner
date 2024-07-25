@@ -329,11 +329,7 @@ namespace MeshIntersect {
 		// run the same algorithm as the one used for the object to be milled to find the intersection between the plane and stock
 		std::vector<cavc::Polyline2D<double>> result = getMeshPlaneIntersection(plane, stockShape);
 
-		if (result.size() != 1)
-			std::cout << "Unexpected result encountered when calculating the intersection path of a cuboid!\n";
-
 		if (result.size() == 0) {
-			std::cout << "cutting plane lays outside box!\n";
 			return cavc::Polyline2D<double>{};
 		}
 

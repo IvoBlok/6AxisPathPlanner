@@ -41,6 +41,10 @@ namespace ToolpathGenerator {
 
 			// create the boundary path of the stock
 			cavc::Polyline2D<double> boundaryPath = MeshIntersect::getBasicBoxIntersection(slicingPlane, millingInfo.stockInfo);
+			if (boundaryPath.vertexes().size() == 0) {
+				// no boundary was found, making this layer invalid. Skip to the next layer
+				continue;
+			}
 
 			// slice the desired object
 			std::vector<cavc::Polyline2D<double>> intersectPaths = MeshIntersect::getMeshPlaneIntersection(slicingPlane, millingInfo.desiredShape);
@@ -74,6 +78,9 @@ namespace ToolpathGenerator {
 				
 				finished = (newPaths.size() == 0 || (abs(totalInsideArea) == abs(totalOffsetPathsArea)));
 			}
+
+			// To ensure that the final pass is fully passed over, add it to the end of the path for this layer
+			offsetPaths.back().insert(offsetPaths.back().end(), finalPass.begin(), finalPass.end());
 
 			// convert all the 2D paths to the 3D version
 			offsetPaths3D.push_back(std::vector<cavc::Polyline3D<double>>{});

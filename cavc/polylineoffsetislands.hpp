@@ -449,6 +449,7 @@ OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeTwoSidedOffsets(const Of
   return result;
 }
 
+// TODO this function works beautifully, but in a rare case, where there are 3(+) separate inside curves, it ignores one
 template <typename Real>
 OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeOneSidedOffsets(OffsetLoopSet<Real>& input,
   Real offsetDelta) {
@@ -473,12 +474,28 @@ OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeOneSidedOffsets(OffsetLo
   }
 
   // if there are both inside and outside path(s), return the edge path of the union of all the surfaces enclosed by these input paths
-  CombineResult<Real> combineResult = combinePolylines(m_inputSet->cwLoops[0].polyline, m_ccwOffsetLoops[0].polyline, PlineCombineMode::Union);
+  // the exception is inside paths that lay outside the boundary path
+  Polyline2D<Real> unionPath = m_ccwOffsetLoops[0].polyline;
+  for (const OffsetLoop<Real>& insideLoop : m_cwOffsetLoops)
+  {
+    // to check if a loop lays entirely outside another, we check if there are any intersects between the two
+    // if there are no intersects, no union is required, the output can simply be the offset of the boundary path
+    internal::ProcessForCombineResult<Real> combineInfo = internal::processForCombine(unionPath, insideLoop.polyline, m_ccwOffsetLoops[0].spatialIndex);
+    if (combineInfo.anyIntersects()) {
+      CombineResult<Real> combineResult = combinePolylines(unionPath, insideLoop.polyline, PlineCombineMode::Union);
+      unionPath = combineResult.remaining[0];
+    }
+    else {
+      // if the offsetpath is fully contained in any of the inside paths, return an empty path
+      Vector2<Real> pointOnBoundary{ m_ccwOffsetLoops[0].polyline.lastVertex().x(), m_ccwOffsetLoops[0].polyline.lastVertex().y() };
+      if (getWindingNumber(insideLoop.polyline, pointOnBoundary) != 0)
+        return result;
+    }
+  }
 
-  auto& r = combineResult.remaining[0];
-  auto spatial = createApproxSpatialIndex(r);
+  auto spatial = createApproxSpatialIndex(unionPath);
 
-  result.ccwLoops.push_back({ 0, std::move(r), std::move(spatial) });
+  result.ccwLoops.push_back({ 0, std::move(unionPath), std::move(spatial) });
 
   return result;
 }

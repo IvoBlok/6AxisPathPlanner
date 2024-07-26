@@ -15,7 +15,7 @@ public:
 
 	Plane(cavc::Vector3<Real> n_origin = cavc::Vector3<Real>{ 0.f, 0.f, 0.f }, cavc::Vector3<Real> n_normal = cavc::Vector3<Real>{ 0.f, 0.f, 1.f }) {
 		origin = n_origin;
-		normal = n_normal;
+		normal = normalize(n_normal);
 		createFrontAndRightVectors();
 	};
 

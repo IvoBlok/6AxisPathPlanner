@@ -19,6 +19,10 @@
 namespace cavc {
 template <typename Real> class Polyline2D {
 public:
+
+  // when the polyline is closed, 'isPocket' signifies if the area enclosed by the polyline is desired material, or material to be removed
+  bool isPocket = false;
+
   /// Construct an empty open polyline.
   Polyline2D() : m_isClosed(false), m_vertexes() {}
 

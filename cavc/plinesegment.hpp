@@ -36,8 +36,12 @@ public:
   Vector2<Real> const &pos() const { return m_position; }
   Vector2<Real> &pos() { return m_position; }
 
+  Vector3<Real> const& normal() const { return m_normal; }
+  Vector3<Real>& normal() { return m_normal; }
+
 private:
   Vector2<Real> m_position;
+  Vector3<Real> m_normal = Vector3<Real>{ 0.f, 0.f, 0.f };
   Real m_bulge;
 };
 

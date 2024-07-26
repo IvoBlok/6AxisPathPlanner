@@ -44,10 +44,8 @@ int main() {
 
 		// load object to be milled to the renderer
 		LoadedObject& bikeShell = renderer.createObject(
-			"models/RACING_VELO_G_BIRD.obj",
-			cavc::Vector3<double>{ 0.3f, 0.3f, 0.3f },
-			cavc::Vector3<double>{ 0.f, 0.f, 0.f },
-			cavc::Vector3<double>{ 0.1f, 0.1f, 0.1f });
+			"models/ligfietsbak-top.obj",
+			cavc::Vector3<double>{ 0.3f, 0.3f, 0.3f });
 
 		// load the visualization planes and cube
 		LoadedObject& safeTraversePlaneVisualization = renderer.createObject(

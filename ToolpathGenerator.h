@@ -47,9 +47,33 @@ namespace ToolpathGenerator {
 
 			// slice the desired object
 			std::vector<cavc::Polyline2D<double>> intersectPaths = MeshIntersect::getMeshPlaneIntersection(slicingPlane, millingInfo.desiredShape);
+			std::vector<cavc::Polyline2D<double>> nonPocketIntersectPaths;
+			
+			// filter out all pocket intersects
+			for (cavc::Polyline2D<double>& path : intersectPaths) {
+
+				// get a non-zero normal from the path
+				for (const cavc::PlineVertex<double>& vertex : path.vertexes()) {
+					if (cavc::length(vertex.normal()) == 0.f)
+						continue;
+
+					// project the normal on the plane
+					cavc::Vector3<double> projectedVector = vertex.normal() - slicingPlane.normal * (cavc::dot(slicingPlane.normal, vertex.normal()));
+
+					// retrieve a point in the direction of the projected normal
+					cavc::Vector2<double> projectedPoint = vertex.pos() + (double)0.01f * slicingPlane.getLocalCoords(projectedVector);
+
+					// if the projected point lays outside the area enclosed by the loop, the loop is not a pocket
+					if (cavc::getWindingNumber(path, projectedPoint) == 0)
+						nonPocketIntersectPaths.push_back(path);
+
+					// if one suitable normal has been found, we already know if it is a pocket or not, so just skip to the next loop to check
+					break;
+				}
+			}
 
 			// if this is the closest pass, do it with an offset of the radius of the cutting tool, since this is the pass that needs to closely match the actual desiredPath
-			std::vector<cavc::Polyline2D<double>> finalPass = cavc::parallelOffsetToClosedLoops(intersectPaths, millingInfo.toolInfo.mainToolRadius * 0.001f);
+			std::vector<cavc::Polyline2D<double>> finalPass = cavc::parallelOffsetToClosedLoops(nonPocketIntersectPaths, millingInfo.toolInfo.mainToolRadius * 0.001f);
 
 			// add a new entree for this layer of the 2.5D pass, and initialize it with the boundary path, since the outside edge is the first bit of material that should be removed
 			offsetPaths.push_back(std::vector<cavc::Polyline2D<double>>{boundaryPath});

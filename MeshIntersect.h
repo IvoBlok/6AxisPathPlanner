@@ -209,9 +209,15 @@ namespace MeshIntersect {
 					const auto& edgeStart(vertices[edge.first]);
 					const auto& edgeEnd(vertices[edge.second]);
 
+					const auto& normalStart(normals[edge.first]);
+					const auto& normalEnd(normals[edge.second]);
+
 					cavc::Vector3<double> newPoint = edgeStart + (edgeEnd - edgeStart) * factor;
-					cavc::Vector3<double> newNormal = cavc::Vector3<double>{ 0.f, 0.f, 0.f };
+					cavc::Vector3<double> newNormal = normalStart + (normalEnd - normalStart) * factor;
+					if(!cavc::fuzzyZero(newNormal))
+						newNormal = cavc::normalize(newNormal);
 					path.vertexes().push_back(cavc::PlineVertex<double>{ plane.getLocalCoords(newPoint), 0.f });
+					path.vertexes().back().normal() = newNormal;
 				}
 			}
 			paths.push_back(path);

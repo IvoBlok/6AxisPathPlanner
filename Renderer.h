@@ -555,8 +555,9 @@ public:
 		for (size_t i = 0; i < vertices.size(); i++)
 		{
 			glm::vec3 vertexWithAppliedMatrix = transformationMatrix * glm::vec4{ vertices[i].pos, 1.f };
+			glm::vec3 normalWithAppliedMatrix = transformationMatrix * glm::vec4{ vertices[i].normal, 0.f };
 			desiredShape.vertices.push_back(cavc::Vector3<double>{ vertexWithAppliedMatrix.x, vertexWithAppliedMatrix.y, vertexWithAppliedMatrix.z });
-			desiredShape.normals.push_back(cavc::Vector3<double>{ 0.f, 0.f, 0.f });
+			desiredShape.normals.push_back(cavc::Vector3<double>{ normalWithAppliedMatrix.x, normalWithAppliedMatrix.y, normalWithAppliedMatrix.z });
 		}
 
 		desiredShape.indices = indices;
@@ -596,16 +597,20 @@ private:
 						attrib.vertices[3 * index.vertex_index + 2]
 				};
 
-				vertex.normal = {
-					attrib.normals[3 * index.normal_index + 0],
-					attrib.normals[3 * index.normal_index + 1],
-					attrib.normals[3 * index.normal_index + 2]
-				};
+				if (index.normal_index >= 0) {
+					vertex.normal = {
+						attrib.normals[3 * index.normal_index + 0],
+						attrib.normals[3 * index.normal_index + 1],
+						attrib.normals[3 * index.normal_index + 2]
+					};
+				}
 
-				vertex.texCoord = {
+				if (index.texcoord_index >= 0) {
+					vertex.texCoord = {
 						attrib.texcoords[2 * index.texcoord_index + 0],
 						1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-				};
+					};
+				}
 
 				vertex.color = { 1.0f, 1.0f, 1.0f };
 

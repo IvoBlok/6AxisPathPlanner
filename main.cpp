@@ -20,7 +20,7 @@ void generate2_5DWallPath(MillingPass2_5DInfo& millingInfo) {
 
 	// remove all arcs by converting them to series of lines, since the robot arm can not move in arcs
 	cavc::Polyline3D<double> lineBasedToolPath = PathExporter::reducePathComplexity(toolPath);
-	PathExporter::export3DPath(toolPath, millingInfo.filename);
+	PathExporter::export3DPath(toolPath, std::string{"output/"} + millingInfo.filename);
 
 	// to be properly displayed, the toolpath points need to be relative to the world zero, not the stock real zero
 	cavc::Vector3<double> stockRealZeroPoint = millingInfo.stockInfo.zeroPoint;

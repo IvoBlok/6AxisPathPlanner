@@ -147,6 +147,10 @@ struct SceneInfo {
 	MillingPass2_5DInfo& millingPass2_5DInfo;
 
 	std::function<void(MillingPass2_5DInfo&)> generateToolPath;
+
+	float objectYaw;
+	float objectPitch;
+	float objectRoll;
 };
 
 const double PI = 3.141592653;

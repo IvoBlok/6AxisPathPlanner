@@ -267,10 +267,15 @@ namespace MeshIntersect {
 			cleanedUpPaths.push_back(cavc::Polyline2D<double>{});
 			cleanedUpPaths.back().isClosed() = true;
 
-			for (size_t j = 0; j < newPaths[i].vertexes().size() - 1; j++)
+			// start with the first vertex
+			cleanedUpPaths.back().addVertex(newPaths[i].vertexes()[0]);
+			
+			// only add the points that will result in vertices longer then the minimum length
+			for (size_t j = 1; j < newPaths[i].vertexes().size(); j++)
 			{
-				float vertexLength = cavc::length(newPaths[i].vertexes()[j + 1].pos() - newPaths[i].vertexes()[j].pos());
-				if (vertexLength > 0.001f) {
+				float vertexLength = cavc::length(cleanedUpPaths.back().lastVertex().pos() - newPaths[i].vertexes()[j].pos());
+				// any elements smaller then 2 millimeters are pruned
+				if (vertexLength > 0.002f) {
 					cleanedUpPaths.back().vertexes().push_back(newPaths[i].vertexes()[j]);
 				}
 			}

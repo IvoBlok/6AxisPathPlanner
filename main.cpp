@@ -1,4 +1,7 @@
 
+
+#include "glm/gtx/euler_angles.hpp"
+
 #include "Renderer.h"
 
 #include "MeshIntersect.h"
@@ -10,6 +13,7 @@
 VulkanRenderEngine renderer;
 
 void generate2_5DWallPath(MillingPass2_5DInfo& millingInfo) {
+	// 
 	// calculate the toolpaths
 	cavc::Polyline3D<double> toolPath = ToolpathGenerator::generate2_5DOutsideToolPath(millingInfo, cavc::Vector3<double>{ 0.f, 0.f, 1.f}, millingInfo.planeStartingHeight, millingInfo.planeEndingHeight);
 	//cavc::Polyline3D<double> toolPath = ToolpathGenerator::generate2_5DOutsideToolPath(millingInfo, cavc::Vector3<double>{ 0.f, 0.f, 1.f}, .4f, .39f);
@@ -39,15 +43,11 @@ int main() {
 		renderer.addGizmo();
 
 		// load object to be milled to the renderer
-		glm::mat4 rotationMatrix = glm::rotate(glm::mat4{ 1.f }, (float)(0.5f * PI), glm::vec3{ 0.f, 0.f, 1.f });
-		rotationMatrix = glm::rotate(rotationMatrix, (float)(0.5f * PI), glm::vec3{ 1.f, 0.f, 0.f });
 		LoadedObject& bikeShell = renderer.createObject(
 			"models/RACING_VELO_G_BIRD.obj",
 			cavc::Vector3<double>{ 0.3f, 0.3f, 0.3f },
 			cavc::Vector3<double>{ 0.f, 0.f, 0.f },
-			cavc::Vector3<double>{ 0.1f, 0.1f, 0.1f },
-			rotationMatrix,
-			1.f);
+			cavc::Vector3<double>{ 0.1f, 0.1f, 0.1f });
 
 		// load the visualization planes and cube
 		LoadedObject& safeTraversePlaneVisualization = renderer.createObject(
@@ -115,12 +115,13 @@ int main() {
 		// store all info that is to be set/modified in the GUI in the class
 		SceneInfo sceneInfo{millingInfo};
 		sceneInfo.generateToolPath = &generate2_5DWallPath;
+		sceneInfo.objectYaw = 90.f;
+		sceneInfo.objectPitch = 180.f;
+		sceneInfo.objectRoll = 90.f;
 
 		#pragma region rendering loop and cleanup
 		// form the actual rendering loop
 		while (!glfwWindowShouldClose(renderer.window)) {
-			glfwPollEvents();
-
 			// update visualization objects (planes + cube)
 			// STOCK
 			cavc::Vector3<double> stockSize{ millingInfo.stockInfo.width * 0.001f, millingInfo.stockInfo.length * 0.001f, millingInfo.stockInfo.height * 0.001f};
@@ -140,6 +141,15 @@ int main() {
 			finalCuttingPlaneVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), millingInfo.stockInfo.zeroPoint.z() + millingInfo.planeEndingHeight };
 			finalCuttingPlaneVisualization.scale = 1.1f * glm::vec3{ stockSize.x(), stockSize.y(), stockSize.z() };
 
+			// update orientation of object to be milled
+			bikeShell.rotationMatrix = glm::eulerAngleYXZ(glm::radians(sceneInfo.objectYaw), glm::radians(sceneInfo.objectPitch), glm::radians(sceneInfo.objectRoll));
+			// since the orientation changed, recalculate the basic geometry format
+			// This adds enormous emounts of unnecessary calculations, since most frames nothing changes, but it's usable for now
+			bikeShell.model.loadModelDataIntoDesiredShapeContainer(millingInfo.desiredShape, bikeShell.getTransformationMatrix());
+
+			glfwPollEvents();
+			
+			// render the frame
 			renderer.drawFrame(sceneInfo);
 		}
 

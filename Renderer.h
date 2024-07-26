@@ -544,6 +544,14 @@ public:
 	}
 
 	void loadModelDataIntoDesiredShapeContainer(DesiredShape& desiredShape, glm::mat4 transformationMatrix) {
+		desiredShape.vertices.clear();
+		desiredShape.indices.clear();
+		desiredShape.normals.clear();
+
+		desiredShape.vertices.reserve(vertices.size());
+		desiredShape.indices.reserve(indices.size());
+		desiredShape.normals.reserve(vertices.size());
+
 		for (size_t i = 0; i < vertices.size(); i++)
 		{
 			glm::vec3 vertexWithAppliedMatrix = transformationMatrix * glm::vec4{ vertices[i].pos, 1.f };
@@ -2312,6 +2320,12 @@ private:
 
 		ImGui::Begin("Configuration");
 		
+		ImGui::Text("ObjectInfo");
+		ImGui::Separator();
+		ImGui::InputFloat("yaw", &sceneInfo.objectYaw);
+		ImGui::InputFloat("pitch", &sceneInfo.objectPitch);
+		ImGui::InputFloat("roll", &sceneInfo.objectRoll);
+
 		ImGui::Text("RobotInfo");
 		ImGui::Separator();
 		ImGui::InputDouble("robot home x", &sceneInfo.robotInfo.homePoint.x());

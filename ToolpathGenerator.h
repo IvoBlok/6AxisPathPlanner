@@ -41,15 +41,12 @@ namespace ToolpathGenerator {
 
 			// create the boundary path of the stock
 			cavc::Polyline2D<double> boundaryPath = MeshIntersect::getBasicBoxIntersection(slicingPlane, millingInfo.stockInfo);
-			if (boundaryPath.vertexes().size() == 0) {
+			if (boundaryPath.vertexes().size() == 0)
 				// no boundary was found, making this layer invalid. Skip to the next layer
 				continue;
-			}
 
 			// slice the desired object
 			std::vector<cavc::Polyline2D<double>> intersectPaths = MeshIntersect::getMeshPlaneIntersection(slicingPlane, millingInfo.desiredShape);
-
-			// TODO simplify the intersectPaths into a set of line and arc segments to speed up the rest of this algorithm and avoid annoying edgecases,  maybe do this with a tolerance that can go only outwards, so no unnecessary material is removed?
 
 			// if this is the closest pass, do it with an offset of the radius of the cutting tool, since this is the pass that needs to closely match the actual desiredPath
 			std::vector<cavc::Polyline2D<double>> finalPass = cavc::parallelOffsetToClosedLoops(intersectPaths, millingInfo.toolInfo.mainToolRadius * 0.001f);
@@ -61,6 +58,8 @@ namespace ToolpathGenerator {
 			bool finished = false;
 			int loopCount = 0;
 			while (!finished) {
+				// TODO do a boolean union between the newPaths generated for this layer, and all previous layers. This ensures that the path for this layer doesn't remove material from higher layers
+
 				loopCount++;
 				// create the offsets, with an offet value equal to a full multiple of the stepover of the cutting tool used
 				std::vector<cavc::Polyline2D<double>> newPaths = pathGeneration.computeOneSidedOffsets(finalPass, boundaryPath, (double)loopCount * millingInfo.stepOver * 0.001f);

@@ -146,7 +146,9 @@ struct SceneInfo {
 	StockInfo& stockInfo;
 	MillingPass2_5DInfo& millingPass2_5DInfo;
 
-	std::function<void(MillingPass2_5DInfo&)> generateToolPath;
+	std::function<void(MillingPass2_5DInfo&)> generateClearingPath;
+	std::function<void(MillingPass2_5DInfo&)> generateFinalPath;
+	std::function<void(MillingPass2_5DInfo&)> generateStockFacePath;
 
 	float objectYaw;
 	float objectPitch;

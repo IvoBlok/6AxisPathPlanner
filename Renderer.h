@@ -2366,9 +2366,12 @@ private:
 
 		ImGui::Separator();
 		ImGui::InputText("file name", sceneInfo.millingPass2_5DInfo.filename, sizeof(sceneInfo.millingPass2_5DInfo.filename));
-		if (ImGui::Button("Generate Path"))
-			sceneInfo.generateToolPath(sceneInfo.millingPass2_5DInfo);
-
+		if (ImGui::Button("Generate Clearing Pass"))
+			sceneInfo.generateClearingPath(sceneInfo.millingPass2_5DInfo);
+		if (ImGui::Button("Generate Final Pass"))
+			sceneInfo.generateFinalPath(sceneInfo.millingPass2_5DInfo);
+		if (ImGui::Button("Generate Stock Face Pass"))
+			sceneInfo.generateStockFacePath(sceneInfo.millingPass2_5DInfo);
 		ImGui::End();
 
 		ImGui::Render();

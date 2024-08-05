@@ -12,27 +12,52 @@
 
 VulkanRenderEngine renderer;
 
-void generate2_5DWallPath(MillingPass2_5DInfo& millingInfo) {
-	// 
+void export2_5DClearingPass(MillingPass2_5DInfo& millingInfo) {
 	// calculate the toolpaths
-	cavc::Polyline3D<double> toolPath = ToolpathGenerator::generate2_5DOutsideToolPath(millingInfo, cavc::Vector3<double>{ 0.f, 0.f, 1.f}, millingInfo.planeStartingHeight, millingInfo.planeEndingHeight);
-	//cavc::Polyline3D<double> toolPath = ToolpathGenerator::generate2_5DOutsideToolPath(millingInfo, cavc::Vector3<double>{ 0.f, 0.f, 1.f}, .4f, .39f);
-
-	// remove all arcs by converting them to series of lines, since the robot arm can not move in arcs
-	cavc::Polyline3D<double> lineBasedToolPath = PathExporter::reducePathComplexity(toolPath);
-	PathExporter::export3DPath(toolPath, std::string{"output/"} + millingInfo.filename);
+	cavc::Polyline3D<double> toolPath = ToolpathGenerator::generate2_5DClearingPass(millingInfo, cavc::Vector3<double>{ 0.f, 0.f, 1.f}, millingInfo.planeStartingHeight, millingInfo.planeEndingHeight);
 
 	// to be properly displayed, the toolpath points need to be relative to the world zero, not the stock real zero
+	cavc::Polyline3D<double> lineBasedToolPath = PathExporter::reducePathComplexity(toolPath);
 	cavc::Vector3<double> stockRealZeroPoint = millingInfo.stockInfo.zeroPoint;
-	stockRealZeroPoint.z() += 0.001f * millingInfo.stockInfo.height;
-	for (auto& move : lineBasedToolPath.vertexes())
-	{
-		move.point += stockRealZeroPoint;
-		move.plane.origin += stockRealZeroPoint;
-	}
+	lineBasedToolPath.movePolyline(stockRealZeroPoint);
 
 	renderer.loadLine(lineBasedToolPath, 1.f, cavc::Vector3<double>{ 0.f, 0.f, 1.f});
 	renderer.addGizmo(stockRealZeroPoint, 0.1f);
+
+	// export the actual path
+	PathExporter::export3DPath(toolPath, std::string{ "output/" } + millingInfo.filename);
+}
+
+void export2_5DFinalPass(MillingPass2_5DInfo& millingInfo) {
+	// calculate the toolpaths
+	cavc::Polyline3D<double> toolPath = ToolpathGenerator::generate2_5DFinalPass(millingInfo, cavc::Vector3<double>{ 0.f, 0.f, 1.f}, millingInfo.planeStartingHeight, millingInfo.planeEndingHeight);
+
+	// to be properly displayed, the toolpath points need to be relative to the world zero, not the stock real zero
+	cavc::Polyline3D<double> lineBasedToolPath = PathExporter::reducePathComplexity(toolPath);
+	cavc::Vector3<double> stockRealZeroPoint = millingInfo.stockInfo.zeroPoint;
+	lineBasedToolPath.movePolyline(stockRealZeroPoint);
+
+	renderer.loadLine(lineBasedToolPath, 1.f, cavc::Vector3<double>{ 0.f, 0.f, 1.f});
+	renderer.addGizmo(stockRealZeroPoint, 0.1f);
+
+	// export the actual path
+	PathExporter::export3DPath(toolPath, std::string{ "output/" } + millingInfo.filename);
+}
+
+void export2_5DStockFacePass(MillingPass2_5DInfo& millingInfo) {
+	// calculate the toolpaths
+	cavc::Polyline3D<double> toolPath = ToolpathGenerator::generate2_5DStockFacePass(millingInfo, cavc::Vector3<double>{ 0.f, 0.f, 1.f}, millingInfo.planeEndingHeight);
+
+	// to be properly displayed, the toolpath points need to be relative to the world zero, not the stock real zero
+	cavc::Polyline3D<double> lineBasedToolPath = PathExporter::reducePathComplexity(toolPath);
+	cavc::Vector3<double> stockRealZeroPoint = millingInfo.stockInfo.zeroPoint;
+	lineBasedToolPath.movePolyline(stockRealZeroPoint);
+
+	renderer.loadLine(lineBasedToolPath, 1.f, cavc::Vector3<double>{ 0.f, 0.f, 1.f});
+	renderer.addGizmo(stockRealZeroPoint, 0.1f);
+
+	// export the actual path
+	PathExporter::export3DPath(toolPath, std::string{ "output/" } + millingInfo.filename);
 }
 
 int main() {
@@ -44,7 +69,7 @@ int main() {
 
 		// load object to be milled to the renderer
 		LoadedObject& bikeShell = renderer.createObject(
-			"models/ligfietsbak-top.obj",
+			"models/ligfietsbak-bottom.obj",
 			cavc::Vector3<double>{ 0.3f, 0.3f, 0.3f });
 
 		// load the visualization planes and cube
@@ -112,7 +137,9 @@ int main() {
 
 		// store all info that is to be set/modified in the GUI in the class
 		SceneInfo sceneInfo{millingInfo};
-		sceneInfo.generateToolPath = &generate2_5DWallPath;
+		sceneInfo.generateClearingPath = &export2_5DClearingPass;
+		sceneInfo.generateFinalPath = &export2_5DFinalPass;
+		sceneInfo.generateStockFacePath = &export2_5DStockFacePass;
 		sceneInfo.objectYaw = 90.f;
 		sceneInfo.objectPitch = 180.f;
 		sceneInfo.objectRoll = 90.f;

@@ -650,6 +650,13 @@ public:
     m_vertexes.insert(m_vertexes.end(), polyLine.vertexes().begin(), polyLine.vertexes().end());
   }
 
+  void movePolyline(Vector3<Real> translation) {
+    for (PlineVertex3D<Real>& vertex : m_vertexes) {
+      vertex.point += translation;
+      vertex.plane.origin += translation;
+    }
+  }
+
   bool& isClosed() {
     return m_isClosed;
   }

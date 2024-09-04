@@ -8,6 +8,38 @@
 
 namespace ToolpathGenerator {
 
+	std::vector<cavc::Polyline2D<double>> filterOutPocketIntersects(std::vector<cavc::Polyline2D<double>>& intersectPaths, cavc::Plane<double> slicingPlane) {
+		std::vector<cavc::Polyline2D<double>> nonPocketIntersectPaths;
+
+		// filter out all pocket intersects
+		for (cavc::Polyline2D<double>& path : intersectPaths) {
+
+			// get a non-zero normal from the path
+			for (const cavc::PlineVertex<double>& vertex : path.vertexes()) {
+				if (cavc::length(vertex.normal()) == 0.f)
+					continue;
+
+				// project the normal on the plane
+				cavc::Vector3<double> projectedVector = vertex.normal() - slicingPlane.normal * (cavc::dot(slicingPlane.normal, vertex.normal()));
+				projectedVector = cavc::normalize(projectedVector);
+
+				// retrieve a point in the direction of the projected normal
+				cavc::Vector2<double> normalInLocalCoords = slicingPlane.getLocalCoords(projectedVector + slicingPlane.origin);
+				cavc::Vector2<double> projectedPoint = vertex.pos() + (double)0.01f * normalInLocalCoords;
+
+				// if the projected point lays outside the area enclosed by the loop, the loop is not a pocket
+				if (cavc::getWindingNumber(path, projectedPoint) == 0)
+					nonPocketIntersectPaths.push_back(path);
+
+				// if one suitable normal has been found, we already know if it is a pocket or not, so just skip to the next loop to check
+				break;
+			}
+		}
+
+		return nonPocketIntersectPaths;
+	}
+
+
 	// this function generates the full 2.5D toolpath given the milling info, where the planar slices of the 2.5D are defined by the given plane normal, start height and end height
 	// this only applies to situations where the milling needs to happen from the outside of the stock up to some given curve. For pocket milling use some other function
 	// 'planeStartingHeight' is defined along the length of 'planeNormal', where the start of planeNormal is the zero point of the stock given in 'millingInfo'
@@ -47,35 +79,12 @@ namespace ToolpathGenerator {
 
 			// slice the desired object
 			std::vector<cavc::Polyline2D<double>> intersectPaths = MeshIntersect::getMeshPlaneIntersection(slicingPlane, millingInfo.desiredShape);
-			std::vector<cavc::Polyline2D<double>> nonPocketIntersectPaths;
 			
 			// filter out all pocket intersects
-			for (cavc::Polyline2D<double>& path : intersectPaths) {
-
-				// get a non-zero normal from the path
-				for (const cavc::PlineVertex<double>& vertex : path.vertexes()) {
-					if (cavc::length(vertex.normal()) == 0.f)
-						continue;
-					 
-					// project the normal on the plane
-					cavc::Vector3<double> projectedVector = vertex.normal() - slicingPlane.normal * (cavc::dot(slicingPlane.normal, vertex.normal()));
-					projectedVector = cavc::normalize(projectedVector);
-
-					// retrieve a point in the direction of the projected normal
-					cavc::Vector2<double> normalInLocalCoords = slicingPlane.getLocalCoords(projectedVector + slicingPlane.origin);
-					cavc::Vector2<double> projectedPoint = vertex.pos() + (double)0.01f * normalInLocalCoords;
-
-					// if the projected point lays outside the area enclosed by the loop, the loop is not a pocket
-					if (cavc::getWindingNumber(path, projectedPoint) == 0)
-						nonPocketIntersectPaths.push_back(path);
-
-					// if one suitable normal has been found, we already know if it is a pocket or not, so just skip to the next loop to check
-					break;
-				}
-			}
+			intersectPaths = filterOutPocketIntersects(intersectPaths, slicingPlane);
 
 			// if this is the closest pass, do it with an offset of the radius of the cutting tool, since this is the pass that needs to closely match the actual desiredPath
-			std::vector<cavc::Polyline2D<double>> finalPass = cavc::parallelOffsetToClosedLoops(nonPocketIntersectPaths, millingInfo.toolInfo.mainToolRadius * 0.001f);
+			std::vector<cavc::Polyline2D<double>> finalPass = cavc::parallelOffsetToClosedLoops(intersectPaths, millingInfo.toolInfo.mainToolRadius * 0.001f);
 
 			// add a new entree for this layer of the 2.5D pass, and initialize it with the boundary path, since the outside edge is the first bit of material that should be removed
 			offsetPaths.push_back(std::vector<cavc::Polyline2D<double>>{boundaryPath});
@@ -100,12 +109,9 @@ namespace ToolpathGenerator {
 			// convert all the 2D paths to the 3D version
 			offsetPaths3D.push_back(std::vector<cavc::Polyline3D<double>>{});
 			for (size_t i = 0; i < offsetPaths.back().size(); i++)
-			{
 				offsetPaths3D.back().push_back(cavc::Polyline3D<double>(offsetPaths.back()[i], slicingPlane));
-			}
 		}
 
-		// TODO simplify the intersectPaths into a set of line and arc segments to speed up the rest of this algorithm and avoid annoying edgecases, maybe do this with a tolerance that can go only outwards, so no unnecessary material is removed?
 		
 		// TEMP TEMP TEMP TEMP TEMP
 		for (size_t i = 0; i < offsetPaths3D.size(); i++)
@@ -129,18 +135,20 @@ namespace ToolpathGenerator {
 			}
 		}
 
+		// TODO simplify the intersectPaths into a set of line and arc segments to speed up the rest of this algorithm and avoid annoying edgecases, maybe do this with a tolerance that can go only outwards, so no unnecessary material is removed?
+
 		// convert all points to be relative to the some zero point on the stock
 		// zero point is the most X-, Y-, Z- point on the stock
-		cavc::Vector3<double> realZeroPoint = millingInfo.stockInfo.zeroPoint;
-		result.movePolyline(-realZeroPoint);
+		result.movePolyline(-millingInfo.stockInfo.zeroPoint);
 
 		// TODO check robot self-collision, robot-stock collision and robot reach
 
 		return result;
 	}
 
+
 	cavc::Polyline3D<double> generate2_5DFinalPass(MillingPass2_5DInfo& millingInfo, cavc::Vector3<double> planeNormal, double planeStartingHeight, double planeEndingHeight) {
-		// initialize the plane
+		// initialize the relevant planes
 		cavc::Vector3<double> startingPoint = millingInfo.stockInfo.zeroPoint + planeStartingHeight * planeNormal;
 		cavc::Plane<double> slicingPlane = cavc::Plane<double>(startingPoint, planeNormal);
 		cavc::Plane<double> safeTraversalPlane = cavc::Plane<double>(startingPoint + millingInfo.safeTraverseHeight * 0.001f * planeNormal, planeNormal);
@@ -173,35 +181,12 @@ namespace ToolpathGenerator {
 
 			// slice the desired object
 			std::vector<cavc::Polyline2D<double>> intersectPaths = MeshIntersect::getMeshPlaneIntersection(slicingPlane, millingInfo.desiredShape);
-			std::vector<cavc::Polyline2D<double>> nonPocketIntersectPaths;
 
 			// filter out all pocket intersects
-			for (cavc::Polyline2D<double>& path : intersectPaths) {
-
-				// get a non-zero normal from the path
-				for (const cavc::PlineVertex<double>& vertex : path.vertexes()) {
-					if (cavc::length(vertex.normal()) == 0.f)
-						continue;
-
-					// project the normal on the plane
-					cavc::Vector3<double> projectedVector = vertex.normal() - slicingPlane.normal * (cavc::dot(slicingPlane.normal, vertex.normal()));
-					projectedVector = cavc::normalize(projectedVector);
-
-					// retrieve a point in the direction of the projected normal
-					cavc::Vector2<double> normalInLocalCoords = slicingPlane.getLocalCoords(projectedVector + slicingPlane.origin);
-					cavc::Vector2<double> projectedPoint = vertex.pos() + (double)0.01f * normalInLocalCoords;
-
-					// if the projected point lays outside the area enclosed by the loop, the loop is not a pocket
-					if (cavc::getWindingNumber(path, projectedPoint) == 0)
-						nonPocketIntersectPaths.push_back(path);
-
-					// if one suitable normal has been found, we already know if it is a pocket or not, so just skip to the next loop to check
-					break;
-				}
-			}
+			intersectPaths = filterOutPocketIntersects(intersectPaths, slicingPlane);
 
 			// if this is the closest pass, do it with an offset of the radius of the cutting tool, since this is the pass that needs to closely match the actual desiredPath
-			std::vector<cavc::Polyline2D<double>> finalPass = cavc::parallelOffsetToClosedLoops(nonPocketIntersectPaths, millingInfo.toolInfo.mainToolRadius * 0.001f);
+			std::vector<cavc::Polyline2D<double>> finalPass = cavc::parallelOffsetToClosedLoops(intersectPaths, millingInfo.toolInfo.mainToolRadius * 0.001f);
 
 			// add a new entree for this layer of the 2.5D pass, and initialize it with the boundary path, since the outside edge is the first bit of material that should be removed
 			offsetPaths.push_back(finalPass);
@@ -238,13 +223,13 @@ namespace ToolpathGenerator {
 
 		// convert all points to be relative to the some zero point on the stock
 		// zero point is the most X-, Y-, Z- point on the stock
-		cavc::Vector3<double> realZeroPoint = millingInfo.stockInfo.zeroPoint;
-		result.movePolyline(-realZeroPoint);
+		result.movePolyline(-millingInfo.stockInfo.zeroPoint);
 
 		// TODO check robot self-collision, robot-stock collision and robot reach
 
 		return result;
 	}
+
 
 	cavc::Polyline3D<double> generate2_5DStockFacePass(MillingPass2_5DInfo& millingInfo, cavc::Vector3<double> planeNormal, double planeHeight) {
 		// initialize the plane
@@ -256,9 +241,7 @@ namespace ToolpathGenerator {
 		std::vector<cavc::Polyline3D<double>> offsetPaths3D;
 		cavc::Polyline3D<double> result;
 
-		cavc::ParallelOffsetIslands<double> pathGeneration;
-
-		// create the basic 2.5D toolpaths
+		// create the basic 2D toolpaths
 		// ========================================================================================
 
 		// create the boundary path of the stock
@@ -293,7 +276,6 @@ namespace ToolpathGenerator {
 
 		// TODO simplify the intersectPaths into a set of line and arc segments to speed up the rest of this algorithm and avoid annoying edgecases, maybe do this with a tolerance that can go only outwards, so no unnecessary material is removed?
 
-		// TEMP TEMP TEMP TEMP TEMP
 		// move to the safe point
 		cavc::Vector3<double> safePoint = offsetPaths3D[0].vertexes().front().point + safeTraversalPlane.getClosestPointOnPlane(offsetPaths3D[0].vertexes().front().point);
 		result.vertexes().push_back(cavc::PlineVertex3D<double>{ 0.f, safePoint, false });
@@ -311,8 +293,7 @@ namespace ToolpathGenerator {
 
 		// convert all points to be relative to the some zero point on the stock
 		// zero point is the most X-, Y-, Z- point on the stock
-		cavc::Vector3<double> realZeroPoint = millingInfo.stockInfo.zeroPoint;
-		result.movePolyline(-realZeroPoint);
+		result.movePolyline(-millingInfo.stockInfo.zeroPoint);
 
 		// TODO check robot self-collision, robot-stock collision and robot reach
 

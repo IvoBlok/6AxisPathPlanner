@@ -148,7 +148,7 @@ int main() {
 		// form the actual rendering loop
 		while (!glfwWindowShouldClose(renderer.window)) {
 			// update visualization objects (planes + cube)
-			// STOCK
+			// STOCK MATERIAL
 			cavc::Vector3<double> stockSize{ millingInfo.stockInfo.width * 0.001f, millingInfo.stockInfo.length * 0.001f, millingInfo.stockInfo.height * 0.001f};
 			cavc::Vector3<double> stockCenter = millingInfo.stockInfo.zeroPoint + (double)0.5f * stockSize;
 			stockVisualization.position = glm::vec3{ stockCenter.x(), stockCenter.y(), stockCenter.z() };

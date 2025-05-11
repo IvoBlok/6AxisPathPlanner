@@ -10,10 +10,14 @@ int main() {
 		VulkanRenderEngine renderer;
 		renderer.initialize();
 
-		/*LoadedObject& bikeShell = renderer.createObject(
-			"models/ligfietsbak-bottom.obj",
-			cavc::Vector3<double>{ 0.3f, 0.3f, 0.3f });
-		*/
+		LoadedObject& bikeShell = renderer.createObject(
+			"../../resources/assets/cube.obj",
+			cavc::Vector3<double>{ 0.f, 0.f, 1.f },
+			cavc::Vector3<double>{ 0.f, 5.f, 0.f },
+			cavc::Vector3<double>{ 1.f, 1.f, 1.f },
+			glm::mat4{ 1.f },
+			1.f
+		);
 		
 		// form the actual rendering loop
 		while (!glfwWindowShouldClose(renderer.window)) {

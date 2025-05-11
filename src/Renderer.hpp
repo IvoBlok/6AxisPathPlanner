@@ -79,8 +79,8 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 const int MAX_OBJECTS = 64;
 const int MAX_LINES = 1000;
 
-const float CAMERA_MOVE_VELOCITY = 0.7f;
-const float CAMERA_ROTATE_VELOCITY = 0.7f;
+const float DEFAULT_CAMERA_MOVE_VELOCITY = 0.7f;
+const float DEFAULT_CAMERA_ROTATE_VELOCITY = 0.7f;
 const glm::vec4 CLEAR_COLOR = glm::vec4{ 0.7f, 0.7f, 0.7f, 1.f };
 
 const std::vector<const char*> validationLayers = {
@@ -731,7 +731,7 @@ public:
 	glm::vec3 cameraPosition = glm::vec3{ 0.f };
 	glm::vec3 cameraFront = glm::vec3{ 0.f, 1.f, 0.f };
 	glm::vec3 cameraRight = glm::vec3{ 1.f, 0.f, 0.f };
-	std::chrono::milliseconds deltaTime;
+	std::chrono::microseconds deltaTime;
 
 	void initialize() {
 		initWindow();
@@ -949,34 +949,37 @@ public:
 		glm::vec3 cameraForward = glm::normalize(glm::cross(worldUp, cameraRight));
 		glm::vec3 cameraUp = glm::normalize(glm::cross(cameraRight, cameraFront));
 
-		float actualCameraVelocity = CAMERA_MOVE_VELOCITY;
+		float cameraVelocity = DEFAULT_CAMERA_MOVE_VELOCITY;
+		
+		// convert deltaTime to seconds
+		float timeStep = deltaTime.count() * 0.000001f;
 
 		if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
-			actualCameraVelocity *= 5.f;
+			cameraVelocity *= 5.f;
 		if (glfwGetKey(window, GLFW_KEY_CAPS_LOCK) == GLFW_PRESS)
-			actualCameraVelocity *= 0.2f;
+			cameraVelocity *= 0.2f;
 		if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-			cameraPosition.z += deltaTime.count() * 0.001f * actualCameraVelocity;
+			cameraPosition.z += timeStep * cameraVelocity;
 		if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-			cameraPosition.z -= deltaTime.count() * 0.001f * actualCameraVelocity;
+			cameraPosition.z -= timeStep * cameraVelocity;
 		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-			cameraPosition -= deltaTime.count() * 0.001f * actualCameraVelocity * cameraRight;
+			cameraPosition -= timeStep * cameraVelocity * cameraRight;
 		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-			cameraPosition += deltaTime.count() * 0.001f * actualCameraVelocity * cameraRight;
+			cameraPosition += timeStep * cameraVelocity * cameraRight;
 		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-			cameraPosition += deltaTime.count() * 0.001f * actualCameraVelocity * cameraForward;
+			cameraPosition += timeStep * cameraVelocity * cameraForward;
 		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-			cameraPosition -= deltaTime.count() * 0.001f * actualCameraVelocity * cameraForward;
+			cameraPosition -= timeStep * cameraVelocity * cameraForward;
 		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-			cameraFront = glm::normalize(glm::rotate(cameraFront, deltaTime.count() * 0.001f * CAMERA_ROTATE_VELOCITY, cameraRight));
+			cameraFront = glm::normalize(glm::rotate(cameraFront, timeStep * DEFAULT_CAMERA_ROTATE_VELOCITY, cameraRight));
 		if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-			cameraFront = glm::normalize(glm::rotate(cameraFront, -deltaTime.count() * 0.001f * CAMERA_ROTATE_VELOCITY, cameraRight));
+			cameraFront = glm::normalize(glm::rotate(cameraFront, -timeStep * DEFAULT_CAMERA_ROTATE_VELOCITY, cameraRight));
 		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-			cameraRight = glm::normalize(glm::rotate(cameraRight, deltaTime.count() * 0.001f * CAMERA_ROTATE_VELOCITY, worldUp));
+			cameraRight = glm::normalize(glm::rotate(cameraRight, timeStep * DEFAULT_CAMERA_ROTATE_VELOCITY, worldUp));
 			cameraFront = glm::normalize(glm::cross(cameraUp, cameraRight));
 		}
 		if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-			cameraRight = glm::normalize(glm::rotate(cameraRight, -deltaTime.count() * 0.001f * CAMERA_ROTATE_VELOCITY, worldUp));
+			cameraRight = glm::normalize(glm::rotate(cameraRight, -timeStep * DEFAULT_CAMERA_ROTATE_VELOCITY, worldUp));
 			cameraFront = glm::normalize(glm::cross(cameraUp, cameraRight));
 		}
 	}
@@ -1825,7 +1828,7 @@ private:
 	void updateUniformBuffer(uint32_t currentImage) {
 
 		auto newCurrentTime = std::chrono::high_resolution_clock::now();
-		deltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(newCurrentTime - oldCurrentTime);
+		deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(newCurrentTime - oldCurrentTime);
 		oldCurrentTime = newCurrentTime;
 
 		UniformBufferObject ubo{};

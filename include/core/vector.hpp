@@ -3,6 +3,7 @@
 #include "mathutils.hpp"
 #include <array>
 #include <cassert>
+
 namespace cavc {
 template <typename Real, std::size_t N> class Vector {
 public:

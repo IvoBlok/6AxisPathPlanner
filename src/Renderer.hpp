@@ -13,23 +13,16 @@
 #include <glm/gtx/hash.hpp>
 #include <glm/gtc/random.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-
-#define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
-#include "OPTICK/optick.h"
+//#include "OPTICK/optick.h"
 
 #include "imconfig.h"
-#include "imgui_tables.cpp"
 #include "imgui_internal.h"
-#include "imgui.cpp"
-#include "imgui_demo.cpp"
-#include "imgui_draw.cpp"
-#include "imgui_widgets.cpp"
-#include "imgui_impl_glfw.cpp"
-#include "imgui_impl_vulkan_but_better.h"	
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan_but_better.hpp"	
 
 #include <chrono>
 #include <iostream>
@@ -45,28 +38,39 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <filesystem>
 
-#include "DataStructs.h"
+#include "core/vector2.hpp"
+#include "core/vector3.hpp"
 
 using millisecond = std::chrono::duration<float, std::milli>;
 
-static std::vector<char> readFile(const std::string& filename) {
-	std::ifstream file(filename, std::ios::ate | std::ios::binary);
+static std::vector<char> readShaderFile(const std::string& relativePath) {
+    // Try multiple possible locations
+    const std::vector<std::filesystem::path> searchPaths = {
+        std::filesystem::current_path() / relativePath,
+        std::filesystem::current_path() / "shaders" / relativePath,
+        std::filesystem::current_path() / "resources/shaders" / relativePath,
+    };
 
-	if (!file.is_open()) {
-		throw std::runtime_error("failed to open file!");
-	}
+    for (const auto& path : searchPaths) {
+        if (std::filesystem::exists(path)) {
+            std::ifstream file(path, std::ios::ate | std::ios::binary);
+			
+			// create the buffer
+			size_t fileSize = (size_t)file.tellg();
+			std::vector<char> buffer(fileSize);
 
-	// create the buffer
-	size_t fileSize = (size_t)file.tellg();
-	std::vector<char> buffer(fileSize);
+			// read the file into the buffer
+			file.seekg(0);
+			file.read(buffer.data(), fileSize);
 
-	// read the file into the buffer
-	file.seekg(0);
-	file.read(buffer.data(), fileSize);
+			file.close();
 
-	file.close();
-	return buffer;
+            return buffer;
+        }
+    }
+    throw std::runtime_error("Failed to find shader: " + relativePath + " : " + std::filesystem::current_path().generic_string());
 }
 
 const uint32_t WIDTH = 800;
@@ -543,26 +547,6 @@ public:
 		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 	}
 
-	void loadModelDataIntoDesiredShapeContainer(DesiredShape& desiredShape, glm::mat4 transformationMatrix) {
-		desiredShape.vertices.clear();
-		desiredShape.indices.clear();
-		desiredShape.normals.clear();
-
-		desiredShape.vertices.reserve(vertices.size());
-		desiredShape.indices.reserve(indices.size());
-		desiredShape.normals.reserve(vertices.size());
-
-		for (size_t i = 0; i < vertices.size(); i++)
-		{
-			glm::vec3 vertexWithAppliedMatrix = transformationMatrix * glm::vec4{ vertices[i].pos, 1.f };
-			glm::vec3 normalWithAppliedMatrix = transformationMatrix * glm::vec4{ vertices[i].normal, 0.f };
-			desiredShape.vertices.push_back(cavc::Vector3<double>{ vertexWithAppliedMatrix.x, vertexWithAppliedMatrix.y, vertexWithAppliedMatrix.z });
-			desiredShape.normals.push_back(cavc::Vector3<double>{ normalWithAppliedMatrix.x, normalWithAppliedMatrix.y, normalWithAppliedMatrix.z });
-		}
-
-		desiredShape.indices = indices;
-	}
-
 	std::vector<RendererVertex> vertices;
 	std::vector<uint32_t> indices;
 
@@ -740,257 +724,6 @@ public:
 	}
 };
 
-class LoadedLine : VulkanHelper {
-public:
-	std::vector<RendererVertex> vertices;
-	std::vector<uint32_t> indices;
-
-	float lineWidth = 3.f;
-	cavc::Vector3<double> clippingPreventionOffset = cavc::Vector3<double>{ 0.f, 0.f, 0.f };
-
-	void load(std::vector<cavc::Vector3<double>>& linePoints, float lineTransparency = 1.f, cavc::Vector3<double> lineColor = cavc::Vector3<double>{ 1.f, 0.f, 0.f }) {
-		loadLines(linePoints, lineColor);
-		createVertexBuffer();
-		createIndexBuffer();
-
-		transparency = lineTransparency;
-	}
-
-	void load(cavc::Polyline3D<double> path, float lineTransparency = 1.f, cavc::Vector3<double> lineColor = cavc::Vector3<double>{ 1.f, 0.f, 0.f }, cavc::Vector3<double> clippingOffset = cavc::Vector3<double>{ 0.f, 0.f, 0.f }) {
-		transparency = lineTransparency;
-		clippingPreventionOffset = clippingOffset;
-
-		loadLines(path, lineColor);
-		createVertexBuffer();
-		createIndexBuffer();
-	}
-	// TEMP
-	void load(const char* path, float lineTransparency = 1.f) {
-		loadLines(path);
-		createVertexBuffer();
-		createIndexBuffer();
-
-		transparency = lineTransparency;
-	}
-
-	void destroy() {
-		vkDestroyBuffer(device, indexBuffer, nullptr);
-		vkFreeMemory(device, indexBufferMemory, nullptr);
-
-		vkDestroyBuffer(device, vertexBuffer, nullptr);
-		vkFreeMemory(device, vertexBufferMemory, nullptr);
-	}
-
-	void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) {
-		VkBuffer vertexBuffers[] = { vertexBuffer };
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-		// set line width
-		vkCmdSetLineWidth(commandBuffer, lineWidth);
-
-		// bind the color vec4, and render the line
-		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float), &transparency);
-		vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-	}
-
-private:
-	VkBuffer vertexBuffer;
-	VkDeviceMemory vertexBufferMemory;
-	VkBuffer indexBuffer;
-	VkDeviceMemory indexBufferMemory;
-
-	float transparency;
-
-	// TEMP
-	void loadLines(const char* path) {
-		tinyobj::attrib_t attrib;
-		std::vector<tinyobj::shape_t> shapes;
-		std::vector<tinyobj::material_t> materials;
-		std::string warn, err;
-
-		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path)) {
-			throw std::runtime_error(warn + err);
-		}
-
-		std::unordered_map<RendererVertex, uint32_t> uniqueVertices{};
-
-
-		for (const auto& shape : shapes) {
-			for (const auto& index : shape.mesh.indices) {
-				RendererVertex vertex{};
-
-				vertex.pos = {
-						attrib.vertices[3 * index.vertex_index + 0],
-						attrib.vertices[3 * index.vertex_index + 1],
-						attrib.vertices[3 * index.vertex_index + 2]
-				};
-
-				vertex.texCoord = {
-						attrib.texcoords[2 * index.texcoord_index + 0],
-						1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-				};
-
-				vertex.color = { 1.0f, 1.0f, 1.0f };
-
-				if (uniqueVertices.count(vertex) == 0) {
-					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-					vertices.push_back(vertex);
-				}
-
-				indices.push_back(uniqueVertices[vertex]);
-			}
-		}
-	}
-
-	void loadLines(std::vector<cavc::Vector3<double>>& linePoints, cavc::Vector3<double> lineColor = cavc::Vector3<double>{ 1.f, 0.f, 0.f }) {
-		for (size_t i = 0; i < linePoints.size(); i++)
-		{
-			RendererVertex vertex;
-
-			vertex.pos = glm::vec3{ linePoints[i].x(), linePoints[i].y(), linePoints[i].z() };
-			vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
-			vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
-
-			vertices.push_back(vertex);
-			indices.push_back(indices.size());
-		}
-	}
-
-	void loadLines(cavc::Polyline3D<double> path, cavc::Vector3<double> lineColor = cavc::Vector3<double>{ 1.f, 0.f, 0.f }) {
-
-		std::vector<cavc::PlineVertex3D<double>>& pathVertices = path.vertexes();
-
-		for (size_t i = 0; i < pathVertices.size(); i++)
-		{
-			if (!pathVertices[i].bulgeIsZero()) {
-
-				cavc::PlineVertex3D<double> nextVertex;
-				if (path.isClosed() && i == pathVertices.size() - 1) {
-					nextVertex = pathVertices[0];
-				}
-				else if (i == vertices.size() - 1) {
-					RendererVertex vertex;
-
-					vertex.pos = glm::vec3{ pathVertices[i].point.x(), pathVertices[i].point.y(), pathVertices[i].point.z() };
-					vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
-					vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
-
-					vertices.push_back(vertex);
-					indices.push_back(indices.size());
-					continue;
-				}
-				else {
-					nextVertex = pathVertices[i + 1];
-				}
-
-				cavc::Vector2<double> localv1Coords = pathVertices[i].getPointInPlaneCoords();
-				cavc::Vector2<double> localv2Coords = nextVertex.getPointInPlaneCoords();
-				cavc::ArcRadiusAndCenter<double> arcInfo = cavc::arcRadiusAndCenter(pathVertices[i].getVertexInPlaneCoords(), nextVertex.getVertexInPlaneCoords());
-				
-				float startAngle = cavc::angle(arcInfo.center, localv1Coords);
-				float endAngle = cavc::angle(arcInfo.center, localv2Coords);
-
-				float deltaAngle = cavc::utils::deltaAngle(startAngle, endAngle);
-
-				for (size_t k = 0; k < 10; k++)
-				{
-					cavc::Vector2<double> localPosition;
-					localPosition.x() = arcInfo.center.x() + arcInfo.radius * std::cos(startAngle + (deltaAngle / 10.f) * k);
-					localPosition.y() = arcInfo.center.y() + arcInfo.radius * std::sin(startAngle + (deltaAngle / 10.f) * k);
-
-					RendererVertex vertex;
-
-					cavc::Vector3<double> vertexPosition = pathVertices[i].plane.getGlobalCoords(localPosition);
-					vertex.pos = glm::vec3{ vertexPosition.x(), vertexPosition.y(), vertexPosition.z() };
-					vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
-					vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
-
-					vertices.push_back(vertex);
-					indices.push_back(indices.size());
-				}
-			}
-			else {
-				RendererVertex vertex;
-
-				vertex.pos = glm::vec3{ pathVertices[i].point.x(), pathVertices[i].point.y(), pathVertices[i].point.z() };
-				vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
-				vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
-
-				vertices.push_back(vertex);
-				indices.push_back(indices.size());
-			}
-		}
-
-		if (path.isClosed()) {
-			RendererVertex vertex;
-
-			vertex.pos = glm::vec3{ pathVertices[0].point.x(), pathVertices[0].point.y(), pathVertices[0].point.z() };
-			vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
-			vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
-
-			vertices.push_back(vertex);
-			indices.push_back(indices.size());
-		}
-
-		for (auto& vertex : vertices) {
-			vertex.pos += glm::vec3{ clippingPreventionOffset.x(), clippingPreventionOffset.y(), clippingPreventionOffset.z() };
-		}
-	}
-
-	void createVertexBuffer() {
-		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-		// Create the staging buffer
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-		// Load the data into the staging buffer
-		void* data;
-		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, vertices.data(), (size_t)bufferSize);
-		vkUnmapMemory(device, stagingBufferMemory);
-
-		// Create the vertex buffer locally on the GPU
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-
-		// send the copy buffer command buffer to the GPU
-		copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-		// Clean up used local resources
-		vkDestroyBuffer(device, stagingBuffer, nullptr);
-		vkFreeMemory(device, stagingBufferMemory, nullptr);
-	}
-
-	void createIndexBuffer() {
-		VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-		// Create the staging buffer
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-		// Load the data into the staging buffer
-		void* data;
-		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, indices.data(), (size_t)bufferSize);
-		vkUnmapMemory(device, stagingBufferMemory);
-
-		// Create the index buffer locally on the GPU
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-
-		// send the copy buffer command buffer to the GPU
-		copyBuffer(stagingBuffer, indexBuffer, bufferSize);
-
-		// Clean up used local resources
-		vkDestroyBuffer(device, stagingBuffer, nullptr);
-		vkFreeMemory(device, stagingBufferMemory, nullptr);
-	}
-};
-
 class VulkanRenderEngine : VulkanHelper {
 public:
 	GLFWwindow* window;
@@ -1006,7 +739,6 @@ public:
 		initImgui();
 
 		loadedObjects.reserve(MAX_OBJECTS);
-		loadedLines.reserve(MAX_LINES);
 	};
 
 	void initWindow() {
@@ -1065,7 +797,7 @@ public:
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
 
-	void drawFrame(SceneInfo& sceneInfo) {
+	void drawFrame() {
 		// Wait for the previous frame to finish rendering
 		vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
@@ -1085,7 +817,7 @@ public:
 		updateUniformBuffer(currentFrame);
 		handleUserInput();
 
-		recordCommandBuffer(commandBuffers[currentFrame], imageIndex, sceneInfo);
+		recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
 		// Only reset the fence if work will be submitted to the GPU
 		vkResetFences(device, 1, &inFlightFences[currentFrame]);
@@ -1150,10 +882,6 @@ public:
 			object.destroy();
 		}
 
-		for (auto& line : loadedLines) {
-			line.destroy();
-		}
-
 		vkDestroyDescriptorSetLayout(device, uniformDescriptorSetLayout, nullptr);
 		vkDestroyDescriptorSetLayout(device, textureDescriptorSetLayout, nullptr);
 
@@ -1215,52 +943,6 @@ public:
 		return loadedObjects.back();
 	}
 
-	LoadedLine& loadPoint(cavc::Vector3<double> point, cavc::Vector3<double> color) {
-		std::vector<cavc::Vector3<double>> points;
-		points.push_back(point + cavc::Vector3<double>{ 0.f, 0.f, 0.05f });
-		points.push_back(point - cavc::Vector3<double>{ 0.f, 0.f, 0.05f });
-		loadedLines.push_back(LoadedLine{});
-		loadedLines.back().load(points, 1.f, color);
-		return loadedLines.back();
-	}
-
-	// TEMP
-	LoadedLine& loadLine(const char* path, float lineTransparency = 1.f) {
-		if (loadedLines.size() >= MAX_LINES)
-			throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
-
-		loadedLines.push_back(LoadedLine{});
-		loadedLines.back().load(path, lineTransparency);
-
-		return loadedLines.back();
-	}
-
-	LoadedLine& loadLine(cavc::Polyline3D<double> path, float lineTransparency = 1.f, cavc::Vector3<double> lineColor = cavc::Vector3<double>{ 1.f, 0.f, 0.f }, cavc::Vector3<double> clippingOffset = cavc::Vector3<double>{ 0.f, 0.f, 0.f }) {
-		if (loadedLines.size() >= MAX_LINES)
-			throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
-
-		loadedLines.push_back(LoadedLine{});
-		loadedLines.back().load(path, lineTransparency, lineColor, clippingOffset);
-
-		return loadedLines.back();
-	}
-
-	void addGizmo(cavc::Vector3<double> position = cavc::Vector3<double>{0.f, 0.f, 0.f}, float axisLength = 0.1f) {
-		cavc::Polyline3D<double> axisPath;
-		axisPath.isClosed() = false;
-		std::vector<cavc::PlineVertex3D<double>>& axisPathVertexes = axisPath.vertexes();
-
-		axisPathVertexes.push_back(cavc::PlineVertex3D{ position + cavc::Vector3<double>{0.f, 0.f, 0.f} });
-		axisPathVertexes.push_back(cavc::PlineVertex3D{ position + cavc::Vector3<double>{axisLength, 0.f, 0.f} });
-		axisPathVertexes.push_back(cavc::PlineVertex3D{ position + cavc::Vector3<double>{0.f, 0.f, 0.f} });
-		axisPathVertexes.push_back(cavc::PlineVertex3D{ position + cavc::Vector3<double>{0.f, axisLength, 0.f} });
-		axisPathVertexes.push_back(cavc::PlineVertex3D{ position + cavc::Vector3<double>{0.f, 0.f, 0.f} });
-		axisPathVertexes.push_back(cavc::PlineVertex3D{ position + cavc::Vector3<double>{0.f, 0.f, axisLength} });
-		axisPathVertexes.push_back(cavc::PlineVertex3D{ position + cavc::Vector3<double>{0.f, 0.f, 0.f} });
-
-		loadLine(axisPath, 1.f, cavc::Vector3<double>{ 1.f, 0.f, 0.f }, cavc::Vector3<double>{ 0.f, 0.f, -0.005f });
-	}
-
 	void handleUserInput() {
 		// this forwards vector is in the xy plane of the world, but rotated around z to line up with the camera front vector
 		glm::vec3 worldUp = glm::vec3{ 0.f, 0.f, 1.f };
@@ -1299,10 +981,6 @@ public:
 		}
 	}
 
-	std::vector<LoadedLine>& getLoadedLinesReference() {
-		return loadedLines;
-	}
-
 private:
 
 	VkInstance instance;
@@ -1331,7 +1009,6 @@ private:
 	VkImageView depthImageView;
 
 	std::vector<LoadedObject> loadedObjects;
-	std::vector<LoadedLine> loadedLines;
 
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
@@ -1734,8 +1411,8 @@ private:
 
 	void createTriangleBasedPipeline() {
 		// read the shaders into their respective buffers
-		auto vertShaderCode = readFile("shaders/vert.spv");
-		auto fragShaderCode = readFile("shaders/frag.spv");
+		auto vertShaderCode = readShaderFile("vert.spv");
+		auto fragShaderCode = readShaderFile("frag.spv");
 
 		// wrap them in the appropriate Vulkan struct
 		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -1897,8 +1574,8 @@ private:
 
 	void createLineBasedPipeline() {
 		// read the shaders into their respective buffers
-		auto vertShaderCode = readFile("shaders/lineVert.spv");
-		auto fragShaderCode = readFile("shaders/lineFrag.spv");
+		auto vertShaderCode = readShaderFile("shaders/lineVert.spv");
+		auto fragShaderCode = readShaderFile("shaders/lineFrag.spv");
 
 		// wrap them in the appropriate Vulkan struct
 		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -2247,7 +1924,7 @@ private:
 		}
 	}
 
-	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, SceneInfo& sceneInfo) {
+	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -2287,20 +1964,6 @@ private:
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		// ========================================
-		// Render lines 
-		// ========================================
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, lineBasedPipeline);
-		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-		// bind the UBO
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, lineBasedPipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
-
-		for (auto& line : loadedLines) {
-			line.render(commandBuffer, lineBasedPipelineLayout);
-		}
-
-		// ========================================
 		// Render triangles 
 		// ========================================
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, triangleBasedPipeline);
@@ -2326,52 +1989,6 @@ private:
 		ImGui::Begin("Configuration");
 		
 		ImGui::Text("ObjectInfo");
-		ImGui::Separator();
-		ImGui::InputFloat("yaw", &sceneInfo.objectYaw);
-		ImGui::InputFloat("pitch", &sceneInfo.objectPitch);
-		ImGui::InputFloat("roll", &sceneInfo.objectRoll);
-
-		ImGui::Text("RobotInfo");
-		ImGui::Separator();
-		ImGui::InputDouble("robot home x", &sceneInfo.robotInfo.homePoint.x());
-		ImGui::InputDouble("robot home y", &sceneInfo.robotInfo.homePoint.y());
-		ImGui::InputDouble("robot home z", &sceneInfo.robotInfo.homePoint.z());
-		ImGui::InputDouble("robot zero x", &sceneInfo.robotInfo.zeroPoint.x());
-		ImGui::InputDouble("robot zero y", &sceneInfo.robotInfo.zeroPoint.y());
-		ImGui::InputDouble("robot zero z", &sceneInfo.robotInfo.zeroPoint.z());
-
-		ImGui::Text("ToolInfo");
-		ImGui::Separator();
-		ImGui::InputInt("flute count", &sceneInfo.toolInfo.fluteCount);
-		ImGui::InputDouble("tool radius", &sceneInfo.toolInfo.mainToolRadius);
-		ImGui::InputDouble("tool cutting height", &sceneInfo.toolInfo.toolCuttingHeight);
-		ImGui::Checkbox("ball end cutter", &sceneInfo.toolInfo.toolIsBallEnd);
-
-		ImGui::Text("StockInfo");
-		ImGui::Separator();
-		ImGui::InputDouble("stock x (width)", &sceneInfo.stockInfo.width);
-		ImGui::InputDouble("stock y (length)", &sceneInfo.stockInfo.length);
-		ImGui::InputDouble("stock z (height)", &sceneInfo.stockInfo.height);
-		ImGui::InputDouble("stock zero x", &sceneInfo.stockInfo.zeroPoint.x());
-		ImGui::InputDouble("stock zero y", &sceneInfo.stockInfo.zeroPoint.y());
-		ImGui::InputDouble("stock zero z", &sceneInfo.stockInfo.zeroPoint.z());
-
-		ImGui::Text("MillingInfo");
-		ImGui::Separator();
-		ImGui::InputDouble("depth of cut", &sceneInfo.millingPass2_5DInfo.depthOfCut);
-		ImGui::InputDouble("stepover", &sceneInfo.millingPass2_5DInfo.stepOver);
-		ImGui::InputDouble("traverse height", &sceneInfo.millingPass2_5DInfo.safeTraverseHeight);
-		ImGui::InputDouble("cutting height start", &sceneInfo.millingPass2_5DInfo.planeStartingHeight);
-		ImGui::InputDouble("cutting height end", &sceneInfo.millingPass2_5DInfo.planeEndingHeight);
-
-		ImGui::Separator();
-		ImGui::InputText("file name", sceneInfo.millingPass2_5DInfo.filename, sizeof(sceneInfo.millingPass2_5DInfo.filename));
-		if (ImGui::Button("Generate Clearing Pass"))
-			sceneInfo.generateClearingPath(sceneInfo.millingPass2_5DInfo);
-		if (ImGui::Button("Generate Final Pass"))
-			sceneInfo.generateFinalPath(sceneInfo.millingPass2_5DInfo);
-		if (ImGui::Button("Generate Stock Face Pass"))
-			sceneInfo.generateStockFacePath(sceneInfo.millingPass2_5DInfo);
 		ImGui::End();
 
 		ImGui::Render();

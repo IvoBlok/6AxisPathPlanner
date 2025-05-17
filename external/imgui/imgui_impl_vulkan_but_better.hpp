@@ -132,7 +132,7 @@ typedef struct
 	VkBuffer IndexBuffer;
 } ImGui_ImplVulkan_Buffers;
 
-struct
+inline struct
 {
 	VkRenderPass RenderPass;
 	VkDescriptorPool DescriptorPool;
@@ -167,9 +167,9 @@ struct
 	bool LastDescriptorSet;//0 = Font, 1 = Some other
 } ImGui_ImplVulkan_Renderer_Info;
 
-VkDeviceSize ImGui_BufferMemoryAlignment = 256;
+inline VkDeviceSize ImGui_BufferMemoryAlignment = 256;
 
-uint32_t ImGui_ImplVulkan_MemoryType(VkMemoryPropertyFlags PropertyFlags, uint32_t TypeBits)
+inline uint32_t ImGui_ImplVulkan_MemoryType(VkMemoryPropertyFlags PropertyFlags, uint32_t TypeBits)
 {
 	VkPhysicalDeviceMemoryProperties MemoryProperties;
 	vkGetPhysicalDeviceMemoryProperties(ImGui_ImplVulkan_Renderer_Info.PhysicalDevice, &MemoryProperties);
@@ -181,13 +181,13 @@ uint32_t ImGui_ImplVulkan_MemoryType(VkMemoryPropertyFlags PropertyFlags, uint32
 	return 0xFFFFFFFF;
 }
 
-bool ImGui_ImplVulkanPrintError(const char* Msg)
+inline bool ImGui_ImplVulkanPrintError(const char* Msg)
 {
 	printf(Msg);
 	return false;
 }
 
-bool ImGui_ImplVulkan_CreateFontsTexture(VkCommandBuffer CommandBuffer)
+inline bool ImGui_ImplVulkan_CreateFontsTexture(VkCommandBuffer CommandBuffer)
 {
 	ImGuiIO* IO = &ImGui::GetIO();
 
@@ -381,7 +381,7 @@ bool ImGui_ImplVulkan_CreateFontsTexture(VkCommandBuffer CommandBuffer)
 	return 1;
 }
 
-void ImGui_ImplVulkan_DestroyFontUploadObjects()
+inline void ImGui_ImplVulkan_DestroyFontUploadObjects()
 {
 	vkDestroyBuffer(ImGui_ImplVulkan_Renderer_Info.Device, ImGui_ImplVulkan_Renderer_Info.FontUploadBuffer, NULL);
 	ImGui_ImplVulkan_Renderer_Info.FontUploadBuffer = VK_NULL_HANDLE;
@@ -390,12 +390,12 @@ void ImGui_ImplVulkan_DestroyFontUploadObjects()
 	ImGui_ImplVulkan_Renderer_Info.FontUploadBufferMemory = VK_NULL_HANDLE;
 }
 
-void ImGui_ImplVulkan_NewFrame()
+inline void ImGui_ImplVulkan_NewFrame()
 {
 
 }
 
-bool ImGui_CreateOrResizeBuffer(VkBuffer* Buffer, VkDeviceMemory* BufferMemory, VkDeviceSize* BufferSize, size_t NewBufferSize, VkBufferUsageFlagBits Usage)
+inline bool ImGui_CreateOrResizeBuffer(VkBuffer* Buffer, VkDeviceMemory* BufferMemory, VkDeviceSize* BufferSize, size_t NewBufferSize, VkBufferUsageFlagBits Usage)
 {
 	if (*Buffer != VK_NULL_HANDLE)
 		vkDestroyBuffer(ImGui_ImplVulkan_Renderer_Info.Device, *Buffer, NULL);
@@ -439,7 +439,7 @@ bool ImGui_CreateOrResizeBuffer(VkBuffer* Buffer, VkDeviceMemory* BufferMemory, 
 	return 1;
 }
 
-void ImGui_SetupRenderState(ImDrawData* DrawData, VkCommandBuffer CommandBuffer, int FramebufferWidth, int FramebufferHeight)
+inline void ImGui_SetupRenderState(ImDrawData* DrawData, VkCommandBuffer CommandBuffer, int FramebufferWidth, int FramebufferHeight)
 {
 	vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, ImGui_ImplVulkan_Renderer_Info.Pipeline);
 	ImGui_ImplVulkan_Renderer_Info.LastPipeline = true;
@@ -471,7 +471,7 @@ void ImGui_SetupRenderState(ImDrawData* DrawData, VkCommandBuffer CommandBuffer,
 	vkCmdPushConstants(CommandBuffer, ImGui_ImplVulkan_Renderer_Info.PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 4, Transform);
 }
 
-bool ImGui_ImplVulkan_RenderDrawData(ImDrawData* DrawData, VkCommandBuffer CommandBuffer, int NonAlphaTextureCount, ImTextureID* NonAlphaTextures)
+inline bool ImGui_ImplVulkan_RenderDrawData(ImDrawData* DrawData, VkCommandBuffer CommandBuffer, int NonAlphaTextureCount, ImTextureID* NonAlphaTextures)
 {
 	int FramebufferWidth = (int)(DrawData->DisplaySize.x * DrawData->FramebufferScale.x);
 	int FramebufferHeight = (int)(DrawData->DisplaySize.y * DrawData->FramebufferScale.y);
@@ -637,7 +637,7 @@ bool ImGui_ImplVulkan_RenderDrawData(ImDrawData* DrawData, VkCommandBuffer Comma
 	return 1;
 }
 
-bool ImGui_CreateSampler()
+inline bool ImGui_CreateSampler()
 {
 	VkSamplerCreateInfo SamplerInfo;
 	SamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -665,7 +665,7 @@ bool ImGui_CreateSampler()
 	return 1;
 }
 
-bool ImGui_CreateDescriptorSets()
+inline bool ImGui_CreateDescriptorSets()
 {
 	VkDescriptorSetLayoutBinding LayoutBinding;
 
@@ -698,7 +698,7 @@ bool ImGui_CreateDescriptorSets()
 	return 1;
 }
 
-bool ImGui_CreatePipelineLayout()
+inline bool ImGui_CreatePipelineLayout()
 {
 	VkPushConstantRange PushConstant;
 	PushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -720,7 +720,7 @@ bool ImGui_CreatePipelineLayout()
 	return 1;
 }
 
-bool ImGui_CreateShaderModules()
+inline bool ImGui_CreateShaderModules()
 {
 	VkShaderModuleCreateInfo CreateInfo;
 	CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -744,7 +744,7 @@ bool ImGui_CreateShaderModules()
 	return 1;
 }
 
-bool ImGui_CreateGraphicsPipeline()
+inline bool ImGui_CreateGraphicsPipeline()
 {
 	VkPipelineShaderStageCreateInfo ShaderStages[2];
 	ShaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -912,7 +912,7 @@ bool ImGui_CreateGraphicsPipeline()
 	return 1;
 }
 
-void ImGui_ImplVulkan_Init(ImGui_ImplVulkan_InitInfo* InitInfo)
+inline void ImGui_ImplVulkan_Init(ImGui_ImplVulkan_InitInfo* InitInfo)
 {
 	ImGui_ImplVulkan_Renderer_Info.SetNULL = true;
 	ImGui_ImplVulkan_Renderer_Info.RenderPass = InitInfo->RenderPass;
@@ -939,7 +939,7 @@ void ImGui_ImplVulkan_Init(ImGui_ImplVulkan_InitInfo* InitInfo)
 	ImGui_CreateGraphicsPipeline();
 }
 
-void ImGui_ImplVulkan_Shutdown()
+inline void ImGui_ImplVulkan_Shutdown()
 {
 	vkDestroyShaderModule(ImGui_ImplVulkan_Renderer_Info.Device, ImGui_ImplVulkan_Renderer_Info.VertexShader, NULL);
 	vkDestroyShaderModule(ImGui_ImplVulkan_Renderer_Info.Device, ImGui_ImplVulkan_Renderer_Info.FragmentShader, NULL);

@@ -59,11 +59,11 @@ add_executable(robotPathPlanner
     src/main.cpp
     src/Renderer.cpp
     external/stb_image.cpp
+    external/tiny_obj_loader.cpp
 )
 
 target_compile_definitions(robotPathPlanner PRIVATE 
     GLM_ENABLE_EXPERIMENTAL 
-    TINYOBJLOADER_IMPLEMENTATION
 )
 
 # Copy shaders to build folder

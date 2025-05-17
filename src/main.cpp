@@ -28,7 +28,7 @@ int main() {
 		}
 
 		// wait for the GPU to potentially finish the frame before terminating and cleaning up memory that might still be in use
-		vkDeviceWaitIdle(device);
+		// vkDeviceWaitIdle(device);
 				
 		renderer.cleanup();
 	}

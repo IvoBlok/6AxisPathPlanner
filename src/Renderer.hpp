@@ -43,8 +43,6 @@
 #include "core/vector2.hpp"
 #include "core/vector3.hpp"
 
-using millisecond = std::chrono::duration<float, std::milli>;
-
 static std::vector<char> readShaderFile(const std::string& relativePath) {
     // Try multiple possible locations
     const std::vector<std::filesystem::path> searchPaths = {

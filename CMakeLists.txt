@@ -57,9 +57,14 @@ FetchContent_MakeAvailable(tinyobjloader)
 # ============================================
 add_executable(robotPathPlanner 
     src/main.cpp
+    src/Renderer.cpp
+    external/stb_image.cpp
 )
 
-target_compile_definitions(robotPathPlanner PRIVATE GLM_ENABLE_EXPERIMENTAL STB_IMAGE_IMPLEMENTATION TINYOBJLOADER_IMPLEMENTATION)
+target_compile_definitions(robotPathPlanner PRIVATE 
+    GLM_ENABLE_EXPERIMENTAL 
+    TINYOBJLOADER_IMPLEMENTATION
+)
 
 # Copy shaders to build folder
 # ============================================
@@ -88,7 +93,8 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/
 # Include Directories
 # ============================================
 target_include_directories(robotPathPlanner PRIVATE
-    include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${Vulkan_INCLUDE_DIRS}
     ${glm_SOURCE_DIR}
     ${imgui_SOURCE_DIR}

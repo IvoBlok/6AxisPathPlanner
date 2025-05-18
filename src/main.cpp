@@ -3,9 +3,6 @@
 #include "Renderer.hpp"
 
 int main() {
-	std::cout << "Hello world!\n";
-
-
 	try {
 		VulkanRenderEngine renderer;
 		renderer.initialize();
@@ -21,15 +18,9 @@ int main() {
 		
 		// form the actual rendering loop
 		while (!glfwWindowShouldClose(renderer.window)) {
-			glfwPollEvents();
 			
-			// render the frame
 			renderer.drawFrame();
 		}
-
-		// wait for the GPU to potentially finish the frame before terminating and cleaning up memory that might still be in use
-		// vkDeviceWaitIdle(device);
-				
 		renderer.cleanup();
 	}
 	catch (const std::exception& e) {

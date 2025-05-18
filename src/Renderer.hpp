@@ -98,20 +98,22 @@ namespace std {
 
 
 
-class VulkanHelper {
-public:
+namespace VulkanHelper {
     void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-    VkCommandBuffer beginSingleTimeCommands();
-    void endSingleTimeCommands(VkCommandBuffer commandBuffer);
-    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-    void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+
+	VkCommandBuffer beginSingleTimeCommands();
+    void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+
+	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
     VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
     void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT);
-    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 };
 
-class LoadedTexture : VulkanHelper {
+class LoadedTexture {
 public:
     VkDescriptorSet descriptorSet;
 
@@ -131,7 +133,7 @@ private:
     void createTextureDescriptorSet();
 };
 
-class LoadedModel : VulkanHelper {
+class LoadedModel {
 public:
     void load(const char* path, float modelTransparency = 1.f);
     void destroy();
@@ -152,7 +154,7 @@ private:
     void createIndexBuffer();
 };
 
-class LoadedObject : VulkanHelper {
+class LoadedObject {
 public:
     LoadedModel model;
     LoadedTexture texture;
@@ -169,7 +171,7 @@ public:
     void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 };
 
-class VulkanRenderEngine : VulkanHelper {
+class VulkanRenderEngine {
 public:
     GLFWwindow* window;
 

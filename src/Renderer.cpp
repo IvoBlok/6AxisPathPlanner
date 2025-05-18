@@ -1,4 +1,4 @@
-#include "Renderer.hpp"
+#include "renderer.hpp"
 
 #include <fstream>
 #include <stdexcept>
@@ -314,18 +314,18 @@ namespace VulkanHelper {
 // LoadedTexture method definitions
 // =====================================================
 // public
-void LoadedTexture::load(const char* path) {
+void LoadedObject::LoadedTexture::load(const char* path) {
     createTextureImage(path);
     createTextureImageView();
     createTextureSampler();
     createTextureDescriptorSet();
 }
 
-void LoadedTexture::free() {
+void LoadedObject::LoadedTexture::free() {
     vkFreeDescriptorSets(device, descriptorPool, 1, &descriptorSet);
 }
 
-void LoadedTexture::destroy() {
+void LoadedObject::LoadedTexture::destroy() {
     vkDestroySampler(device, textureSampler, nullptr);
     vkDestroyImageView(device, textureImageView, nullptr);
     vkDestroyImage(device, textureImage, nullptr);
@@ -333,7 +333,7 @@ void LoadedTexture::destroy() {
 }
 
 // private
-void LoadedTexture::createTextureImage(const char* path) {
+void LoadedObject::LoadedTexture::createTextureImage(const char* path) {
     int texWidth, texHeight, texChannels;
     stbi_uc* pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
@@ -364,11 +364,11 @@ void LoadedTexture::createTextureImage(const char* path) {
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-void LoadedTexture::createTextureImageView() {
+void LoadedObject::LoadedTexture::createTextureImageView() {
     textureImageView = VulkanHelper::createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-void LoadedTexture::createTextureSampler() {
+void LoadedObject::LoadedTexture::createTextureSampler() {
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
@@ -395,7 +395,7 @@ void LoadedTexture::createTextureSampler() {
     }
 }
 
-void LoadedTexture::createTextureDescriptorSet() {
+void LoadedObject::LoadedTexture::createTextureDescriptorSet() {
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = descriptorPool;
@@ -428,7 +428,7 @@ void LoadedTexture::createTextureDescriptorSet() {
 // LoadedModel method definitions
 // =====================================================
 // public
-void LoadedModel::load(const char* path, float modelTransparency) {
+void LoadedObject::LoadedModel::load(const char* path, float modelTransparency) {
     loadModel(path);
     createVertexBuffer();
     createIndexBuffer();
@@ -436,7 +436,7 @@ void LoadedModel::load(const char* path, float modelTransparency) {
     transparency = modelTransparency;
 }
 
-void LoadedModel::destroy() {
+void LoadedObject::LoadedModel::destroy() {
     vkDestroyBuffer(device, indexBuffer, nullptr);
     vkFreeMemory(device, indexBufferMemory, nullptr);
 
@@ -444,7 +444,7 @@ void LoadedModel::destroy() {
     vkFreeMemory(device, vertexBufferMemory, nullptr);
 }
 
-void LoadedModel::render(VkCommandBuffer commandBuffer) {
+void LoadedObject::LoadedModel::render(VkCommandBuffer commandBuffer) {
     VkBuffer vertexBuffers[] = { vertexBuffer };
     VkDeviceSize offsets[] = { 0 };
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
@@ -455,7 +455,7 @@ void LoadedModel::render(VkCommandBuffer commandBuffer) {
 }
 
 // private
-void LoadedModel::loadModel(const char* path) {
+void LoadedObject::LoadedModel::loadModel(const char* path) {
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
@@ -505,7 +505,7 @@ void LoadedModel::loadModel(const char* path) {
     }
 }
 
-void LoadedModel::createVertexBuffer() {
+void LoadedObject::LoadedModel::createVertexBuffer() {
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
     // Create the staging buffer
@@ -530,7 +530,7 @@ void LoadedModel::createVertexBuffer() {
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-void LoadedModel::createIndexBuffer() {
+void LoadedObject::LoadedModel::createIndexBuffer() {
     VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
     // Create the staging buffer
@@ -560,6 +560,33 @@ void LoadedModel::createIndexBuffer() {
 // LoadedObject method definitions
 // =====================================================
 // public
+
+core::ObjectShape& LoadedObject::updateObjectShape() {
+    glm::mat4 transformationMatrix = getTransformationMatrix();
+
+    objectShape.vertices.clear();
+    objectShape.indices.clear();
+    objectShape.normals.clear();
+
+    objectShape.vertices.reserve(model.vertices.size());
+    objectShape.indices.reserve(model.indices.size());
+    objectShape.normals.reserve(model.vertices.size());
+
+    for (size_t i = 0; i < model.vertices.size(); i++)
+    {
+        glm::vec3 vertexWithAppliedMatrix = transformationMatrix * glm::vec4{ model.vertices[i].pos, 1.f };
+        glm::vec3 normalWithAppliedMatrix = transformationMatrix * glm::vec4{ model.vertices[i].normal, 0.f };
+        objectShape.vertices.push_back(core::Vector3<double>{ vertexWithAppliedMatrix.x, vertexWithAppliedMatrix.y, vertexWithAppliedMatrix.z });
+        objectShape.normals.push_back(core::Vector3<double>{ normalWithAppliedMatrix.x, normalWithAppliedMatrix.y, normalWithAppliedMatrix.z });
+    }
+
+    for (size_t i = 0; i < model.indices.size(); i++)
+    {
+        objectShape.indices.push_back(model.indices[i]);
+    }
+    return objectShape;
+}
+
 void LoadedObject::load(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition, core::Vector3<double> baseScale, glm::mat4 baseRotationMatrix, float modelTransparency) {
     model.load(modelPath, modelTransparency);
     texture.load(texturePath);
@@ -617,7 +644,6 @@ void LoadedObject::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeli
 // public
 LoadedLine::LoadedLine() {
     lineWidth = 3.f;
-    clippingPreventionOffset = core::Vector3<double>{ 0.f };
 }
 
 void LoadedLine::load(std::vector<core::Vector3<double>>& linePoints, float lineTransparency, core::Vector3<double> lineColor) {

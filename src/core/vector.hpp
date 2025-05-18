@@ -1,9 +1,16 @@
+/*
+This file defines the general behaviour of a vector in the mathematical / physics sense. 
+The data is stored in a std::array. 
+This file also defines a variety of operators, both for copying/writing data into these vectors, 
+but also operators that take vectors as arguments that are indepedent of vector dimensionality,
+i.e. functions like dot products, normalizing and length. 
+*/
 #ifndef CORE_VECTOR_HPP
 #define CORE_VECTOR_HPP
 
-#include "mathutils.hpp"
 #include <array>
 #include <cassert>
+#include "mathUtils.hpp"
 
 namespace core {
 template <typename Real, std::size_t N> class Vector {

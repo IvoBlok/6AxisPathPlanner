@@ -1,3 +1,7 @@
+/*
+This file defines some additional 'pure' mathematical operations and constants that the rest of the codebase requires
+*/
+
 #ifndef CORE_MATHUTILS_HPP
 #define CORE_MATHUTILS_HPP
 
@@ -8,6 +12,10 @@
 #include <utility>
 
 namespace core {
+
+const double PI = 3.141592653;
+const double TAU = PI * 2.f;
+
 namespace utils {
 
 #define CORE_ASSERT(cond, msg) assert(cond &&msg)

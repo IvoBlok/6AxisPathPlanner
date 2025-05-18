@@ -1,9 +1,11 @@
+/*
+This file extends on the core/vector.hpp by specifying additional functionality unique to 2D vectors. 
+*/
 #ifndef CORE_VECTOR2_HPP
 #define CORE_VECTOR2_HPP
 
-#include "mathutils.hpp"
-#include "vector.hpp"
 #include <cmath>
+#include "vector.hpp"
 
 namespace core {
 template <typename Real> using Vector2 = Vector<Real, 2>;

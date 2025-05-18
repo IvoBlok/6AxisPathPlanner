@@ -1,9 +1,11 @@
+/*
+This file extends on the core/vector.hpp by specifying additional functionality unique to 3D vectors. 
+*/
 #ifndef CORE_VECTOR3_HPP
 #define CORE_VECTOR3_HPP
 
-#include "mathutils.hpp"
-#include "vector.hpp"
 #include <cmath>
+#include "vector.hpp"
 
 namespace core {
 	template <typename Real> using Vector3 = Vector<Real, 3>;

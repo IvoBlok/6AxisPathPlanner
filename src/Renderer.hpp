@@ -1,4 +1,9 @@
-#pragma once
+/*
+This file defines the general renderer and its required structures/classes. 
+Note that all objects/lines/points class instances in the scene live in the Renderer class. 
+*/
+#ifndef RENDERER_HPP
+#define RENDERER_HPP
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -42,6 +47,8 @@
 
 #include "core/vector2.hpp"
 #include "core/vector3.hpp"
+#include "core/objectShape.hpp"
+#include "core/polyline.hpp"
 
 static std::vector<char> readShaderFile(const std::string& relativePath);
 
@@ -113,58 +120,66 @@ namespace VulkanHelper {
     void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT);
 };
 
-class LoadedTexture {
-public:
-    VkDescriptorSet descriptorSet;
-
-    void load(const char* path);
-    void free();
-    void destroy();
-
-private:
-    VkImage textureImage;
-    VkDeviceMemory textureImageMemory;
-    VkImageView textureImageView;
-    VkSampler textureSampler;
-
-    void createTextureImage(const char* path);
-    void createTextureImageView();
-    void createTextureSampler();
-    void createTextureDescriptorSet();
-};
-
-class LoadedModel {
-public:
-    void load(const char* path, float modelTransparency = 1.f);
-    void destroy();
-    void render(VkCommandBuffer commandBuffer);
-
-    std::vector<RendererVertex> vertices;
-    std::vector<uint32_t> indices;
-    float transparency;
-
-private:
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
-
-    void loadModel(const char* path);
-    void createVertexBuffer();
-    void createIndexBuffer();
-};
-
 class LoadedObject {
+private:
+	class LoadedTexture {
+	public:
+		VkDescriptorSet descriptorSet;
+
+		void load(const char* path);
+		void free();
+		void destroy();
+
+	private:
+		VkImage textureImage;
+		VkDeviceMemory textureImageMemory;
+		VkImageView textureImageView;
+		VkSampler textureSampler;
+
+		void createTextureImage(const char* path);
+		void createTextureImageView();
+		void createTextureSampler();
+		void createTextureDescriptorSet();
+	};
+
+	class LoadedModel {
+	public:
+		std::vector<RendererVertex> vertices;
+		std::vector<uint32_t> indices;
+		float transparency;
+
+		void load(const char* path, float modelTransparency = 1.f);
+		void destroy();
+		void render(VkCommandBuffer commandBuffer);
+
+	private:
+		VkBuffer vertexBuffer;
+		VkDeviceMemory vertexBufferMemory;
+		VkBuffer indexBuffer;
+		VkDeviceMemory indexBufferMemory;
+
+		void loadModel(const char* path);
+		void createVertexBuffer();
+		void createIndexBuffer();
+	};
+
 public:
     LoadedModel model;
     LoadedTexture texture;
     glm::vec3 color;
     bool isOneColor;
+
     glm::mat4 rotationMatrix;
     glm::vec3 position;
     glm::vec3 scale;
 
-    void load(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
+	// 'objectShape' is effectively the same data as the model, but now with the position, scale and rotation applied into the vertices and normals. 
+	// the renderer requires the model/mesh data to be in a certain format, but that's not a great format to apply math to. So 'objectShape' is set up for easy data manipulation.
+	core::ObjectShape objectShape;
+
+	core::ObjectShape& updateObjectShape();
+
+	void load(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
     void load(const char* modelPath, core::Vector3<double> objectColor, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
     void destroy();
     glm::mat4 getTransformationMatrix();
@@ -176,14 +191,21 @@ public:
 	std::vector<RendererVertex> vertices;
     std::vector<uint32_t> indices;
 
-	core::Vector3<double> clippingPreventionOffset;
+	// 'polyline' generally contains the actual curve of interest. Math is done specifically to 'polyline' and not 'vertices'. 'vertices'/'indices' is merely the visual representation of the actual data.
+	// Exceptions to this might be purely visual indications, like gizmos. There polyline is irrelevant, and it is only the 'vertices'/'indices' that matters.
+	// currently this is a2.5D polyline. This doesn't support lines that don't fully lay in a single plane. 
+	// TODO when a proper 3D polyline is added, replace the 2.5D with the 3D version
+	core::Polyline2_5D<double> polyline;
+
+	//TODO add functions so that LoadedLine can be initialized/loaded with a polyline. 
+	//TODO add functions so that LoadedLine can update vertices/indices if the polyline changes.
 
 	LoadedLine();
 	void load(std::vector<core::Vector3<double>>& linePoints, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
 	void destroy();
 	void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 
-	private:
+private:
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory;
 	VkBuffer indexBuffer;
@@ -320,3 +342,5 @@ private:
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 };
+
+#endif // RENDERER_HPP

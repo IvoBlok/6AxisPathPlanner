@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "Renderer.hpp"
+#include "renderer.hpp"
 
 int main() {
 	try {
@@ -9,11 +9,8 @@ int main() {
 
 		LoadedObject& bikeShell = renderer.createObject(
 			"../../resources/assets/cube.obj",
-			core::Vector3<double>{ 0.f, 0.f, 1.f },
-			core::Vector3<double>{ 0.f, 5.f, 0.f },
-			core::Vector3<double>{ 1.f, 1.f, 1.f },
-			glm::mat4{ 1.f },
-			1.f
+			core::Vector3<double>{ 0.f, 0.f, 1.f }, // color
+			core::Vector3<double>{ 0.f, 5.f, 0.f }  // position
 		);
 
 		std::vector<core::Vector3<double>> testLine = {

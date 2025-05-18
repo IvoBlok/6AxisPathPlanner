@@ -93,7 +93,6 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/
 # Include Directories
 # ============================================
 target_include_directories(robotPathPlanner PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${Vulkan_INCLUDE_DIRS}
     ${glm_SOURCE_DIR}

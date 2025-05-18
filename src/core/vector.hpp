@@ -1,10 +1,11 @@
-#ifndef CAVC_VECTOR_HPP
-#define CAVC_VECTOR_HPP
+#ifndef CORE_VECTOR_HPP
+#define CORE_VECTOR_HPP
+
 #include "mathutils.hpp"
 #include <array>
 #include <cassert>
 
-namespace cavc {
+namespace core {
 template <typename Real, std::size_t N> class Vector {
 public:
   Vector() = default;
@@ -27,7 +28,7 @@ public:
   }
 
   Vector(Real x, Real y, Real z) {
-    static_assert(N == 3, "constructor for cavc::Vector3<double> only");
+    static_assert(N == 3, "constructor for core::Vector3<double> only");
     m_data[0] = x;
     m_data[1] = y;
     m_data[2] = z;
@@ -257,11 +258,11 @@ template <std::size_t N, typename Real> Real length(Vector<Real, N> const &v) {
 }
 
 template <std::size_t N, typename Real> Vector<Real, N> normalize(Vector<Real, N> &v) {
-  CAVC_ASSERT(!fuzzyZero(v), "normalize not defined for zero vector");
+  CORE_ASSERT(!fuzzyZero(v), "normalize not defined for zero vector");
   Real length = std::sqrt(dot(v, v));
   v /= length;
   return v;
 }
-} // namespace cavc
+} // namespace core
 
-#endif // CAVC_VECTOR_HPP
+#endif // CORE_VECTOR_HPP

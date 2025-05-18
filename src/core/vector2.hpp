@@ -1,9 +1,11 @@
-#ifndef CAVC_VECTOR2_HPP
-#define CAVC_VECTOR2_HPP
+#ifndef CORE_VECTOR2_HPP
+#define CORE_VECTOR2_HPP
+
 #include "mathutils.hpp"
 #include "vector.hpp"
 #include <cmath>
-namespace cavc {
+
+namespace core {
 template <typename Real> using Vector2 = Vector<Real, 2>;
 
 /// Perpendicular vector to v (rotating counter clockwise).
@@ -110,8 +112,8 @@ bool isRightOrCoincident(Vector2<Real> const &p0, Vector2<Real> const &p1,
 template <typename Real>
 bool pointWithinArcSweepAngle(Vector2<Real> const &center, Vector2<Real> const &arcStart,
                               Vector2<Real> const &arcEnd, Real bulge, Vector2<Real> const &point) {
-  CAVC_ASSERT(std::abs(bulge) > utils::realThreshold<Real>(), "expected arc");
-  CAVC_ASSERT(std::abs(bulge) <= Real(1), "bulge should always be between -1 and 1");
+  CORE_ASSERT(std::abs(bulge) > utils::realThreshold<Real>(), "expected arc");
+  CORE_ASSERT(std::abs(bulge) <= Real(1), "bulge should always be between -1 and 1");
 
   if (bulge > Real(0)) {
     return isLeftOrCoincident(center, arcStart, point) &&
@@ -120,6 +122,6 @@ bool pointWithinArcSweepAngle(Vector2<Real> const &center, Vector2<Real> const &
 
   return isRightOrCoincident(center, arcStart, point) && isLeftOrCoincident(center, arcEnd, point);
 }
-} // namespace cavc
+} // namespace core
 
-#endif // CAVC_VECTOR2_HPP
+#endif // CORE_VECTOR2_HPP

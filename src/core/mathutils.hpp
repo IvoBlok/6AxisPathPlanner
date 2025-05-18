@@ -1,5 +1,5 @@
-#ifndef CAVC_MATHUTILS_HPP
-#define CAVC_MATHUTILS_HPP
+#ifndef CORE_MATHUTILS_HPP
+#define CORE_MATHUTILS_HPP
 
 #include <cmath>
 #include <iterator>
@@ -7,10 +7,10 @@
 #include <functional>
 #include <utility>
 
-namespace cavc {
+namespace core {
 namespace utils {
 
-#define CAVC_ASSERT(cond, msg) assert(cond &&msg)
+#define CORE_ASSERT(cond, msg) assert(cond &&msg)
 
 template <typename T> inline void hashCombine(std::size_t &seed, const T &val) {
   // copied from boost hash_combine, it's not the best hash combine but it's very simple
@@ -100,7 +100,7 @@ std::pair<Real, Real> quadraticSolutions(Real a, Real b, Real c, Real discr) {
   // that are very near each other in value.
   // See:
   // https://math.stackexchange.com/questions/311382/solving-a-quadratic-equation-with-precision-when-using-floating-point-variables
-  CAVC_ASSERT(fuzzyEqual(b * b - Real(4) * a * c, discr), "discriminate is not correct");
+  CORE_ASSERT(fuzzyEqual(b * b - Real(4) * a * c, discr), "discriminate is not correct");
   Real sqrtDiscr = std::sqrt(discr);
   Real denom = Real(2) * a;
   Real sol1;
@@ -131,6 +131,6 @@ template <typename T> std::size_t prevWrappingIndex(std::size_t index, const T &
   return index - 1;
 }
 } // namespace utils
-} // namespace cavc
+} // namespace core
 
-#endif // CAVC_MATHUTILS_HPP
+#endif // CORE_MATHUTILS_HPP

@@ -560,7 +560,7 @@ void LoadedModel::createIndexBuffer() {
 // LoadedObject method definitions
 // =====================================================
 // public
-void LoadedObject::load(const char* modelPath, const char* texturePath, cavc::Vector3<double> basePosition, cavc::Vector3<double> baseScale, glm::mat4 baseRotationMatrix, float modelTransparency) {
+void LoadedObject::load(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition, core::Vector3<double> baseScale, glm::mat4 baseRotationMatrix, float modelTransparency) {
     model.load(modelPath, modelTransparency);
     texture.load(texturePath);
 
@@ -570,7 +570,7 @@ void LoadedObject::load(const char* modelPath, const char* texturePath, cavc::Ve
     rotationMatrix = baseRotationMatrix;
 }
 
-void LoadedObject::load(const char* modelPath, cavc::Vector3<double> objectColor, cavc::Vector3<double> basePosition, cavc::Vector3<double> baseScale, glm::mat4 baseRotationMatrix, float modelTransparency) {
+void LoadedObject::load(const char* modelPath, core::Vector3<double> objectColor, core::Vector3<double> basePosition, core::Vector3<double> baseScale, glm::mat4 baseRotationMatrix, float modelTransparency) {
     model.load(modelPath, modelTransparency);
 
     color = glm::vec3{ objectColor.x(), objectColor.y(), objectColor.z() };
@@ -753,8 +753,8 @@ void VulkanRenderEngine::cleanup() {
 LoadedObject& VulkanRenderEngine::createObject(
     const char* modelPath, 
     const char* texturePath, 
-    cavc::Vector3<double> basePosition, 
-    cavc::Vector3<double> baseScale, 
+    core::Vector3<double> basePosition, 
+    core::Vector3<double> baseScale, 
     glm::mat4 rotationMatrix, float modelTransparency) 
 {
     if (loadedObjects.size() >= MAX_OBJECTS)
@@ -768,9 +768,9 @@ LoadedObject& VulkanRenderEngine::createObject(
 
 LoadedObject& VulkanRenderEngine::createObject(
     const char* modelPath, 
-    cavc::Vector3<double> objectColor,
-    cavc::Vector3<double> basePosition,
-    cavc::Vector3<double> baseScale, 
+    core::Vector3<double> objectColor,
+    core::Vector3<double> basePosition,
+    core::Vector3<double> baseScale, 
     glm::mat4 rotationMatrix, 
     float modelTransparency) 
 {

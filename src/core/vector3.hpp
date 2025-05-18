@@ -1,11 +1,11 @@
-#ifndef CAVC_VECTOR3_HPP
-#define CAVC_VECTOR3_HPP
+#ifndef CORE_VECTOR3_HPP
+#define CORE_VECTOR3_HPP
 
 #include "mathutils.hpp"
 #include "vector.hpp"
 #include <cmath>
 
-namespace cavc {
+namespace core {
 	template <typename Real> using Vector3 = Vector<Real, 3>;
 
 	template <typename Real> Vector3<Real> cross(Vector3<Real> const& v1, Vector3<Real> const& v2) {

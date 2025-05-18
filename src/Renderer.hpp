@@ -164,8 +164,8 @@ public:
     glm::vec3 position;
     glm::vec3 scale;
 
-    void load(const char* modelPath, const char* texturePath, cavc::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, cavc::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
-    void load(const char* modelPath, cavc::Vector3<double> objectColor, cavc::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, cavc::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
+    void load(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
+    void load(const char* modelPath, core::Vector3<double> objectColor, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
     void destroy();
     glm::mat4 getTransformationMatrix();
     void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
@@ -186,8 +186,8 @@ public:
     void drawFrame();
     void cleanup();
 
-    LoadedObject& createObject(const char* modelPath, const char* texturePath, cavc::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, cavc::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
-    LoadedObject& createObject(const char* modelPath, cavc::Vector3<double> objectColor = { 0.f, 0.f, 0.f }, cavc::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, cavc::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
+    LoadedObject& createObject(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
+    LoadedObject& createObject(const char* modelPath, core::Vector3<double> objectColor = { 0.f, 0.f, 0.f }, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
     void handleUserInput();
 
 private:

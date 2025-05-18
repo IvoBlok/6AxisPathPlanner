@@ -612,6 +612,112 @@ void LoadedObject::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeli
 
 
 
+// LoadedLine method definitions
+// =====================================================
+// public
+LoadedLine::LoadedLine() {
+    lineWidth = 3.f;
+    clippingPreventionOffset = core::Vector3<double>{ 0.f };
+}
+
+void LoadedLine::load(std::vector<core::Vector3<double>>& linePoints, float lineTransparency, core::Vector3<double> lineColor) {
+    loadLines(linePoints, lineColor);
+    createVertexBuffer();
+    createIndexBuffer();
+
+    transparency = lineTransparency;
+}
+
+void LoadedLine::destroy() {
+    vkDestroyBuffer(device, indexBuffer, nullptr);
+    vkFreeMemory(device, indexBufferMemory, nullptr);
+
+    vkDestroyBuffer(device, vertexBuffer, nullptr);
+    vkFreeMemory(device, vertexBufferMemory, nullptr);
+}
+
+void LoadedLine::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) {
+    VkBuffer vertexBuffers[] = { vertexBuffer };
+    VkDeviceSize offsets[] = { 0 };
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+    // set line width
+    vkCmdSetLineWidth(commandBuffer, lineWidth);
+
+    // bind the color vec4, and render the line
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float), &transparency);
+    vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+}
+
+//private
+void LoadedLine::loadLines(std::vector<core::Vector3<double>>& linePoints, core::Vector3<double> lineColor) {
+    for (size_t i = 0; i < linePoints.size(); i++)
+    {
+        RendererVertex vertex;
+
+        vertex.pos = glm::vec3{ linePoints[i].x(), linePoints[i].y(), linePoints[i].z() };
+        vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
+        vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
+
+        vertices.push_back(vertex);
+        indices.push_back(indices.size());
+    }
+}
+
+void LoadedLine::createVertexBuffer() {
+    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+
+    // Create the staging buffer
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    VulkanHelper::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+    // Load the data into the staging buffer
+    void* data;
+    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, vertices.data(), (size_t)bufferSize);
+    vkUnmapMemory(device, stagingBufferMemory);
+
+    // Create the vertex buffer locally on the GPU
+    VulkanHelper::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+
+    // send the copy buffer command buffer to the GPU
+    VulkanHelper::copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+    // Clean up used local resources
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
+
+void LoadedLine::createIndexBuffer() {
+    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+    // Create the staging buffer
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    VulkanHelper::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+    // Load the data into the staging buffer
+    void* data;
+    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, indices.data(), (size_t)bufferSize);
+    vkUnmapMemory(device, stagingBufferMemory);
+
+    // Create the index buffer locally on the GPU
+    VulkanHelper::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+
+    // send the copy buffer command buffer to the GPU
+    VulkanHelper::copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+    // Clean up used local resources
+    vkDestroyBuffer(device, stagingBuffer, nullptr);
+    vkFreeMemory(device, stagingBufferMemory, nullptr);
+}
+
+
+
 // VulkanRenderEngine method definitions
 // =====================================================
 // public
@@ -630,6 +736,7 @@ void VulkanRenderEngine::initialize() {
     initImgui();
 
     loadedObjects.reserve(MAX_OBJECTS);
+    loadedLines.reserve(MAX_LINES);
 };
 
 void VulkanRenderEngine::drawFrame() {
@@ -722,6 +829,10 @@ void VulkanRenderEngine::cleanup() {
         object.destroy();
     }
 
+    for (auto& line : loadedLines) {
+        line.destroy();
+    }
+
     vkDestroyDescriptorSetLayout(device, uniformDescriptorSetLayout, nullptr);
     vkDestroyDescriptorSetLayout(device, textureDescriptorSetLayout, nullptr);
 
@@ -782,6 +893,20 @@ LoadedObject& VulkanRenderEngine::createObject(
 
     return loadedObjects.back();
 }
+
+LoadedLine& VulkanRenderEngine::createLine(
+    std::vector<core::Vector3<double>> linePoints, 
+    float lineTransparency, 
+    core::Vector3<double> lineColor) {
+        if(loadedLines.size() >= MAX_LINES) {
+            throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
+        }
+
+        loadedLines.push_back(LoadedLine{});
+		loadedLines.back().load(linePoints, lineTransparency, lineColor);
+        
+        return loadedLines.back();
+    }
 
 void VulkanRenderEngine::handleUserInput() {
     // this forwards vector is in the xy plane of the world, but rotated around z to line up with the camera front vector
@@ -1802,6 +1927,20 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
     scissor.extent = swapChainExtent;
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    // ========================================
+    // Render lines 
+    // ========================================
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, lineBasedPipeline);
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    // bind the UBO
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, lineBasedPipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+
+    for (auto& line : loadedLines) {
+        line.render(commandBuffer, lineBasedPipelineLayout);
+    }
 
     // ========================================
     // Render triangles 

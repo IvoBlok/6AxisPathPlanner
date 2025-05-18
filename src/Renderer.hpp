@@ -171,6 +171,32 @@ public:
     void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 };
 
+class LoadedLine {
+public:
+	std::vector<RendererVertex> vertices;
+    std::vector<uint32_t> indices;
+
+	core::Vector3<double> clippingPreventionOffset;
+
+	LoadedLine();
+	void load(std::vector<core::Vector3<double>>& linePoints, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
+	void destroy();
+	void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+
+	private:
+	VkBuffer vertexBuffer;
+	VkDeviceMemory vertexBufferMemory;
+	VkBuffer indexBuffer;
+	VkDeviceMemory indexBufferMemory;
+
+	float transparency;
+	float lineWidth;
+
+	void loadLines(std::vector<core::Vector3<double>>& linePoints, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
+	void createVertexBuffer();
+	void createIndexBuffer();
+};
+
 class VulkanRenderEngine {
 public:
     GLFWwindow* window;
@@ -188,7 +214,10 @@ public:
 
     LoadedObject& createObject(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
     LoadedObject& createObject(const char* modelPath, core::Vector3<double> objectColor = { 0.f, 0.f, 0.f }, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
-    void handleUserInput();
+    
+	LoadedLine& createLine(std::vector<core::Vector3<double>> linePoints, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
+
+	void handleUserInput();
 
 private:
 	VkInstance instance;
@@ -217,6 +246,7 @@ private:
 	VkImageView depthImageView;
 
 	std::vector<LoadedObject> loadedObjects;
+	std::vector<LoadedLine> loadedLines;
 
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;

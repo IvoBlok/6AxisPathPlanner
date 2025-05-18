@@ -15,6 +15,15 @@ int main() {
 			glm::mat4{ 1.f },
 			1.f
 		);
+
+		std::vector<core::Vector3<double>> testLine = {
+			core::Vector3<double>{1.f, 1.f, 2.f}, 
+			core::Vector3<double>{-1.f, 1.f, 2.f}, 
+			core::Vector3<double>{-1.f, -1.f, 2.f}, 
+			core::Vector3<double>{1.f, -1.f, 2.f}, 
+			core::Vector3<double>{1.f, 1.f, 2.f}
+		};
+		LoadedLine& line = renderer.createLine(testLine);
 		
 		// form the actual rendering loop
 		while (!glfwWindowShouldClose(renderer.window)) {

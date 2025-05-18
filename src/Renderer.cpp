@@ -2252,7 +2252,7 @@ void VulkanRenderEngine::createSurface() {
     }
 }
 
-void VulkanRenderEngine::VulkanRenderEngine::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+void VulkanRenderEngine::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
     auto app = reinterpret_cast<VulkanRenderEngine*>(glfwGetWindowUserPointer(window));
     app->frameBufferResized = true;
 }

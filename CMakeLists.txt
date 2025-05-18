@@ -55,6 +55,10 @@ FetchContent_MakeAvailable(tinyobjloader)
 
 # Executable
 # ============================================
+
+# enable Debugging
+set(CMAKE_BUILD_TYPE Debug)
+
 add_executable(robotPathPlanner 
     src/main.cpp
     src/renderer.cpp

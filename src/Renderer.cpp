@@ -16,6 +16,9 @@ VkDescriptorSetLayout textureDescriptorSetLayout;
 
 std::vector<char> readShaderFile(const std::string& relativePath) {
     const std::vector<std::filesystem::path> searchPaths = {
+        std::filesystem::current_path() / "build" / relativePath,
+        std::filesystem::current_path() / "build" / "shaders" / relativePath,
+        std::filesystem::current_path() / "build" / "resources/shaders" / relativePath,
         std::filesystem::current_path() / relativePath,
         std::filesystem::current_path() / "shaders" / relativePath,
         std::filesystem::current_path() / "resources/shaders" / relativePath,

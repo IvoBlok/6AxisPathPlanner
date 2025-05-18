@@ -197,7 +197,6 @@ public:
 	// TODO when a proper 3D polyline is added, replace the 2.5D with the 3D version
 	core::Polyline2_5D<double> polyline;
 
-	//TODO add functions so that LoadedLine can be initialized/loaded with a polyline. 
 	//TODO add functions so that LoadedLine can update vertices/indices if the polyline changes.
 
 	LoadedLine();

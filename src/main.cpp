@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "renderer.hpp"
+#include "meshIntersect.hpp"
 
 int main() {
 	try {
@@ -22,6 +23,13 @@ int main() {
 		};
 		LoadedLine& line = renderer.createLine(testLine);
 		
+		core::Plane<double> plane;
+		std::vector<core::Polyline2D<double>> meshPlaneIntersect = meshIntersect::getMeshPlaneIntersection(plane, bikeShell.updateObjectShape());
+
+		for(int i=0; i < meshPlaneIntersect.size(); i++) {
+			renderer.createLine(meshPlaneIntersect[i], plane);
+		}
+
 		// form the actual rendering loop
 		while (!glfwWindowShouldClose(renderer.window)) {
 			

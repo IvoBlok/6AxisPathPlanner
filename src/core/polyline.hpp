@@ -90,31 +90,36 @@ public:
   /// Construct an empty open polyline.
   Polyline2_5D() : isClosedVal(false), vertices() {}
 
-  Polyline2_5D(Polyline2D<Real>& polyLine, Plane<Real>& plane) {
-    insertPolyLine2D(polyLine, plane);
+  Polyline2_5D(Polyline2D<Real>& polyline, Plane<Real>& plane) {
+    insertPolyLine2D(polyline, plane);
   }
 
-  void insertPolyLine2D(Polyline2D<Real>& polyLine, Plane<Real>& plane) {
+  void insertPolyLine2D(Polyline2D<Real>& polyline, Plane<Real>& plane) {
     vertices.clear();
 
-    isClosedVal = polyLine.isClosed();
+    isClosedVal = polyline.isClosed();
 
-    std::vector<PlineVertex2D<Real>>& vertices = polyLine.vertexes();
-    for (size_t i = 0; i < vertices.size(); i++)
+    std::vector<PlineVertex2D<Real>>& inputVertices = polyline.vertexes();
+    for (size_t i = 0; i < inputVertices.size(); i++)
     {
       PlineVertex2_5D<Real> new3DVertex;
-      new3DVertex.bulge = vertices[i].bulge();
-      new3DVertex.point = plane.getGlobalCoords(vertices[i].pos());
+      new3DVertex.bulge = inputVertices[i].bulge();
+      new3DVertex.point = plane.getGlobalCoords(inputVertices[i].pos());
       new3DVertex.plane = plane;
 
       vertices.push_back(new3DVertex);
     }
   }
 
-  void insertPolyLine2_5D(Polyline2_5D<Real>& polyLine) {
-    vertices.insert(vertices.end(), polyLine.vertexes().begin(), polyLine.vertexes().end());
+  void insertPolyLine2_5D(Polyline2_5D<Real>& polyline) {
+
     // TODO update the isClosed. Probably should also look at the naming of 'insertPolyline2_5D'
     // TODO it probably should also check if the same plane is used 
+    if(vertices.size() == 0) {
+        isClosedVal = polyline.isClosed();
+    }
+
+    vertices.insert(vertices.end(), polyline.vertexes().begin(), polyline.vertexes().end());
   }
 
   void movePolyline(Vector3<Real> translation) {
@@ -291,7 +296,7 @@ public:
   }
 
   void compute(Polyline2D<Real> const &pline, Vector2<Real> const &point) {
-    CAVC_ASSERT(pline.vertexes().size() > 0, "empty polyline has no closest point");
+    CORE_ASSERT(pline.vertexes().size() > 0, "empty polyline has no closest point");
     if (pline.vertexes().size() == 1) {
       m_index = 0;
       m_distance = length(point - pline[0].pos());
@@ -346,7 +351,7 @@ private:
 /// by the arc (all end points lie on the arc path).
 template <typename Real>
 Polyline2D<Real> convertArcsToLines(Polyline2D<Real> const &pline, Real error) {
-  cavc::Polyline2D<Real> result;
+  core::Polyline2D<Real> result;
   result.isClosed() = pline.isClosed();
   auto visitor = [&](std::size_t i, std::size_t j) {
     const auto &v1 = pline[i];
@@ -362,7 +367,7 @@ Polyline2D<Real> convertArcsToLines(Polyline2D<Real> const &pline, Real error) {
 
       auto startAngle = angle(arc.center, v1.pos());
       auto endAngle = angle(arc.center, v2.pos());
-      Real deltaAngle = std::abs(cavc::utils::deltaAngle(startAngle, endAngle));
+      Real deltaAngle = std::abs(core::utils::deltaAngle(startAngle, endAngle));
 
       error = std::abs(error);
       Real segmentSubAngle = std::abs(Real(2) * std::acos(Real(1) - error / arc.radius));
@@ -451,7 +456,7 @@ template <typename Real> void invertDirection(Polyline2D<Real> &pline) {
 /// createFastApproxBoundingBox.
 template <typename Real>
 StaticSpatialIndex<Real> createApproxSpatialIndex(Polyline2D<Real> const &pline) {
-  CAVC_ASSERT(pline.size() > 1, "need at least 2 vertexes to form segments for spatial index");
+  CORE_ASSERT(pline.size() > 1, "need at least 2 vertexes to form segments for spatial index");
 
   std::size_t segmentCount = pline.isClosed() ? pline.size() : pline.size() - 1;
   StaticSpatialIndex<Real> result(segmentCount);

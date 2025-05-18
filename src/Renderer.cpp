@@ -654,6 +654,16 @@ void LoadedLine::load(std::vector<core::Vector3<double>>& linePoints, float line
     transparency = lineTransparency;
 }
 
+void LoadedLine::load(core::Polyline2_5D<double>& polylineIn, float lineTransparency, core::Vector3<double> lineColor) {
+    polyline.insertPolyLine2_5D(polylineIn);
+    loadPolylineIntoRendererFormat(lineColor);
+
+    createVertexBuffer();
+    createIndexBuffer();
+
+    transparency = lineTransparency;
+}
+
 void LoadedLine::destroy() {
     vkDestroyBuffer(device, indexBuffer, nullptr);
     vkFreeMemory(device, indexBufferMemory, nullptr);
@@ -742,6 +752,82 @@ void LoadedLine::createIndexBuffer() {
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
+void LoadedLine::loadPolylineIntoRendererFormat(core::Vector3<double> lineColor) {
+
+    std::vector<core::PlineVertex2_5D<double>>& pathVertices = polyline.vertexes();
+
+    for (size_t i = 0; i < pathVertices.size(); i++)
+    {
+        if (!pathVertices[i].bulgeIsZero()) {
+
+            core::PlineVertex2_5D<double> nextVertex;
+            if (polyline.isClosed() && i == pathVertices.size() - 1) {
+                nextVertex = pathVertices[0];
+            }
+            else if (i == vertices.size() - 1) {
+                RendererVertex vertex;
+
+                vertex.pos = glm::vec3{ pathVertices[i].point.x(), pathVertices[i].point.y(), pathVertices[i].point.z() };
+                vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
+                vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
+
+                vertices.push_back(vertex);
+                indices.push_back(indices.size());
+                continue;
+            }
+            else {
+                nextVertex = pathVertices[i + 1];
+            }
+
+            core::Vector2<double> localv1Coords = pathVertices[i].getPointInPlaneCoords();
+            core::Vector2<double> localv2Coords = nextVertex.getPointInPlaneCoords();
+            core::ArcRadiusAndCenter<double> arcInfo = core::arcRadiusAndCenter(pathVertices[i].getVertexInPlaneCoords(), nextVertex.getVertexInPlaneCoords());
+            
+            float startAngle = core::angle(arcInfo.center, localv1Coords);
+            float endAngle = core::angle(arcInfo.center, localv2Coords);
+
+            float deltaAngle = core::utils::deltaAngle(startAngle, endAngle);
+
+            for (size_t k = 0; k < 10; k++)
+            {
+                core::Vector2<double> localPosition;
+                localPosition.x() = arcInfo.center.x() + arcInfo.radius * std::cos(startAngle + (deltaAngle / 10.f) * k);
+                localPosition.y() = arcInfo.center.y() + arcInfo.radius * std::sin(startAngle + (deltaAngle / 10.f) * k);
+
+                RendererVertex vertex;
+
+                core::Vector3<double> vertexPosition = pathVertices[i].plane.getGlobalCoords(localPosition);
+                vertex.pos = glm::vec3{ vertexPosition.x(), vertexPosition.y(), vertexPosition.z() };
+                vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
+                vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
+
+                vertices.push_back(vertex);
+                indices.push_back(indices.size());
+            }
+        }
+        else {
+            RendererVertex vertex;
+
+            vertex.pos = glm::vec3{ pathVertices[i].point.x(), pathVertices[i].point.y(), pathVertices[i].point.z() };
+            vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
+            vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
+
+            vertices.push_back(vertex);
+            indices.push_back(indices.size());
+        }
+    }
+
+    if (polyline.isClosed()) {
+        RendererVertex vertex;
+
+        vertex.pos = glm::vec3{ pathVertices[0].point.x(), pathVertices[0].point.y(), pathVertices[0].point.z() };
+        vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
+        vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
+
+        vertices.push_back(vertex);
+        indices.push_back(indices.size());
+    }
+}
 
 
 // VulkanRenderEngine method definitions
@@ -923,16 +1009,49 @@ LoadedObject& VulkanRenderEngine::createObject(
 LoadedLine& VulkanRenderEngine::createLine(
     std::vector<core::Vector3<double>> linePoints, 
     float lineTransparency, 
-    core::Vector3<double> lineColor) {
-        if(loadedLines.size() >= MAX_LINES) {
-            throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
-        }
-
-        loadedLines.push_back(LoadedLine{});
-		loadedLines.back().load(linePoints, lineTransparency, lineColor);
-        
-        return loadedLines.back();
+    core::Vector3<double> lineColor) 
+{
+    if(loadedLines.size() >= MAX_LINES) {
+        throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
     }
+
+    loadedLines.push_back(LoadedLine{});
+    loadedLines.back().load(linePoints, lineTransparency, lineColor);
+    
+    return loadedLines.back();
+}
+
+LoadedLine& VulkanRenderEngine::createLine(
+    core::Polyline2_5D<double>& polyline, 
+    float lineTransparency, 
+    core::Vector3<double> lineColor) 
+{
+    if (loadedLines.size() >= MAX_LINES)
+        throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
+
+    loadedLines.push_back(LoadedLine{});
+    loadedLines.back().load(polyline, lineTransparency, lineColor);
+
+    return loadedLines.back();
+}
+
+LoadedLine& VulkanRenderEngine::createLine(
+    core::Polyline2D<double>& polyline, 
+    core::Plane<double> plane,
+    float lineTransparency, 
+    core::Vector3<double> lineColor) 
+{
+    if (loadedLines.size() >= MAX_LINES)
+        throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
+
+    loadedLines.push_back(LoadedLine{});
+
+    core::Polyline2_5D<double> newPolyline{polyline, plane};
+
+    loadedLines.back().load(newPolyline, lineTransparency, lineColor);
+
+    return loadedLines.back();
+}
 
 void VulkanRenderEngine::handleUserInput() {
     // this forwards vector is in the xy plane of the world, but rotated around z to line up with the camera front vector

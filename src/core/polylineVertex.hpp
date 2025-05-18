@@ -118,8 +118,8 @@ template <typename Real> struct ArcRadiusAndCenter {
 template <typename Real>
 ArcRadiusAndCenter<Real> arcRadiusAndCenter(PlineVertex2D<Real> const &v1,
                                             PlineVertex2D<Real> const &v2) {
-  CAVC_ASSERT(!v1.bulgeIsZero(), "v1 to v2 must be an arc");
-  CAVC_ASSERT(!fuzzyEqual(v1.pos(), v2.pos()), "v1 must not be ontop of v2");
+  CORE_ASSERT(!v1.bulgeIsZero(), "v1 to v2 must be an arc");
+  CORE_ASSERT(!fuzzyEqual(v1.pos(), v2.pos()), "v1 must not be ontop of v2");
 
   // compute radius
   Real b = std::abs(v1.bulge());
@@ -394,7 +394,7 @@ IntrPlineSegsResult<Real> intrPlineSegs(PlineVertex2D<Real> const &v1, PlineVert
         result.intrType = PlineSegIntrType::NoIntersect;
       }
     } else {
-      CAVC_ASSERT(intrResult.numIntersects == 2, "shouldn't get here without 2 intersects");
+      CORE_ASSERT(intrResult.numIntersects == 2, "shouldn't get here without 2 intersects");
       auto p1 = pointInSweep(intrResult.t0);
       auto p2 = pointInSweep(intrResult.t1);
 

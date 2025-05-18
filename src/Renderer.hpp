@@ -202,6 +202,8 @@ public:
 
 	LoadedLine();
 	void load(std::vector<core::Vector3<double>>& linePoints, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
+	void load(core::Polyline2_5D<double>& polylineIn, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
+	
 	void destroy();
 	void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 
@@ -217,6 +219,7 @@ private:
 	void loadLines(std::vector<core::Vector3<double>>& linePoints, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
 	void createVertexBuffer();
 	void createIndexBuffer();
+	void loadPolylineIntoRendererFormat(core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
 };
 
 class VulkanRenderEngine {
@@ -238,6 +241,9 @@ public:
     LoadedObject& createObject(const char* modelPath, core::Vector3<double> objectColor = { 0.f, 0.f, 0.f }, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
     
 	LoadedLine& createLine(std::vector<core::Vector3<double>> linePoints, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
+
+	LoadedLine& createLine(core::Polyline2_5D<double>& polyline, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
+	LoadedLine& createLine(core::Polyline2D<double>& polyline, core::Plane<double> plane, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
 
 	void handleUserInput();
 

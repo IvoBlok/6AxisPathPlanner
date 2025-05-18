@@ -63,7 +63,7 @@ IntrLineSeg2Circle2Result<Real> intrLineSeg2Circle2(Vector2<Real> const &p0,
     }
   }
 
-  CAVC_ASSERT(result.numIntersects >= 0 && result.numIntersects <= 2, "invalid intersect count");
+  CORE_ASSERT(result.numIntersects >= 0 && result.numIntersects <= 2, "invalid intersect count");
   return result;
 }
 } // namespace core

@@ -314,6 +314,7 @@ namespace VulkanHelper {
 }
 
 
+
 // LoadedTexture method definitions
 // =====================================================
 // public
@@ -563,7 +564,6 @@ void LoadedObject::LoadedModel::createIndexBuffer() {
 // LoadedObject method definitions
 // =====================================================
 // public
-
 core::ObjectShape& LoadedObject::updateObjectShape() {
     glm::mat4 transformationMatrix = getTransformationMatrix();
 
@@ -587,6 +587,10 @@ core::ObjectShape& LoadedObject::updateObjectShape() {
     {
         objectShape.indices.push_back(model.indices[i]);
     }
+    return objectShape;
+}
+
+core::ObjectShape& LoadedObject::getObjectShape() {
     return objectShape;
 }
 
@@ -616,9 +620,13 @@ void LoadedObject::destroy() {
 }
 
 glm::mat4 LoadedObject::getTransformationMatrix() {
-    glm::mat4 transformationMatrix = glm::scale(glm::mat4{ 1.0f }, scale);
-    transformationMatrix = rotationMatrix * transformationMatrix;
-    transformationMatrix = glm::translate(transformationMatrix, position * (1.f / scale));
+    glm::mat4 transformationMatrix = glm::mat4{1.0f};
+    transformationMatrix = glm::translate(transformationMatrix, position);  // 1. Translate first
+    rotationMatrix = glm::yawPitchRoll(glm::radians(yawPitchRoll.x), 
+                                    glm::radians(yawPitchRoll.y), 
+                                    glm::radians(yawPitchRoll.z));
+    transformationMatrix = transformationMatrix * rotationMatrix;  // 2. Then rotate
+    transformationMatrix = glm::scale(transformationMatrix, scale);  // 3. Scale last
     return transformationMatrix;
 }
 
@@ -647,17 +655,14 @@ void LoadedObject::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeli
 // public
 LoadedLine::LoadedLine() {
     lineWidth = 3.f;
-}
-
-void LoadedLine::load(std::vector<core::Vector3<double>>& linePoints, float lineTransparency, core::Vector3<double> lineColor) {
-    loadLines(linePoints, lineColor);
-    createVertexBuffer();
-    createIndexBuffer();
-
-    transparency = lineTransparency;
+    defaultColor = core::Vector3<double>{ 1.f, 0.f, 0.f };
 }
 
 void LoadedLine::load(core::Polyline2_5D<double>& polylineIn, float lineTransparency, core::Vector3<double> lineColor) {
+    defaultColor = lineColor;
+    if(polyline.vertexes().size() != 0)
+        throw std::runtime_error("load() called for non-empty LoadedLine!\n");
+
     polyline.insertPolyLine2_5D(polylineIn);
     loadPolylineIntoRendererFormat(lineColor);
 
@@ -667,12 +672,15 @@ void LoadedLine::load(core::Polyline2_5D<double>& polylineIn, float lineTranspar
     transparency = lineTransparency;
 }
 
-void LoadedLine::destroy() {
+void LoadedLine::destroyRenderData() {
     vkDestroyBuffer(device, indexBuffer, nullptr);
     vkFreeMemory(device, indexBufferMemory, nullptr);
 
     vkDestroyBuffer(device, vertexBuffer, nullptr);
     vkFreeMemory(device, vertexBufferMemory, nullptr);
+
+    vertices.clear();
+    indices.clear();
 }
 
 void LoadedLine::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) {
@@ -690,21 +698,20 @@ void LoadedLine::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeline
     vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 }
 
-//private
-void LoadedLine::loadLines(std::vector<core::Vector3<double>>& linePoints, core::Vector3<double> lineColor) {
-    for (size_t i = 0; i < linePoints.size(); i++)
-    {
-        RendererVertex vertex;
-
-        vertex.pos = glm::vec3{ linePoints[i].x(), linePoints[i].y(), linePoints[i].z() };
-        vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
-        vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
-
-        vertices.push_back(vertex);
-        indices.push_back(indices.size());
-    }
+core::Polyline2_5D<double>& LoadedLine::getPolyline() {
+    return polyline;
 }
 
+void LoadedLine::updateRendererLine() {
+    destroyRenderData();
+
+    loadPolylineIntoRendererFormat(defaultColor);
+
+    createVertexBuffer();
+    createIndexBuffer();
+}
+
+//private
 void LoadedLine::createVertexBuffer() {
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
@@ -849,9 +856,6 @@ void VulkanRenderEngine::initialize() {
     initWindow();
     initVulkan();
     initImgui();
-
-    loadedObjects.reserve(MAX_OBJECTS);
-    loadedLines.reserve(MAX_LINES);
 };
 
 void VulkanRenderEngine::drawFrame() {
@@ -945,7 +949,7 @@ void VulkanRenderEngine::cleanup() {
     }
 
     for (auto& line : loadedLines) {
-        line.destroy();
+        line.destroyRenderData();
     }
 
     vkDestroyDescriptorSetLayout(device, uniformDescriptorSetLayout, nullptr);
@@ -1010,21 +1014,6 @@ LoadedObject& VulkanRenderEngine::createObject(
 }
 
 LoadedLine& VulkanRenderEngine::createLine(
-    std::vector<core::Vector3<double>> linePoints, 
-    float lineTransparency, 
-    core::Vector3<double> lineColor) 
-{
-    if(loadedLines.size() >= MAX_LINES) {
-        throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
-    }
-
-    loadedLines.push_back(LoadedLine{});
-    loadedLines.back().load(linePoints, lineTransparency, lineColor);
-    
-    return loadedLines.back();
-}
-
-LoadedLine& VulkanRenderEngine::createLine(
     core::Polyline2_5D<double>& polyline, 
     float lineTransparency, 
     core::Vector3<double> lineColor) 
@@ -1050,7 +1039,6 @@ LoadedLine& VulkanRenderEngine::createLine(
     loadedLines.push_back(LoadedLine{});
 
     core::Polyline2_5D<double> newPolyline{polyline, plane};
-
     loadedLines.back().load(newPolyline, lineTransparency, lineColor);
 
     return loadedLines.back();
@@ -2113,13 +2101,106 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::Begin("Configuration");
-    
-    ImGui::Text("ObjectInfo");
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(400, -1), ImVec2(FLT_MAX, -1));
+
+    std::vector<std::list<LoadedObject>::iterator> objectsToDelete;
+
+    ImGui::Begin("Configuration", nullptr, 
+        ImGuiWindowFlags_NoMove | 
+        ImGuiWindowFlags_NoCollapse | 
+        ImGuiWindowFlags_NoBringToFrontOnFocus | 
+        ImGuiWindowFlags_NoTitleBar);
+    {
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+        // Modify properties of loaded Objects
+        if(ImGui::TreeNode("Objects")) {
+            int i = 0;
+            for (auto it = loadedObjects.begin(); it != loadedObjects.end(); ++it, ++i)
+            {
+                auto& object = *it;
+                ImGui::PushID(i);
+
+                if(ImGui::TreeNode(("Object " + std::to_string(i)).c_str())) {
+                    if (ImGui::Button("Delete")) 
+                        // Mark object for deletion
+                        objectsToDelete.push_back(it);
+
+                    float positionArray[3] = {object.position.x, object.position.y, object.position.z};
+                    if (ImGui::InputFloat3("Position", positionArray)) {
+                        object.position.x = positionArray[0];
+                        object.position.y = positionArray[1];
+                        object.position.z = positionArray[2];
+                    }
+
+                    float scaleArray[3] = {object.scale.x, object.scale.y, object.scale.z};
+                    if (ImGui::InputFloat3("Scale", scaleArray)) {
+                        object.scale.x = scaleArray[0];
+                        object.scale.y = scaleArray[1];
+                        object.scale.z = scaleArray[2];
+                    }
+
+                    float rotationArray[3] = {object.yawPitchRoll.x, object.yawPitchRoll.y, object.yawPitchRoll.z};
+                    if (ImGui::InputFloat3("Rotation", rotationArray)) {
+                        object.yawPitchRoll.x = rotationArray[0];
+                        object.yawPitchRoll.y = rotationArray[1];
+                        object.yawPitchRoll.z = rotationArray[2];
+                    }
+
+                    float colorArray[3] = { object.color.x, object.color.y, object.color.z };
+                    ImGui::Text("Color ");
+                    ImGui::SameLine();
+                    ImVec4 colVec4 = ImVec4(colorArray[0], colorArray[1], colorArray[2], 1.0f);
+                    if (ImGui::ColorButton("MyColor##3", colVec4, ImGuiColorEditFlags_NoTooltip)) {
+                        ImGui::OpenPopup("colorPicker");
+                    }
+                    if (ImGui::BeginPopup("colorPicker")) {
+                        if (ImGui::ColorPicker3("##picker", colorArray, 
+                            ImGuiColorEditFlags_DisplayRGB | 
+                            ImGuiColorEditFlags_NoSidePreview |
+                            ImGuiColorEditFlags_NoSmallPreview)) 
+                        {
+                            object.color.x = colorArray[0];
+                            object.color.y = colorArray[1];
+                            object.color.z = colorArray[2];
+                        }
+                        ImGui::EndPopup();
+                    }
+                    
+                    ImGui::SliderFloat("Transparency", &object.model.transparency, 0.0f, 1.0f);
+                
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
+            }
+            ImGui::TreePop();
+        }
+
+        ImGui::Text("Generate Objects");
+        if(ImGui::Button("Generate Cube")) {
+            createObject(
+                    "../../resources/assets/cube.obj",
+                    core::Vector3<double>{ 0.f, 0.f, 1.f }, // color
+                    core::Vector3<double>{ 0.f, 5.f, 0.f }  // position
+                );
+        }
+        
+        // ensure that the window fills the entire height
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        float availableHeight = ImGui::GetIO().DisplaySize.y - windowPos.y;
+        if (windowSize.y != availableHeight) {
+            ImGui::SetWindowSize(ImVec2(windowSize.x, availableHeight));
+        }
+    }
     ImGui::End();
 
     ImGui::Render();
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer, 0, NULL);
+
+    for (auto& object : objectsToDelete)
+        loadedObjects.erase(object);
 
     // ========================================
 

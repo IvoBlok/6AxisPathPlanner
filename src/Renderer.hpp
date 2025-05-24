@@ -17,6 +17,7 @@ Note that all objects/lines/points class instances in the scene live in the Rend
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/hash.hpp>
 #include <glm/gtc/random.hpp>
+#include <glm/gtx/euler_angles.hpp>
 
 #include "stb_image.h"
 #include "tiny_obj_loader.h"
@@ -120,6 +121,11 @@ namespace VulkanHelper {
     void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT);
 };
 
+/* 
+LoadedObject stores a certain triangle-based geometry. This geometry itself is not intended to be modified. 
+The geometry can be used in read-only fashion for other operations. For these applications a separate geometry/mesh format is used, known as ObjectShape.
+Whenever the location, orientation or scale of the 'renderer' geometry is modified, is it required to update the ObjectShape with a updateObjectShape() call.
+*/
 class LoadedObject {
 private:
 	class LoadedTexture {
@@ -164,20 +170,24 @@ private:
 	};
 
 public:
-    LoadedModel model;
-    LoadedTexture texture;
-    glm::vec3 color;
-    bool isOneColor;
-
-    glm::mat4 rotationMatrix;
     glm::vec3 position;
     glm::vec3 scale;
+	glm::vec3 yawPitchRoll;
+
+    bool isOneColor;
+    glm::vec3 color;
+
+	LoadedModel model;
+    LoadedTexture texture;
+    glm::mat4 rotationMatrix;
 
 	// 'objectShape' is effectively the same data as the model, but now with the position, scale and rotation applied into the vertices and normals. 
 	// the renderer requires the model/mesh data to be in a certain format, but that's not a great format to apply math to. So 'objectShape' is set up for easy data manipulation.
 	core::ObjectShape objectShape;
 
+
 	core::ObjectShape& updateObjectShape();
+	core::ObjectShape& getObjectShape();
 
 	void load(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
     void load(const char* modelPath, core::Vector3<double> objectColor, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
@@ -186,27 +196,33 @@ public:
     void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 };
 
+/*
+LoadedLine stores a certain polyline. It stores both the polyline it represents, and a renderer version of the same curve. 
+the polyline can undergo modifications. To update the rendering representation of it, a call to updateRendererLine() is required.
+*/
 class LoadedLine {
 public:
-	std::vector<RendererVertex> vertices;
-    std::vector<uint32_t> indices;
+	LoadedLine();
+	void load(core::Polyline2_5D<double>& polylineIn, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
+	
+	void destroyRenderData();
+	void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 
+	core::Polyline2_5D<double>& getPolyline();
+
+	// updateRendererLine updates the renderer version of the polyline. Without calling this function the renderer will  not show changes to the polyline
+	void updateRendererLine();
+
+private:
 	// 'polyline' generally contains the actual curve of interest. Math is done specifically to 'polyline' and not 'vertices'. 'vertices'/'indices' is merely the visual representation of the actual data.
 	// Exceptions to this might be purely visual indications, like gizmos. There polyline is irrelevant, and it is only the 'vertices'/'indices' that matters.
 	// currently this is a2.5D polyline. This doesn't support lines that don't fully lay in a single plane. 
 	// TODO when a proper 3D polyline is added, replace the 2.5D with the 3D version
 	core::Polyline2_5D<double> polyline;
 
-	//TODO add functions so that LoadedLine can update vertices/indices if the polyline changes.
+	std::vector<RendererVertex> vertices;
+    std::vector<uint32_t> indices;
 
-	LoadedLine();
-	void load(std::vector<core::Vector3<double>>& linePoints, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
-	void load(core::Polyline2_5D<double>& polylineIn, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
-	
-	void destroy();
-	void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
-
-private:
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory;
 	VkBuffer indexBuffer;
@@ -214,8 +230,8 @@ private:
 
 	float transparency;
 	float lineWidth;
+	core::Vector3<double> defaultColor;
 
-	void loadLines(std::vector<core::Vector3<double>>& linePoints, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
 	void createVertexBuffer();
 	void createIndexBuffer();
 	void loadPolylineIntoRendererFormat(core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
@@ -239,8 +255,6 @@ public:
     LoadedObject& createObject(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
     LoadedObject& createObject(const char* modelPath, core::Vector3<double> objectColor = { 0.f, 0.f, 0.f }, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
     
-	LoadedLine& createLine(std::vector<core::Vector3<double>> linePoints, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
-
 	LoadedLine& createLine(core::Polyline2_5D<double>& polyline, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
 	LoadedLine& createLine(core::Polyline2D<double>& polyline, core::Plane<double> plane, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
 
@@ -272,8 +286,8 @@ private:
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
-	std::vector<LoadedObject> loadedObjects;
-	std::vector<LoadedLine> loadedLines;
+	std::list<LoadedObject> loadedObjects;
+	std::list<LoadedLine> loadedLines;
 
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;

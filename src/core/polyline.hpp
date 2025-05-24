@@ -94,6 +94,10 @@ public:
     insertPolyLine2D(polyline, plane);
   }
 
+  Polyline2_5D(Polyline2_5D<Real>& polyline, Plane<Real>& plane) {
+    insertPolyLine2_5D(polyline, plane);
+  }
+
   void insertPolyLine2D(Polyline2D<Real>& polyline, Plane<Real>& plane) {
     vertices.clear();
 
@@ -112,13 +116,9 @@ public:
   }
 
   void insertPolyLine2_5D(Polyline2_5D<Real>& polyline) {
+    vertices.clear();
 
-    // TODO update the isClosed. Probably should also look at the naming of 'insertPolyline2_5D'
-    // TODO it probably should also check if the same plane is used 
-    if(vertices.size() == 0) {
-        isClosedVal = polyline.isClosed();
-    }
-
+    isClosedVal = polyline.isClosed();
     vertices.insert(vertices.end(), polyline.vertexes().begin(), polyline.vertexes().end());
   }
 

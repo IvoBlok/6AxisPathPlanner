@@ -5,7 +5,8 @@ The mesh-intersect is mostly a copy of https://github.com/intents-software/mesh-
 
 Currently this project generates 'paths', in the sense that the location of the cutter is exported. No orientation or joint angles are exported/checked. Going forward I want to work on:
 
- - Finalize the transition to CMake
+ - Fully support varying color along polylines
+ - Fix transparency; Objects are only transparent relative to each other if their generation order is correct. Transparency also doesn't fully work perfect when you can see multiple surfaces of the same object through each other
  - Rewrite / Check the path planning code and general project structure as to prepare for future expansion
  - Add non-planar pathing
  - Add robot + tool visualization

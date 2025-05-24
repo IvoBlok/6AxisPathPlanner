@@ -590,6 +590,18 @@ core::ObjectShape& LoadedObject::getObjectShape() {
     return objectShape;
 }
 
+core::Plane<double> LoadedObject::getPlane() {
+    rotationMatrix = glm::yawPitchRoll(glm::radians(yawPitchRoll.x), 
+                                    glm::radians(yawPitchRoll.y), 
+                                    glm::radians(yawPitchRoll.z));
+
+    glm::vec4 normal{0.f, 0.f, 1.f, 0.f};
+    normal = rotationMatrix * normal;
+
+    core::Plane<double> objectPlane{core::Vector3<double>{position.x, position.y, position.z}, core::Vector3<double>{normal.x, normal.y, normal.z}};
+    return objectPlane;
+}
+
 void LoadedObject::load(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition, core::Vector3<double> baseScale, glm::mat4 baseRotationMatrix, float modelTransparency) {
     model.load(modelPath, modelTransparency);
     texture.load(texturePath);
@@ -2101,6 +2113,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
     ImGui::SetNextWindowSizeConstraints(ImVec2(400, -1), ImVec2(FLT_MAX, -1));
 
     std::vector<std::list<LoadedObject>::iterator> objectsToDelete;
+    std::vector<std::list<LoadedLine>::iterator> linesToDelete;
 
     ImGui::Begin("Configuration", nullptr, 
         ImGuiWindowFlags_NoMove | 
@@ -2110,7 +2123,8 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
     {
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
 
-        // Modify properties of loaded Objects
+        // properties of loaded Objects
+        ImGui::SeparatorText("");
         if(ImGui::TreeNode("Objects")) {
             int i = 0;
             for (auto it = loadedObjects.begin(); it != loadedObjects.end(); ++it, ++i)
@@ -2120,7 +2134,6 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
 
                 if(ImGui::TreeNode(("Object " + std::to_string(i)).c_str())) {
                     if (ImGui::Button("Delete")) 
-                        // Mark object for deletion
                         objectsToDelete.push_back(it);
 
                     float positionArray[3] = {object.position.x, object.position.y, object.position.z};
@@ -2172,13 +2185,43 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
             }
             ImGui::TreePop();
         }
+        
+        // properties of loaded Lines
+        ImGui::SeparatorText("");
+        if(ImGui::TreeNode("Lines")) {
+            int i = 0;
+            for (auto it = loadedLines.begin(); it != loadedLines.end(); ++it, ++i)
+            {
+                auto& line = *it;
+                ImGui::PushID(i);
 
+                if(ImGui::TreeNode(("Object " + std::to_string(i)).c_str())) {
+                    if (ImGui::Button("Delete")) 
+                        linesToDelete.push_back(it);
+                    
+                    ImGui::SliderFloat("Transparency", &line.transparency, 0.0f, 1.0f);
+                    ImGui::SliderFloat("Line Width", &line.lineWidth, 0.0f, 10.0f);
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
+            }
+            ImGui::TreePop();
+        }
+
+        ImGui::SeparatorText("");
         ImGui::Text("Generate Objects");
         if(ImGui::Button("Generate Cube")) {
             createObject(
                     "../../resources/assets/cube.obj",
                     core::Vector3<double>{ 0.f, 0.f, 1.f }, // color
                     core::Vector3<double>{ 0.f, 5.f, 0.f }  // position
+                );
+        }
+        if(ImGui::Button("Generate Plane")) {
+            createObject(
+                    "../../resources/assets/plane.obj",
+                    core::Vector3<double>{ 0.f, 0.f, 1.f }, // color
+                    core::Vector3<double>{ 0.f, 0.f, 0.f }  // position
                 );
         }
         
@@ -2197,6 +2240,9 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
 
     for (auto& object : objectsToDelete)
         loadedObjects.erase(object);
+
+    for (auto& line : linesToDelete)
+        loadedLines.erase(line);
 
     // ========================================
 

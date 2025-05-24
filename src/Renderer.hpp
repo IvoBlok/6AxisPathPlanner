@@ -50,6 +50,7 @@ Note that all objects/lines/points class instances in the scene live in the Rend
 #include "core/vector3.hpp"
 #include "core/objectShape.hpp"
 #include "core/polyline.hpp"
+#include "core/plane.hpp"
 
 static std::vector<char> readShaderFile(const std::string& relativePath);
 
@@ -185,9 +186,10 @@ public:
 	// the renderer requires the model/mesh data to be in a certain format, but that's not a great format to apply math to. So 'objectShape' is set up for easy data manipulation.
 	core::ObjectShape objectShape;
 
-
 	core::ObjectShape& updateObjectShape();
 	core::ObjectShape& getObjectShape();
+
+	core::Plane<double> getPlane();
 
 	void load(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
     void load(const char* modelPath, core::Vector3<double> objectColor, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
@@ -202,6 +204,9 @@ the polyline can undergo modifications. To update the rendering representation o
 */
 class LoadedLine {
 public:
+	float transparency;
+	float lineWidth;
+	
 	LoadedLine();
 	void load(core::Polyline2_5D<double>& polylineIn, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
 	
@@ -228,8 +233,6 @@ private:
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
-	float transparency;
-	float lineWidth;
 	core::Vector3<double> defaultColor;
 
 	void createVertexBuffer();

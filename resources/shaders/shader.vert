@@ -9,6 +9,7 @@ layout(location = 0) out vec2 fragTexCoord;
 layout(location = 1) out float fragTransparency;
 layout(location = 2) out vec3 fragColor;
 layout(location = 3) out int isOneColor;
+layout(location = 4) out vec3 fragNormal;
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
 	mat4 notUsed;
@@ -30,4 +31,6 @@ void main() {
 	fragTransparency = ps.transparency;
 	fragColor = ps.color;
 	isOneColor = int(ps.isOneColor);
+
+	fragNormal = mat3(transpose(inverse(ps.model))) * normal;
 }

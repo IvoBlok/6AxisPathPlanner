@@ -941,6 +941,7 @@ void VulkanRenderEngine::cleanup() {
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
 
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
     cleanupSwapChain();
@@ -1128,6 +1129,7 @@ void VulkanRenderEngine::initVulkan() {
 
 void VulkanRenderEngine::initImgui() {
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     ImGui::StyleColorsDark();
@@ -2229,10 +2231,10 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
         ImVec2 windowSize = ImGui::GetWindowSize();
         ImVec2 windowPos = ImGui::GetWindowPos();
         float availableHeight = ImGui::GetIO().DisplaySize.y - windowPos.y;
-        if (windowSize.y != availableHeight) {
+        if (windowSize.y != availableHeight)
             ImGui::SetWindowSize(ImVec2(windowSize.x, availableHeight));
-        }
     }
+
     ImGui::End();
 
     ImGui::Render();

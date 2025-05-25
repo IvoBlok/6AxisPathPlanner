@@ -35,6 +35,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
+# ImPlot
+FetchContent_Declare(
+    implot
+    GIT_REPOSITORY https://github.com/epezent/implot.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(implot)
+
 set(GLM_TEST_ENABLE OFF CACHE BOOL "Disable GLM tests")
 
 # stb_image
@@ -103,6 +111,7 @@ target_include_directories(robotPathPlanner PRIVATE
     ${glm_SOURCE_DIR}
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
+    ${implot_SOURCE_DIR}        
     external/imgui
     ${stb_SOURCE_DIR}
     ${tinyobjloader_SOURCE_DIR}
@@ -124,4 +133,12 @@ target_sources(robotPathPlanner PRIVATE
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+)
+
+# Add ImPlot Sources
+# ============================================
+target_sources(robotPathPlanner PRIVATE
+    ${implot_SOURCE_DIR}/implot.cpp
+    ${implot_SOURCE_DIR}/implot_items.cpp
+    ${implot_SOURCE_DIR}/implot_demo.cpp
 )

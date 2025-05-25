@@ -29,6 +29,7 @@ Note that all objects/lines/points class instances in the scene live in the Rend
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan_but_better.hpp"	
+#include "implot.h"
 
 #include <chrono>
 #include <iostream>

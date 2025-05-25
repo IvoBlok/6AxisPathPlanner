@@ -1137,7 +1137,7 @@ void VulkanRenderEngine::initImgui() {
     ImPlot::CreateContext();
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    ImGui::StyleColorsDark();
+    ImGui::StyleColorsClassic();
     ImGui_ImplGlfw_InitForVulkan(window, true);
 
     ImGui_ImplVulkan_InitInfo info;
@@ -2128,31 +2128,41 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
         ImGuiWindowFlags_NoBringToFrontOnFocus | 
         ImGuiWindowFlags_NoTitleBar);
     {
-        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        ImGui::SeparatorText(" state ");
 
         // properties of loaded Objects
-        ImGui::SeparatorText("");
-        if(ImGui::TreeNode("Objects")) {
+        if (ImGui::CollapsingHeader("Objects")) {
             int i = 0;
-            for (auto it = loadedObjects.begin(); it != loadedObjects.end(); ++it, ++i)
-            {
+            for (auto it = loadedObjects.begin(); it != loadedObjects.end(); ++it, ++i) {
                 auto& object = *it;
-                ImGui::PushID(i);
+                ImGui::PushID(("Objects_" + std::to_string(i)).c_str());
 
-                if(ImGui::TreeNode(("Object " + std::to_string(i)).c_str())) {
-                    if (ImGui::Button("Delete")) 
-                        objectsToDelete.push_back(it);
-                        
-                    // Editable name field with unique ID
-                    char nameBuffer[256];
-                    strncpy(nameBuffer, object.name.c_str(), sizeof(nameBuffer));
-                    if (ImGui::InputText("##NameInput", nameBuffer, sizeof(nameBuffer))) 
-                    {
-                        object.name = nameBuffer;
-                    }
-                    ImGui::SameLine();
-                    ImGui::Text("Name");
+                // Get starting position for this row
+                const float row_start_x = ImGui::GetCursorPosX();
+                
+                // TreeNode with standard behavior
+                ImGui::AlignTextToFramePadding();
+                bool isOpen = ImGui::TreeNodeEx("##object_node", 
+                    ImGuiTreeNodeFlags_SpanAvailWidth | 
+                    ImGuiTreeNodeFlags_AllowItemOverlap);
+                
+                // Name input (fixed position relative to row start)
+                ImGui::SameLine(row_start_x + ImGui::GetTreeNodeToLabelSpacing());
+                ImGui::SetNextItemWidth(120);
+                char nameBuffer[256];
+                strncpy(nameBuffer, object.name.c_str(), sizeof(nameBuffer));
+                if (ImGui::InputText("##NameEdit", nameBuffer, sizeof(nameBuffer))) {
+                    object.name = nameBuffer;
+                }
 
+                // Delete button (fixed position relative to window edge)
+                ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 25);
+                if (ImGui::Button("X##CloseObject", ImVec2(25, ImGui::GetFrameHeight()))) {
+                    objectsToDelete.push_back(it);
+                }
+
+                // Contents when expanded
+                if (isOpen) {
                     float positionArray[3] = {object.position.x, object.position.y, object.position.z};
                     if (ImGui::InputFloat3("Position", positionArray)) {
                         object.position.x = positionArray[0];
@@ -2195,48 +2205,53 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                     }
                     
                     ImGui::SliderFloat("Transparency", &object.model.transparency, 0.0f, 1.0f);
-                
-                    ImGui::TreePop();
+
+                    ImGui::TreePop(); // This must be called for each TreeNodeEx
                 }
                 ImGui::PopID();
             }
-            ImGui::TreePop();
-        }
-        
+        }        
         // properties of loaded Lines
-        ImGui::SeparatorText("");
-        if(ImGui::TreeNode("Lines")) {
+        if(ImGui::CollapsingHeader("Lines")) {
             int i = 0;
-            for (auto it = loadedLines.begin(); it != loadedLines.end(); ++it, ++i)
-            {
+            for (auto it = loadedLines.begin(); it != loadedLines.end(); ++it, ++i) {
                 auto& line = *it;
-                ImGui::PushID(i);
+                ImGui::PushID(("Lines_" + std::to_string(i)).c_str());
 
-                if(ImGui::TreeNode(("Line " + std::to_string(i)).c_str())) {
-                    if (ImGui::Button("Delete")) 
-                        linesToDelete.push_back(it);
-                    
-                    // Editable name field with unique ID
-                    char nameBuffer[256];
-                    strncpy(nameBuffer, line.name.c_str(), sizeof(nameBuffer));
-                    if (ImGui::InputText("##NameInput", nameBuffer, sizeof(nameBuffer))) 
-                    {
-                        line.name = nameBuffer;
-                    }
-                    ImGui::SameLine();
-                    ImGui::Text("Name");
+                // Get starting position for this row
+                const float row_start_x = ImGui::GetCursorPosX();
+                
+                // TreeNode with standard behavior
+                ImGui::AlignTextToFramePadding();
+                bool isOpen = ImGui::TreeNodeEx("##object_node", 
+                    ImGuiTreeNodeFlags_SpanAvailWidth | 
+                    ImGuiTreeNodeFlags_AllowItemOverlap);
+                
+                // Name input (fixed position relative to row start)
+                ImGui::SameLine(row_start_x + ImGui::GetTreeNodeToLabelSpacing());
+                ImGui::SetNextItemWidth(120);
+                char nameBuffer[256];
+                strncpy(nameBuffer, line.name.c_str(), sizeof(nameBuffer));
+                if (ImGui::InputText("##NameEdit", nameBuffer, sizeof(nameBuffer))) {
+                    line.name = nameBuffer;
+                }
 
+                // Delete button (fixed position relative to window edge)
+                ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 25);
+                if (ImGui::Button("X##CloseObject", ImVec2(25, ImGui::GetFrameHeight()))) {
+                    linesToDelete.push_back(it);
+                }
+
+                if (isOpen) {
                     ImGui::SliderFloat("Transparency", &line.transparency, 0.0f, 1.0f);
                     ImGui::SliderFloat("Line Width", &line.lineWidth, 0.0f, 10.0f);
                     ImGui::TreePop();
                 }
                 ImGui::PopID();
             }
-            ImGui::TreePop();
         }
 
-        ImGui::SeparatorText("");
-        ImGui::Text("Generate Objects");
+        ImGui::SeparatorText(" operations ");
         if(ImGui::Button("Generate Cube")) {
             createObject(
                     "../../resources/assets/cube.obj",
@@ -2244,6 +2259,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                     core::Vector3<double>{ 0.f, 5.f, 0.f }  // position
                 );
         }
+        ImGui::SameLine();
         if(ImGui::Button("Generate Plane")) {
             createObject(
                     "../../resources/assets/plane.obj",

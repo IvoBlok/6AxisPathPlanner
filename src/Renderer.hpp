@@ -46,6 +46,7 @@ Note that all objects/lines/points class instances in the scene live in the Rend
 #include <map>
 #include <unordered_map>
 #include <filesystem>
+#include <functional>
 
 #include "core/vector2.hpp"
 #include "core/vector3.hpp"
@@ -172,6 +173,8 @@ private:
 	};
 
 public:
+	std::string name;
+
     glm::vec3 position;
     glm::vec3 scale;
 	glm::vec3 yawPitchRoll;
@@ -205,6 +208,8 @@ the polyline can undergo modifications. To update the rendering representation o
 */
 class LoadedLine {
 public:
+	std::string name;
+
 	float transparency;
 	float lineWidth;
 	
@@ -250,6 +255,11 @@ public:
     glm::vec3 cameraRight;
     std::chrono::microseconds deltaTime;
 
+	
+	std::list<LoadedObject> loadedObjects;
+	std::list<LoadedLine> loadedLines;
+
+
 	VulkanRenderEngine();
 
     void initialize();
@@ -263,6 +273,8 @@ public:
 	LoadedLine& createLine(core::Polyline2D<double>& polyline, core::Plane<double> plane, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
 
 	void handleUserInput();
+
+	void registerGuiModule(std::function<void(VulkanRenderEngine&)> callback);
 
 private:
 	VkInstance instance;
@@ -290,9 +302,6 @@ private:
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
-	std::list<LoadedObject> loadedObjects;
-	std::list<LoadedLine> loadedLines;
-
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void*> uniformBuffersMapped;
@@ -307,6 +316,8 @@ private:
 	std::chrono::time_point<std::chrono::high_resolution_clock> oldCurrentTime;
 
 	bool frameBufferResized;
+
+	std::vector<std::function<void(VulkanRenderEngine&)>> guiCallbacks;
 
 	struct QueueFamilyIndices {
 		std::optional<uint32_t> graphicsFamily;

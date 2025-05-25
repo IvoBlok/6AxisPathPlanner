@@ -560,6 +560,7 @@ void LoadedObject::LoadedModel::createIndexBuffer() {
 // LoadedObject method definitions
 // =====================================================
 // public
+
 core::ObjectShape& LoadedObject::updateObjectShape() {
     glm::mat4 transformationMatrix = getTransformationMatrix();
 
@@ -1092,6 +1093,10 @@ void VulkanRenderEngine::handleUserInput() {
         cameraRight = glm::normalize(glm::rotate(cameraRight, -timeStep * DEFAULT_CAMERA_ROTATE_VELOCITY, worldUp));
         cameraFront = glm::normalize(glm::cross(cameraUp, cameraRight));
     }
+}
+
+void VulkanRenderEngine::registerGuiModule(std::function<void(VulkanRenderEngine&)> callback) {
+    guiCallbacks.emplace_back(std::move(callback));
 }
 
 // private 
@@ -2137,6 +2142,16 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 if(ImGui::TreeNode(("Object " + std::to_string(i)).c_str())) {
                     if (ImGui::Button("Delete")) 
                         objectsToDelete.push_back(it);
+                        
+                    // Editable name field with unique ID
+                    char nameBuffer[256];
+                    strncpy(nameBuffer, object.name.c_str(), sizeof(nameBuffer));
+                    if (ImGui::InputText("##NameInput", nameBuffer, sizeof(nameBuffer))) 
+                    {
+                        object.name = nameBuffer;
+                    }
+                    ImGui::SameLine();
+                    ImGui::Text("Name");
 
                     float positionArray[3] = {object.position.x, object.position.y, object.position.z};
                     if (ImGui::InputFloat3("Position", positionArray)) {
@@ -2197,10 +2212,20 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 auto& line = *it;
                 ImGui::PushID(i);
 
-                if(ImGui::TreeNode(("Object " + std::to_string(i)).c_str())) {
+                if(ImGui::TreeNode(("Line " + std::to_string(i)).c_str())) {
                     if (ImGui::Button("Delete")) 
                         linesToDelete.push_back(it);
                     
+                    // Editable name field with unique ID
+                    char nameBuffer[256];
+                    strncpy(nameBuffer, line.name.c_str(), sizeof(nameBuffer));
+                    if (ImGui::InputText("##NameInput", nameBuffer, sizeof(nameBuffer))) 
+                    {
+                        line.name = nameBuffer;
+                    }
+                    ImGui::SameLine();
+                    ImGui::Text("Name");
+
                     ImGui::SliderFloat("Transparency", &line.transparency, 0.0f, 1.0f);
                     ImGui::SliderFloat("Line Width", &line.lineWidth, 0.0f, 10.0f);
                     ImGui::TreePop();
@@ -2233,6 +2258,11 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
         float availableHeight = ImGui::GetIO().DisplaySize.y - windowPos.y;
         if (windowSize.y != availableHeight)
             ImGui::SetWindowSize(ImVec2(windowSize.x, availableHeight));
+    
+        // add the GUI for all registered modules (i.e. stuff like MeshIntersect, PolylineOffsets, etc)
+        for (auto& drawGUI : guiCallbacks) {
+            drawGUI(*this);
+        }
     }
 
     ImGui::End();

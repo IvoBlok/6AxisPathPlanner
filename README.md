@@ -7,10 +7,9 @@ Currently this project generates 'paths', in the sense that the location of the 
 
  - Fully support varying color along polylines
  - Fix transparency; Objects are only transparent relative to each other if their generation order is correct. Transparency also doesn't fully work perfect when you can see multiple surfaces of the same object through each other
- - Rewrite / Check the path planning code and general project structure as to prepare for future expansion
  - Add non-planar pathing
  - Add robot + tool visualization
  - Add movement animation
  - Add inverse kinematics and collision control to validate paths
 
-To keep note, one 'future works' idea might be to integrate collisions into the path planning; A given path potentially has 1+ extra degrees of freedom to play with in terms of orientation. By defining some theoretical function that is maximized if a collision occurs, we might be able to apply a minimization problem to get the optimal values for the free degrees of freedom to avoid collision / exceeding the joint limits.
+To keep note, one 'future works' idea might be to integrate collisions into the path planning; A given path potentially has 1+ extra degrees of freedom to play with in terms of orientation for a 6/7D robotarm. By defining some theoretical function that is maximized if a collision occurs, we might be able to apply a minimization problem to get the optimal values for the free degrees of freedom to avoid collision / exceeding the joint limits.

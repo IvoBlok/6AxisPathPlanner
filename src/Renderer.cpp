@@ -1623,7 +1623,7 @@ void VulkanRenderEngine::createTriangleBasedPipeline() {
 
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.cullMode = VK_CULL_MODE_NONE; // required so that planes render from both sides
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
     rasterizer.depthBiasEnable = VK_FALSE;
@@ -2201,6 +2201,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
 
                 // Contents when expanded
                 if (isOpen) {
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Faces: %d", object.model.vertices.size(), object.model.indices.size() / 3);
                     float positionArray[3] = {object.position.x, object.position.y, object.position.z};
                     if (ImGui::InputFloat3("Position", positionArray)) {
                         object.position.x = positionArray[0];
@@ -2290,6 +2291,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 }
 
                 if (isOpen) {
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Closed: %d", line.getPolyline().vertexes().size(), line.getPolyline().isClosed());
                     ImGui::SliderFloat("Transparency", &line.transparency, 0.0f, 1.0f);
                     ImGui::SliderFloat("Line Width", &line.lineWidth, 0.0f, 10.0f);
                     ImGui::TreePop();

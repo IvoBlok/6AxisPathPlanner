@@ -616,8 +616,8 @@ void LoadedObject::load(const char* modelPath, const char* texturePath, core::Ve
 void LoadedObject::load(const char* modelPath, core::Vector3<double> objectColor, core::Vector3<double> basePosition, core::Vector3<double> baseScale, glm::mat4 baseRotationMatrix, float modelTransparency) {
     model.load(modelPath, modelTransparency);
 
-    color = glm::vec3{ objectColor.x(), objectColor.y(), objectColor.z() };
     isOneColor = true;
+    color = glm::vec3{ objectColor.x(), objectColor.y(), objectColor.z() };
     position = glm::vec3{ basePosition.x(), basePosition.y(), basePosition.z() };
     scale = glm::vec3{ baseScale.x(), baseScale.y(), baseScale.z() };
     rotationMatrix = baseRotationMatrix;
@@ -640,6 +640,9 @@ glm::mat4 LoadedObject::getTransformationMatrix() {
 }
 
 void LoadedObject::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) {
+    if(!renderObj)
+        return;
+
     // get the model matrix
     glm::mat4 transformationMatrix = getTransformationMatrix();
 
@@ -663,6 +666,8 @@ void LoadedObject::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeli
 // =====================================================
 // public
 LoadedLine::LoadedLine() {
+    renderLine = true;
+    name = "line";
     lineWidth = 3.f;
     defaultColor = core::Vector3<double>{ 1.f, 0.f, 0.f };
 }
@@ -693,6 +698,9 @@ void LoadedLine::destroyRenderData() {
 }
 
 void LoadedLine::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) {
+    if (!renderLine)
+        return;
+
     VkBuffer vertexBuffers[] = { vertexBuffer };
     VkDeviceSize offsets[] = { 0 };
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
@@ -2159,8 +2167,17 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                     object.name = nameBuffer;
                 }
 
+                // Calculate positions for right-aligned controls
+                const float checkbox_width = ImGui::GetFrameHeight();
+                const float button_width = 25.0f;
+                const float spacing = ImGui::GetStyle().ItemSpacing.x;
+                const float total_right_width = checkbox_width + button_width + spacing;
+
+                ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - total_right_width);
+                ImGui::Checkbox("##RenderToggle", &object.renderObj);
+
                 // Delete button (fixed position relative to window edge)
-                ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 25);
+                ImGui::SameLine();
                 if (ImGui::Button("X##CloseObject", ImVec2(25, ImGui::GetFrameHeight()))) {
                     objectsToDelete.push_back(it);
                 }
@@ -2240,8 +2257,17 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                     line.name = nameBuffer;
                 }
 
+                // Calculate positions for right-aligned controls
+                const float checkbox_width = ImGui::GetFrameHeight();
+                const float button_width = 25.0f;
+                const float spacing = ImGui::GetStyle().ItemSpacing.x;
+                const float total_right_width = checkbox_width + button_width + spacing;
+
+                ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - total_right_width);
+                ImGui::Checkbox("##RenderToggle", &line.renderLine);
+
                 // Delete button (fixed position relative to window edge)
-                ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 25);
+                ImGui::SameLine();
                 if (ImGui::Button("X##CloseObject", ImVec2(25, ImGui::GetFrameHeight()))) {
                     linesToDelete.push_back(it);
                 }

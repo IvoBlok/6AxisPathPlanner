@@ -6,6 +6,11 @@
 
 namespace toolPath2_5D {
 struct SurfacePass2_5DInfo {
+    SurfacePass2_5DInfo() {
+        safeTraverseHeight = 0.f;
+        toolRadius = 0.f;
+        depthOfCut = 0.f;
+    }
 
     double safeTraverseHeight;
     double toolRadius;
@@ -17,6 +22,11 @@ struct SurfacePass2_5DInfo {
 };
 
 struct FacePass2_5DInfo {
+    FacePass2_5DInfo() {
+        safeTraverseHeight = 0.f;
+        stepOver = 0.f;
+    }
+
     double safeTraverseHeight;
     double stepOver;
 

@@ -173,6 +173,7 @@ private:
 	};
 
 public:
+	bool renderObj;
 	std::string name;
 
     glm::vec3 position;
@@ -208,6 +209,7 @@ the polyline can undergo modifications. To update the rendering representation o
 */
 class LoadedLine {
 public:
+	bool renderLine;
 	std::string name;
 
 	float transparency;

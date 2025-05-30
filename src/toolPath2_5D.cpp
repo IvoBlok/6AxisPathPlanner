@@ -192,7 +192,7 @@ core::Polyline2_5D<double> toolPath2_5D::generateSurfacePass2_5D(SurfacePass2_5D
 			offsetPaths3D.back().push_back(core::Polyline2_5D<double>(offsetPaths.back()[i], slicingPlane));
 	}
 
-	
+
 	// stitch the paths together
 	// ========================================================================================
 	for (size_t i = 0; i < offsetPaths3D.size(); i++)

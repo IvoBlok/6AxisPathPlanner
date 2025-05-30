@@ -27,6 +27,7 @@ private:
     ClearingPass2_5DInfo clearingPassInfo;
 
     void drawFacePass(VulkanRenderEngine& renderer) {
+        ImGui::Indent(15.0f);
         if (ImGui::CollapsingHeader("Face Pass##2_5dToolPath")) {
             auto& objects = renderer.loadedObjects;
 
@@ -45,7 +46,7 @@ private:
             selectedIdx2 = (selectedIdx2 >= 0 && selectedIdx2 < (int)objects.size()) ? selectedIdx2 : -1;
 
             // First dropdown - Plane selection
-            ImGui::PushID("plane_select_group");
+            ImGui::PushID("face_pass_plane_select_group");
             ImGui::Text("Select Plane:");
             const char* preview1 = (selectedIdx1 != -1) ? objectNames[selectedIdx1].c_str() : "-";
             if (ImGui::BeginCombo("##plane_select_combo", preview1)) {
@@ -65,7 +66,7 @@ private:
             ImGui::PopID();
             
             // Second dropdown - Stock selection
-            ImGui::PushID("shape_select_group");
+            ImGui::PushID("face_pass_shape_select_group");
             ImGui::Text("Select Stock:");
             const char* preview2 = (selectedIdx2 != -1) ? objectNames[selectedIdx2].c_str() : "-";
             if (ImGui::BeginCombo("##stock_select_combo", preview2)) {
@@ -88,7 +89,7 @@ private:
             ImGui::InputDouble("Traverse height [mm]##face_pass", &facePassInfo.safeTraverseHeight);
             ImGui::InputDouble("Stepover [mm]##face_pass", &facePassInfo.stepOver);
 
-            if (ImGui::Button("Generate!")) {
+            if (ImGui::Button("Generate!##face_pass")) {
                 if(selectedIdx1 != -1 && selectedIdx2 != -1) {
                     auto planeObj = objects.begin();
                     std::advance(planeObj, selectedIdx1);
@@ -105,9 +106,11 @@ private:
                 }
             }
         }
+        ImGui::Unindent(15.0f);
     }
 
     void drawSurfacePass(VulkanRenderEngine& renderer) {
+        ImGui::Indent(15.0f);
         if (ImGui::CollapsingHeader("Surface Pass##2_5dToolPath")) {
             auto& objects = renderer.loadedObjects;
 
@@ -127,7 +130,7 @@ private:
             selectedIdx3 = (selectedIdx3 >= 0 && selectedIdx3 < (int)objects.size()) ? selectedIdx3 : -1;
 
             // First dropdown - Start Plane selection
-            ImGui::PushID("start_plane_select_group");
+            ImGui::PushID("face_pass_start_plane_select_group");
             ImGui::Text("Select Start Plane:");
             const char* preview1 = (selectedIdx1 != -1) ? objectNames[selectedIdx1].c_str() : "-";
             if (ImGui::BeginCombo("##start_plane_select_combo", preview1)) {
@@ -147,7 +150,7 @@ private:
             ImGui::PopID();
 
             // Second dropdown - End Plane selection
-            ImGui::PushID("end_plane_select_group");
+            ImGui::PushID("face_pass_end_plane_select_group");
             ImGui::Text("Select End Plane:");
             const char* preview2 = (selectedIdx2 != -1) ? objectNames[selectedIdx2].c_str() : "-";
             if (ImGui::BeginCombo("##end_plane_select_combo", preview2)) {
@@ -167,7 +170,7 @@ private:
             ImGui::PopID();
 
             // Third dropdown - Shape selection
-            ImGui::PushID("shape_select_group");
+            ImGui::PushID("face_pass_shape_select_group");
             ImGui::Text("Select Shape:");
             const char* preview3 = (selectedIdx3 != -1) ? objectNames[selectedIdx3].c_str() : "-";
             if (ImGui::BeginCombo("##shape_select_combo", preview3)) {
@@ -191,7 +194,7 @@ private:
             ImGui::InputDouble("Tool radius [mm]##surface_pass", &surfacePassInfo.toolRadius);
             ImGui::InputDouble("Depth of Cut [mm]##surface_pass", &surfacePassInfo.depthOfCut);
 
-            if (ImGui::Button("Generate!")) {
+            if (ImGui::Button("Generate!##surface_pass")) {
                 if(selectedIdx1 != -1 && selectedIdx2 != -1 && selectedIdx3 != -1) {
                     auto startPlaneObj = objects.begin();
                     std::advance(startPlaneObj, selectedIdx1);
@@ -211,10 +214,11 @@ private:
                 }
             }
         }
+        ImGui::Unindent(15.0f);
     }
 
-
     void drawClearingPass(VulkanRenderEngine& renderer) {
+        ImGui::Indent(15.0f);
         if (ImGui::CollapsingHeader("Clearing Pass##2_5dToolPath")) {
             auto& objects = renderer.loadedObjects;
 
@@ -236,7 +240,7 @@ private:
             selectedIdx4 = (selectedIdx4 >= 0 && selectedIdx4 < (int)objects.size()) ? selectedIdx4 : -1;
 
             // First dropdown - Start Plane selection
-            ImGui::PushID("start_plane_select_group");
+            ImGui::PushID("clearing_pass_start_plane_select_group");
             ImGui::Text("Select Start Plane:");
             const char* preview1 = (selectedIdx1 != -1) ? objectNames[selectedIdx1].c_str() : "-";
             if (ImGui::BeginCombo("##start_plane_select_combo", preview1)) {
@@ -256,7 +260,7 @@ private:
             ImGui::PopID();
 
             // Second dropdown - End Plane selection
-            ImGui::PushID("end_plane_select_group");
+            ImGui::PushID("clearing_pass_end_plane_select_group");
             ImGui::Text("Select End Plane:");
             const char* preview2 = (selectedIdx2 != -1) ? objectNames[selectedIdx2].c_str() : "-";
             if (ImGui::BeginCombo("##end_plane_select_combo", preview2)) {
@@ -276,7 +280,7 @@ private:
             ImGui::PopID();
 
             // Third dropdown - Shape selection
-            ImGui::PushID("shape_select_group");
+            ImGui::PushID("clearing_pass_shape_select_group");
             ImGui::Text("Select Shape:");
             const char* preview3 = (selectedIdx3 != -1) ? objectNames[selectedIdx3].c_str() : "-";
             if (ImGui::BeginCombo("##shape_select_combo", preview3)) {
@@ -296,7 +300,7 @@ private:
             ImGui::PopID();
 
             // Fourth dropdown - Stock selection
-            ImGui::PushID("stock_select_group");
+            ImGui::PushID("clearing_pass_stock_select_group");
             ImGui::Text("Select Stock:");
             const char* preview4 = (selectedIdx4 != -1) ? objectNames[selectedIdx4].c_str() : "-";
             if (ImGui::BeginCombo("##shape_select_combo", preview4)) {
@@ -321,7 +325,7 @@ private:
             ImGui::InputDouble("Depth of Cut [mm]##clearing_pass", &clearingPassInfo.depthOfCut);
             ImGui::InputDouble("Stepover [mm]##clearing_pass", &clearingPassInfo.stepOver);
 
-            if (ImGui::Button("Generate!")) {
+            if (ImGui::Button("Generate!##clearing_pass")) {
                 if(selectedIdx1 != -1 && selectedIdx2 != -1 && selectedIdx3 != -1 && selectedIdx4 != -1) {
                     auto startPlaneObj = objects.begin();
                     std::advance(startPlaneObj, selectedIdx1);
@@ -344,6 +348,7 @@ private:
                 }
             }
         }
+        ImGui::Unindent(15.0f);
     }
 };
 

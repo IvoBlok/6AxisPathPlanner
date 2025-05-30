@@ -4,6 +4,7 @@
 #include "renderer.hpp"
 #include "meshIntersect.hpp"
 
+namespace meshIntersect {
 class MeshIntersectGUI {
 public:
     void drawGUI(VulkanRenderEngine& renderer) {
@@ -76,7 +77,7 @@ public:
                     core::Plane<double> plane = obj1->getPlane();
                     core::ObjectShape& shape = obj2->updateObjectShape();
 
-                    std::vector<core::Polyline2D<double>> meshPlaneIntersect = meshIntersect::getMeshPlaneIntersection(plane, shape);
+                    std::vector<core::Polyline2D<double>> meshPlaneIntersect = getMeshPlaneIntersection(plane, shape);
                     
                     for (auto& curve : meshPlaneIntersect) 
                         renderer.createLine(curve, plane);
@@ -94,5 +95,7 @@ public:
         });
     }
 };
+
+} // namespace meshIntersect
 
 #endif

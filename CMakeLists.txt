@@ -71,6 +71,7 @@ add_executable(robotPathPlanner
     src/main.cpp
     src/renderer.cpp
     src/meshIntersect.cpp
+    src/toolPath2_5D.cpp
     external/stb_image.cpp
     external/tiny_obj_loader.cpp
 )

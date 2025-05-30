@@ -122,6 +122,16 @@ public:
     vertices.insert(vertices.end(), polyline.vertexes().begin(), polyline.vertexes().end());
   }
 
+  void addPolyline2_5D(Polyline2_5D<Real>& polyline) {
+    if(vertices.size() == 0) {
+      insertPolyLine2_5D(polyline);
+    } else {
+      isClosedVal = false;
+
+      vertices.insert(vertices.end(), polyline.vertexes().begin(), polyline.vertexes().end());
+    }
+  }
+
   void movePolyline(Vector3<Real> translation) {
     for (PlineVertex2_5D<Real>& vertex : vertices) {
       vertex.point += translation;
@@ -135,6 +145,10 @@ public:
 
   std::vector<PlineVertex2_5D<Real>>& vertexes() {
     return vertices;
+  }
+
+  bool isEmpty() {
+    return vertices.size() == 0;
   }
 
 private:

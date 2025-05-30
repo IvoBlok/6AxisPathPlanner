@@ -250,35 +250,14 @@ std::vector<core::Polyline2D<double>> getMeshPlaneIntersection(core::Plane<doubl
 			newPaths[i].vertexes().pop_back();
 		}
 	}
-	
-	// go over the parts, and simplify the easy stuff; i.e. remove the very very short elements
-	std::vector<core::Polyline2D<double>> cleanedUpPaths;
-	for (size_t i = 0; i < newPaths.size(); i++)
-	{
-		cleanedUpPaths.push_back(core::Polyline2D<double>{});
-		cleanedUpPaths.back().isClosed() = true;
-
-		// start with the first vertex
-		cleanedUpPaths.back().addVertex(newPaths[i].vertexes()[0]);
-		
-		// only add the points that will result in vertices longer then the minimum length
-		for (size_t j = 1; j < newPaths[i].vertexes().size(); j++)
-		{
-			float vertexLength = core::length(cleanedUpPaths.back().lastVertex().pos() - newPaths[i].vertexes()[j].pos());
-			// any elements smaller then 2 millimeters are pruned
-			if (vertexLength > 0.002f) {
-				cleanedUpPaths.back().vertexes().push_back(newPaths[i].vertexes()[j]);
-			}
-		}
-	}
 
 	// ensure that the result of the intersecting operation is clockwise with respect to the normal of the plane, ensuring that an offset will always go in the expected direction
-	for (auto& path : cleanedUpPaths) {
+	for (auto& path : newPaths) {
 		if (!core::isPathClockwise(path))
 			path.invertDirection();
 	}
 
-	return cleanedUpPaths;
+	return newPaths;
 }
 
 } // namespace meshIntersect

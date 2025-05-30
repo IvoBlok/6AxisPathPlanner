@@ -1,14 +1,17 @@
 #include "renderer.hpp"
 #include "meshIntersectGUI.hpp"
+#include "toolPath2_5DGUI.hpp"
 
 int main() {
 	try {
 		VulkanRenderEngine renderer;
 		renderer.initialize();
 
-		// register meshIntersect Module to be rendered
-		MeshIntersectGUI meshIntersectGui{};
+		meshIntersect::MeshIntersectGUI meshIntersectGui;
 		meshIntersectGui.registerWithRenderer(renderer);
+
+		toolPath2_5D::ToolPath2_5DGUI toolPath2_5DGui;
+		toolPath2_5DGui.registerWithRenderer(renderer);
 
 		// form the actual rendering loop
 		while (!glfwWindowShouldClose(renderer.window)) {
@@ -20,7 +23,6 @@ int main() {
 		std::cerr << e.what() << std::endl;
 		return EXIT_FAILURE;
 	}
-
 
 	return 0;
 }

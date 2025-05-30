@@ -10,28 +10,17 @@ layout(set = 1, binding = 0) uniform sampler2D texSampler;
 
 layout(location = 0) out vec4 outColor;
 
-
 // Hardcoded sun direction (normalized, coming from top-right)
 const vec3 sunDirection = normalize(vec3(0.5, 1.0, 0.5));
 
 void main() {
-    vec3 baseColor;
-    
-    if(isOneColor > 0.5) {
-        baseColor = fragColor;
-    } else {
-        baseColor = vec3(texture(texSampler, fragTexCoord));
-    }
-    
-    // Simple diffuse lighting
+    if (transparency < 0.01) discard;
+
+    vec3 baseColor = (isOneColor > 0.5) ? fragColor : vec3(texture(texSampler, fragTexCoord));
     float diffuse = max(dot(normalize(fragNormal), sunDirection), 0.0);
+    vec3 lighting = vec3(0.3) + vec3(0.7) * diffuse; // 30% ambient light
     
-    // Ambient + diffuse lighting
-    vec3 ambient = vec3(0.3);  // 30% ambient light
-    vec3 lighting = ambient + vec3(0.7) * diffuse;  // 70% diffuse
-    
-    // Apply lighting to color
-    vec3 finalColor = baseColor * lighting;
-    
-    outColor = vec4(finalColor, transparency);
+    outColor = vec4(baseColor * lighting, transparency);
+
+    gl_FragDepth = gl_FragCoord.z;
 }

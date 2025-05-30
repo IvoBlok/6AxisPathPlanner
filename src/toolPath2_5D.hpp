@@ -5,6 +5,25 @@
 #include "core/offsets/polylineOffsetIslands.hpp"
 
 namespace toolPath2_5D {
+struct ClearingPass2_5DInfo {
+    ClearingPass2_5DInfo() {
+        safeTraverseHeight = 0.f;
+        stepOver = 0.f;
+        toolRadius = 0.f;
+        depthOfCut = 0.f;
+    }
+
+    double safeTraverseHeight;
+    double stepOver;
+    double toolRadius;
+    double depthOfCut;
+
+    core::ObjectShape shape;
+    core::ObjectShape stock;
+    core::Plane<double> startPlane;
+    core::Plane<double> endPlane;
+};
+
 struct SurfacePass2_5DInfo {
     SurfacePass2_5DInfo() {
         safeTraverseHeight = 0.f;
@@ -40,7 +59,7 @@ std::vector<core::Polyline2D<double>> filterOutPocketIntersects(std::vector<core
 // this only applies to situations where the milling needs to happen from the outside of the stock up to some given curve. For pocket milling use some other function
 // 'planeStartingHeight' is defined along the length of 'planeNormal', where the start of planeNormal is the zero point of the stock given in 'millingInfo'
 // 'planeEndingHeight' is defined along the length of 'planeNormal', where the start of planeNormal is the zero point of the stock given in 'millingInfo'
-// core::Polyline2_5D<double> generate2_5DClearingPass(safeTraverseHeight& info, core::Vector3<double> planeNormal, double planeStartingHeight, double planeEndingHeight);
+core::Polyline2_5D<double> generateClearingPass2_5D(ClearingPass2_5DInfo& info);
 
 core::Polyline2_5D<double> generateSurfacePass2_5D(SurfacePass2_5DInfo& info);
 

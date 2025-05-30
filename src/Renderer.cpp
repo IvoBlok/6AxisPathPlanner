@@ -887,7 +887,6 @@ void VulkanRenderEngine::drawFrame() {
 
     // Update the uniform buffers
     updateUniformBuffer(currentFrame);
-    handleUserInput();
 
     recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
@@ -933,6 +932,11 @@ void VulkanRenderEngine::drawFrame() {
     else if (result != VK_SUCCESS) {
         throw std::runtime_error("failed to present swap chain image!");
     }
+
+    // Only handle inputs if the user isn't using the GUI
+    if (!ImGui::GetIO().WantCaptureKeyboard)
+        handleUserInput();
+
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 

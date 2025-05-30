@@ -191,6 +191,8 @@ public:
 	// the renderer requires the model/mesh data to be in a certain format, but that's not a great format to apply math to. So 'objectShape' is set up for easy data manipulation.
 	core::ObjectShape objectShape;
 
+	LoadedObject();
+
 	core::ObjectShape& updateObjectShape();
 	core::ObjectShape& getObjectShape();
 

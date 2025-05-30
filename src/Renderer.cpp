@@ -560,6 +560,23 @@ void LoadedObject::LoadedModel::createIndexBuffer() {
 // LoadedObject method definitions
 // =====================================================
 // public
+LoadedObject::LoadedObject() {
+    renderObj = true;
+    name = "obj";
+
+    position = glm::vec3{0.f};
+    scale = glm::vec3{1.f};
+    yawPitchRoll = glm::vec3{0.f};
+    rotationMatrix = glm::mat4{1.f};
+
+    bool isOneColor = true;
+    color = glm::vec3{0.f};
+
+    model = LoadedModel{};
+    texture = LoadedTexture{};
+
+    objectShape = core::ObjectShape{};
+}
 
 core::ObjectShape& LoadedObject::updateObjectShape() {
     glm::mat4 transformationMatrix = getTransformationMatrix();
@@ -2283,19 +2300,23 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
 
         ImGui::SeparatorText(" operations ");
         if(ImGui::Button("Generate Cube")) {
-            createObject(
+            LoadedObject& object = createObject(
                     "../../resources/assets/cube.obj",
                     core::Vector3<double>{ 0.f, 0.f, 1.f }, // color
                     core::Vector3<double>{ 0.f, 5.f, 0.f }  // position
                 );
+            
+            object.name = "cube";
         }
         ImGui::SameLine();
         if(ImGui::Button("Generate Plane")) {
-            createObject(
+            LoadedObject& object = createObject(
                     "../../resources/assets/plane.obj",
                     core::Vector3<double>{ 0.f, 0.f, 1.f }, // color
                     core::Vector3<double>{ 0.f, 0.f, 0.f }  // position
                 );
+            
+            object.name = "plane";
         }
         
         // ensure that the window fills the entire height

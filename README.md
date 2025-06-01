@@ -87,6 +87,8 @@ For file importing:
 ## Usage
 
 This repository contains the path planner, which can be compiled using the instructions above. It also contains, within the resources folder, the code that is running on the Kuka robot controller and on the external computer sending the instructions. See the overview below for their relations. 
+![test](screenshots/SystemOverview.png)
+
 
 _For more examples, please refer to the [Documentation](https://example.com)_
 
@@ -114,3 +116,8 @@ You're ofcourse free to use this code in any noncommercial way you want, though 
 Ivo Blok - ivoblokdoorn@gmail.com
 
 Project Link: [https://github.com/IvoBlok/6AxisPathPlanner](https://github.com/IvoBlok/6AxisPathPlanner)
+
+
+<!-- MARKDOWN LINKS & IMAGES -->
+<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
+[usage-overview]: screenshots/SystemOverview.png

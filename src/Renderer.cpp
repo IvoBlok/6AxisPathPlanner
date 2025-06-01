@@ -2314,7 +2314,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
         if(ImGui::Button("Generate Plane")) {
             LoadedObject& object = createObject(
                     "../../resources/assets/plane.obj",
-                    core::Vector3<double>{ 0.f, 0.f, 1.f }, // color
+                    core::Vector3<double>{ 1.f, 0.9f, 0.f }, // color
                     core::Vector3<double>{ 0.f, 0.f, 0.f }  // position
                 );
             
@@ -2328,6 +2328,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
         if (windowSize.y != availableHeight)
             ImGui::SetWindowSize(ImVec2(windowSize.x, availableHeight));
     
+        ImGui::SeparatorText(" functions ");
         // add the GUI for all registered modules (i.e. stuff like MeshIntersect, PolylineOffsets, etc)
         for (auto& drawGUI : guiCallbacks) {
             drawGUI(*this);

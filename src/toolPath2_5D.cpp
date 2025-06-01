@@ -1,10 +1,10 @@
 #include "toolPath2_5D.hpp"
 
-std::vector<core::Polyline2D<double>> toolPath2_5D::filterOutPocketIntersects(std::vector<core::Polyline2D<double>>& intersectPaths, core::Plane<double> slicingPlane) {
+std::vector<core::Polyline2D<double>> toolPath2_5D::filterOutPocketIntersects(std::vector<core::Polyline2D<double>>& shapeIntersects, core::Plane<double> slicingPlane) {
 	std::vector<core::Polyline2D<double>> nonPocketIntersectPaths;
 
 	// filter out all pocket intersects
-	for (core::Polyline2D<double>& path : intersectPaths) {
+	for (core::Polyline2D<double>& path : shapeIntersects) {
 
 		// get a non-zero normal from the path
 		for (const core::PlineVertex2D<double>& vertex : path.vertexes()) {
@@ -60,6 +60,7 @@ core::Polyline2_5D<double> toolPath2_5D::generateClearingPass2_5D(ClearingPass2_
 
 	// calculate perpendicular distance between start- and endplanes.
 	double remainingHeight = core::dot(info.startPlane.origin - info.endPlane.origin, planeNormal);
+	
 	while (remainingHeight > (double)0.f) {
 		// check if this is the last plane of the path, and update the remaining height variable accordingly
 		remainingHeight = remainingHeight - info.depthOfCut * 0.001f;
@@ -81,13 +82,13 @@ core::Polyline2_5D<double> toolPath2_5D::generateClearingPass2_5D(ClearingPass2_
 		core::Polyline2D<double> boundaryPath = boundaryPaths[0];
 
 		// slice the desired object
-		std::vector<core::Polyline2D<double>> intersectPaths = meshIntersect::getMeshPlaneIntersection(slicingPlane, info.shape);
+		std::vector<core::Polyline2D<double>> shapeIntersects = meshIntersect::getMeshPlaneIntersection(slicingPlane, info.shape);
 		
 		// filter out all pocket intersects
-		intersectPaths = filterOutPocketIntersects(intersectPaths, slicingPlane);
+		shapeIntersects = filterOutPocketIntersects(shapeIntersects, slicingPlane);
 
 		// if this is the closest pass, do it with an offset of the radius of the cutting tool, since this is the pass that needs to closely match the actual desiredPath
-		std::vector<core::Polyline2D<double>> finalPass = core::parallelOffsetToClosedLoops(intersectPaths, info.toolRadius * 0.001f);
+		std::vector<core::Polyline2D<double>> finalPass = core::parallelOffsetToClosedLoops(shapeIntersects, info.toolRadius * 0.001f);
 
 		// add a new entree for this layer of the 2.5D pass, and initialize it with the boundary path, since the outside edge is the first bit of material that should be removed
 		offsetPaths.push_back(std::vector<core::Polyline2D<double>>{boundaryPath});
@@ -181,13 +182,13 @@ core::Polyline2_5D<double> toolPath2_5D::generateSurfacePass2_5D(SurfacePass2_5D
 		slicingPlane = core::Plane<double>(info.endPlane.origin + remainingHeight * planeNormal, planeNormal);
 
 		// slice the desired object
-		std::vector<core::Polyline2D<double>> intersectPaths = meshIntersect::getMeshPlaneIntersection(slicingPlane, info.shape);
+		std::vector<core::Polyline2D<double>> shapeIntersects = meshIntersect::getMeshPlaneIntersection(slicingPlane, info.shape);
 
 		// filter out all pocket intersects
-		intersectPaths = filterOutPocketIntersects(intersectPaths, slicingPlane);
+		shapeIntersects = filterOutPocketIntersects(shapeIntersects, slicingPlane);
 
 		// if this is the closest pass, do it with an offset of the radius of the cutting tool, since this is the pass that needs to closely match the actual desiredPath
-		std::vector<core::Polyline2D<double>> finalPass = core::parallelOffsetToClosedLoops(intersectPaths, info.toolRadius * 0.001f);
+		std::vector<core::Polyline2D<double>> finalPass = core::parallelOffsetToClosedLoops(shapeIntersects, info.toolRadius * 0.001f);
 
 		// add a new entree for this layer of the 2.5D pass, and initialize it with the boundary path, since the outside edge is the first bit of material that should be removed
 		offsetPaths.push_back(finalPass);

@@ -1,19 +1,3 @@
-Project to both generate the paths and send the instructions for manufacturing arbitrary foam shapes with my KR125 KRC1 6 axis robotic arm. 
-
-Since vulkan wasn't the focus, (the path planning and comms are), the base code for it is straight up ripped from vulkan-tutorial.com and extension upon this by the YT channel Mori TM. Of course further additions / modifications have been made to support the requirements I have for this project. You're ofcourse free to use this code in any noncommercial way you want, though crediting the sources I did is probably appropriate.
-The mesh-intersect is mostly a copy of https://github.com/intents-software/mesh-plane-intersection/tree/master with modifications and additions made to both get it actually running and optimize it for my application.
-
-Currently this project generates 'paths', in the sense that the location of the cutter is exported. No orientation or joint angles are exported/checked. Going forward I want to work on:
-
- - Fully support varying color along polylines
- - Fix transparency; Objects are only transparent relative to each other if their generation order is correct. Transparency also doesn't fully work perfect when you can see multiple surfaces of the same object through each other
- - Add non-planar pathing
- - Add robot + tool visualization
- - Add movement animation
- - Add inverse kinematics and collision control to validate paths
-
-To keep note, one 'future works' idea might be to integrate collisions into the path planning; A given path potentially has 1+ extra degrees of freedom to play with in terms of orientation for a 6/7D robotarm. By defining some theoretical function that is maximized if a collision occurs, we might be able to apply a minimization problem to get the optimal values for the free degrees of freedom to avoid collision / exceeding the joint limits.
-
 <!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
 <a id="readme-top"></a>
 <!--
@@ -27,20 +11,13 @@ To keep note, one 'future works' idea might be to integrate collisions into the 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+This project is concerned with calculation of 6+ axis toolpaths for large robotarms. The original aim was to mill large foam molds with a KR125. This repository contains separate code for the pathplanning, robot controller and external PC. It is mostly set up for my specific situtation, i.e. an (old) KRC1 controller, KR125 arm, used for milling mesh-based shapes. See below for some example outputs.
 
-Here's a blank template to get started. To avoid retyping too much info, do a search and replace with your text editor for the following: `github_username`, `repo_name`, `twitter_handle`, `linkedin_username`, `email_client`, `email`, `project_title`, `project_description`, `project_license`
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
+![cubeTest1](screenshots/cubeTestShapeOrientation.png)
+![cubeTest2](screenshots/cubeTestPlaneOrientation.png)
 
 <!-- GETTING STARTED -->
 ## Getting Started
-
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
-
 ### Dependencies
 
 Though CMake should handle (most) dependencies, for the sake of completeness here are the external sources that are used. 
@@ -55,6 +32,10 @@ For the graphics:
 For file importing:
 * stbImage
 * tinyObjLoader
+
+For path planning:
+* https://github.com/intents-software/mesh-plane-intersection/tree/master
+* https://github.com/jbuckmccready/CavalierContours
 
 ### Installation
 
@@ -87,21 +68,28 @@ For file importing:
 ## Usage
 
 This repository contains the path planner, which can be compiled using the instructions above. It also contains, within the resources folder, the code that is running on the Kuka robot controller and on the external computer sending the instructions. See the overview below for their relations. 
-![test](screenshots/SystemOverview.png)
+![systemOverview](screenshots/SystemOverview.png)
+
+Use the 6AxisPathPlanner executable to create your toolpaths. Then export these paths to a PCode (personal dumb version of GCode) .txt file. Transfer this file to the machine that will run PCodeSender. This machine is connected to the KRC1 controller by a 'standard' serial connection. The rather obscure 3964R serial protocol is used, due to the limited support of the controller. The controller requires some wacky settings to be modified to accept the communication. See the (pirated) controller documentation for this. 
+
+Start PCodeSender with the supplied PCode text file, which awaits untill the controller requests move instructions. Then start the KRLExternalControl on the robot. Both programs should exit when the last instructions have been sent/moved.
+
+<!-- TO DO -->
+## To Do
+
+- [ ] Fully support varying color along polylines
+- [ ] Add full 3D polylines
+- [ ] Fix transparency
+- [ ] Add non-planar pathing
+- [ ] Add robot + tool visualization
+- [ ] Add movement animation
+- [ ] Add inverse kinematics and collision control for path validation
 
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+<!-- IDEAS -->
+## Ideas
 
-
-<!-- ROADMAP -->
-## Roadmap
-
-- [ ] Feature 1
-- [ ] Feature 2
-- [ ] Feature 3
-    - [ ] Nested Feature
-
-See the [open issues](https://github.com/github_username/repo_name/issues) for a full list of proposed features (and known issues).
+To keep note, one 'future works' idea might be to integrate collisions into the path planning; A given path potentially has 1+ extra degrees of freedom to play with in terms of orientation for a 6/7D robotarm. By defining some theoretical function that is maximized if a collision occurs, we might be able to apply a minimization problem to get the optimal values for the free degrees of freedom to avoid collision / exceeding the joint limits.
 
 
 <!-- LICENSE -->
@@ -116,8 +104,3 @@ You're ofcourse free to use this code in any noncommercial way you want, though 
 Ivo Blok - ivoblokdoorn@gmail.com
 
 Project Link: [https://github.com/IvoBlok/6AxisPathPlanner](https://github.com/IvoBlok/6AxisPathPlanner)
-
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[usage-overview]: screenshots/SystemOverview.png

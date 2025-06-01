@@ -1,17 +1,106 @@
-Project to both generate the paths and send the instructions for manufacturing arbitrary foam shapes with my KR125 KRC1 6 axis robotic arm. 
-Vulkan rendering used to show a preview of what the paths will be like for debugging.
+<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
+<a id="readme-top"></a>
+<!--
+*** Thanks for checking out the Best-README-Template. If you have a suggestion
+*** that would make this better, please fork the repo and create a pull request
+*** or simply open an issue with the tag "enhancement".
+*** Don't forget to give the project a star!
+*** Thanks again! Now go create something AMAZING! :D
+-->
 
-Since vulkan wasn't the focus, (the path planning and comms are), the base code for it is straight up ripped from vulkan-tutorial.com and extension upon this by the YT channel Mori TM. Of course extensions have been made to support the requirements I have for this project. You're ofcourse free to use this code in any noncommercial way you want, though crediting the sources I did is probably appropriate.
-The Slicer.h is mostly a copy of https://github.com/intents-software/mesh-plane-intersection/tree/master with modifications and additions made to both get it actually running and optimize it for my application.
+<!-- ABOUT THE PROJECT -->
+## About The Project
 
-personal TODOs for this project:
- - Find a fix for the edgecase for OffsetCurve where: 
-	* there are two line segments after each other in the input curve
-	* there is a decently small angle between these two segments, and the two segments are concave
-	* the untrimmed offsets of these two segments are far enough away
-   This results in the untrimmed offset of one being too close to the input polyline, but it doesn't intersect with the other offset, since it is far away. The connecting lines/arcs that fill the gaps won't collide, making no self-intersections, thus it won't be removed for being too close to the input curve.
-   The same can happen theoretically happen with a line segment in between two arcs, but the web example shows that apparently the gap filling chooses the opposite point, forcing there to be a self-intersect.
+This project is concerned with calculation of 6+ axis toolpaths for large robotarms. The original aim was to mill large foam molds with a KR125. This repository contains separate code for the pathplanning, robot controller and external PC. It is mostly set up for my specific situtation, i.e. an (old) KRC1 controller, KR125 arm, used for milling mesh-based shapes. See below for some example outputs.
 
- - Add simplification/smoothing of polygonal curves, see this page: https://www.cosy.sbg.ac.at/~held/projects/apx/apx.html for their solution, which seems very applicable, though ofcourse also complicated to implement
+![cubeTest1](screenshots/cubeTestShapeOrientation.png)
+![cubeTest2](screenshots/cubeTestPlaneOrientation.png)
 
- - Add a milling path mode where it follows the surface orthogonally, so the resulting surface can be semi-smooth instead of stepwise
+<!-- GETTING STARTED -->
+## Getting Started
+### Dependencies
+
+Though CMake should handle (most) dependencies, for the sake of completeness here are the external sources that are used. 
+
+For the graphics:
+* Vulkan
+* glfw
+* glm
+* imgui
+* implot
+
+For file importing:
+* stbImage
+* tinyObjLoader
+
+For path planning:
+* https://github.com/intents-software/mesh-plane-intersection/tree/master
+* https://github.com/jbuckmccready/CavalierContours
+
+### Installation
+
+1. Clone the repository.
+   ```sh
+   git clone https://github.com/IvoBlok/6AxisPathPlanner.git
+   ```
+2. Create a build directory.
+   ```sh
+   cd 6AxisPathPlanner
+   mkdir build
+   ```
+3. Compile the path planner using your prefered compiler.
+   ```sh
+   cd build
+   cmake ../
+   cmake --build .
+   ```
+   The resulting executable is located in `build/Debug/`.
+   
+4. Compile the PCodeSender using g++ (on some linux variant).
+   ```sh
+   cd resources
+   g++ -g -o PCodeSender PCodeSender.cpp
+   ```
+5. Transfer `KRLExternalControl.src` to the robot controller. Either by copying it line by line (safest), inserting some external media into the controller, or removing the primary harddrive and copying the file over in some external system (risky). The controller itself compiles the KRL code when needed. 
+
+
+<!-- USAGE EXAMPLES -->
+## Usage
+
+This repository contains the path planner, which can be compiled using the instructions above. It also contains, within the resources folder, the code that is running on the Kuka robot controller and on the external computer sending the instructions. See the overview below for their relations. 
+![systemOverview](screenshots/SystemOverview.png)
+
+Use the 6AxisPathPlanner executable to create your toolpaths. Then export these paths to a PCode (personal dumb version of GCode) .txt file. Transfer this file to the machine that will run PCodeSender. This machine is connected to the KRC1 controller by a 'standard' serial connection. The rather obscure 3964R serial protocol is used, due to the limited support of the controller. The controller requires some wacky settings to be modified to accept the communication. See the (pirated) controller documentation for this. 
+
+Start PCodeSender with the supplied PCode text file, which awaits untill the controller requests move instructions. Then start the KRLExternalControl on the robot. Both programs should exit when the last instructions have been sent/moved.
+
+<!-- TO DO -->
+## To Do
+
+- [ ] Fully support varying color along polylines
+- [ ] Add full 3D polylines
+- [ ] Fix transparency
+- [ ] Add non-planar pathing
+- [ ] Add robot + tool visualization
+- [ ] Add movement animation
+- [ ] Add inverse kinematics and collision control for path validation
+
+
+<!-- IDEAS -->
+## Ideas
+
+To keep note, one 'future works' idea might be to integrate collisions into the path planning; A given path potentially has 1+ extra degrees of freedom to play with in terms of orientation for a 6/7D robotarm. By defining some theoretical function that is maximized if a collision occurs, we might be able to apply a minimization problem to get the optimal values for the free degrees of freedom to avoid collision / exceeding the joint limits.
+
+
+<!-- LICENSE -->
+## License
+
+You're ofcourse free to use this code in any noncommercial way you want, though crediting the sources I did is probably appropriate. Tadie License section!
+
+
+<!-- CONTACT -->
+## Contact
+
+Ivo Blok - ivoblokdoorn@gmail.com
+
+Project Link: [https://github.com/IvoBlok/6AxisPathPlanner](https://github.com/IvoBlok/6AxisPathPlanner)

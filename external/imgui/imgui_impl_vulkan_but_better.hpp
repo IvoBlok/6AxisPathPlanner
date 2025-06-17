@@ -595,7 +595,7 @@ inline bool ImGui_ImplVulkan_RenderDrawData(ImDrawData* DrawData, VkCommandBuffe
 
 				for (int i = 0; i < NonAlphaTextureCount; i++)
 				{
-					if (NonAlphaTextures[i] == DrawCmd->TextureId)
+					if (NonAlphaTextures[i] == DrawCmd->GetTexID())
 					{
 						vkCmdBindPipeline(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, ImGui_ImplVulkan_Renderer_Info.OpaquePipeline);
 						ImGui_ImplVulkan_Renderer_Info.LastPipeline = false;
@@ -603,14 +603,14 @@ inline bool ImGui_ImplVulkan_RenderDrawData(ImDrawData* DrawData, VkCommandBuffe
 					}
 				}
 				
-				ImTextureID Set0 = DrawCmd->TextureId;
+				ImTextureID Set0 = DrawCmd->GetTexID();
 				ImTextureID Set1 = (ImTextureID)(uintptr_t)ImGui_ImplVulkan_Renderer_Info.DescriptorSet;
 
 				if (!ImGui_ImplVulkan_Renderer_Info.LastDescriptorSet && Set0 == Set1)
 				{}
 				else
 				{
-					vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, ImGui_ImplVulkan_Renderer_Info.PipelineLayout, 0, 1, (VkDescriptorSet*)DrawCmd->TextureId, 0, NULL);
+					vkCmdBindDescriptorSets(CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, ImGui_ImplVulkan_Renderer_Info.PipelineLayout, 0, 1, (VkDescriptorSet*)DrawCmd->GetTexID(), 0, NULL);
 					if ((VkDescriptorSet)(uintptr_t)Set0 == ImGui_ImplVulkan_Renderer_Info.DescriptorSet)
 						ImGui_ImplVulkan_Renderer_Info.LastDescriptorSet = false;
 					else

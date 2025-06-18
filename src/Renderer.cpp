@@ -5,6 +5,8 @@
 #include <cstring>
 #include <iostream>
 
+#include <nfd.h>
+
 VkDevice device;
 VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 VkQueue graphicsQueue;
@@ -2310,7 +2312,6 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
             
             object.name = "cube";
         }
-        ImGui::SameLine();
         if(ImGui::Button("Generate Plane")) {
             LoadedObject& object = createObject(
                     "../../resources/assets/plane.obj",
@@ -2319,6 +2320,21 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 );
             
             object.name = "plane";
+        }
+        if(ImGui::Button("Import Object")) {
+            char* outPath = NULL;
+            nfdresult_t result = NFD_OpenDialog( "obj", NULL, &outPath );
+                
+            if ( result == NFD_OKAY ) {
+                LoadedObject& object = createObject(
+                        outPath,
+                        core::Vector3<double>{ 0.1f, 0.3f, 0.5f }, // color
+                        core::Vector3<double>{ 0.f, 0.f, 0.f }  // position
+                    );
+                
+                object.name = outPath;
+                free(outPath);
+            }
         }
         
         // ensure that the window fills the entire height

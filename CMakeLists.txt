@@ -61,6 +61,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(tinyobjloader)
 
+# nfd (native file dialog)
+FetchContent_Declare(
+    nfd
+    GIT_REPOSITORY https://github.com/mlabbe/nativefiledialog.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(nfd)
+
 # Executable
 # ============================================
 
@@ -116,6 +124,7 @@ target_include_directories(robotPathPlanner PRIVATE
     external/imgui
     ${stb_SOURCE_DIR}
     ${tinyobjloader_SOURCE_DIR}
+    ${nfd_SOURCE_DIR}/src/include
 )
 
 # Link Libraries
@@ -143,3 +152,22 @@ target_sources(robotPathPlanner PRIVATE
     ${implot_SOURCE_DIR}/implot_items.cpp
     ${implot_SOURCE_DIR}/implot_demo.cpp
 )
+
+# Add NFD Sources
+# ============================================
+if(WIN32) # Windows
+    target_sources(robotPathPlanner PRIVATE
+        ${nfd_SOURCE_DIR}/src/nfd_common.c
+        ${nfd_SOURCE_DIR}/src/nfd_win.cpp
+    )
+else()  # Linux/Unix
+    target_sources(robotPathPlanner PRIVATE
+        ${nfd_SOURCE_DIR}/src/nfd_common.c
+        ${nfd_SOURCE_DIR}/src/nfd_gtk.c
+    )
+    # For Linux systems, you'll need GTK3 development packages
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+    target_include_directories(robotPathPlanner PRIVATE ${GTK3_INCLUDE_DIRS})
+    target_link_libraries(robotPathPlanner PRIVATE ${GTK3_LIBRARIES})
+endif()

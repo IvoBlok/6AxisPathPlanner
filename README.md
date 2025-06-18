@@ -32,6 +32,7 @@ For the graphics:
 For file importing:
 * stbImage
 * tinyObjLoader
+* native file dialog
 
 For path planning:
 * https://github.com/intents-software/mesh-plane-intersection/tree/master

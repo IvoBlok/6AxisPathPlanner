@@ -192,6 +192,7 @@ public:
 	core::ObjectShape objectShape;
 
 	LoadedObject();
+	LoadedObject(std::string objectName, bool visible = true);
 
 	core::ObjectShape& updateObjectShape();
 	core::ObjectShape& getObjectShape();

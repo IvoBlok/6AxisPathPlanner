@@ -580,6 +580,24 @@ LoadedObject::LoadedObject() {
     objectShape = core::ObjectShape{};
 }
 
+LoadedObject::LoadedObject(std::string objectName, bool visible) {
+    renderObj = visible;
+    name = objectName;
+
+    position = glm::vec3{0.f};
+    scale = glm::vec3{1.f};
+    yawPitchRoll = glm::vec3{0.f};
+    rotationMatrix = glm::mat4{1.f};
+
+    bool isOneColor = true;
+    color = glm::vec3{0.f};
+
+    model = LoadedModel{};
+    texture = LoadedTexture{};
+
+    objectShape = core::ObjectShape{};
+}
+
 core::ObjectShape& LoadedObject::updateObjectShape() {
     glm::mat4 transformationMatrix = getTransformationMatrix();
 

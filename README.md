@@ -11,7 +11,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-This project is concerned with calculation of 6+ axis toolpaths for large robotarms. The original aim was to mill large foam molds with a KR125. This repository contains separate code for the pathplanning, robot controller and external PC. It is mostly set up for my specific situtation, i.e. an (old) KRC1 controller, KR125 arm, used for milling mesh-based shapes. See below for some example outputs.
+This project is concerned with calculation of 6+ axis toolpaths for large robotarms. The original aim was to mill large foam molds with a KR125. This repository contains separate code for the pathplanning, robot controller and external PC. It is mostly set up for my specific situtation, i.e. an (old) KRC1 controller, KR125 arm, used for milling mesh-based shapes. See below for some example outputs. For now this focusses on 'mesh' based geometries. I.e. it operates on large triangle-based geometries, in contrast to the standard within CAD programs where geometries are defined by the geometric operations that produced it. This has some crucial limitations, like the algorithm speed and the viability of some ease-of-use functionalities, but allows for a wider range of geometries to be used. 
 
 ![cubeTest1](screenshots/cubeTestShapeOrientation.png)
 ![cubeTest2](screenshots/cubeTestPlaneOrientation.png)
@@ -75,16 +75,18 @@ Use the 6AxisPathPlanner executable to create your toolpaths. Then export these 
 
 Start PCodeSender with the supplied PCode text file, which awaits untill the controller requests move instructions. Then start the KRLExternalControl on the robot. Both programs should exit when the last instructions have been sent/moved.
 
+
 <!-- TO DO -->
 ## To Do
 
+- [ ] Add robot + tool visualization
+- [ ] Add inverse kinematics
+- [ ] Add movement animation
 - [ ] Fully support varying color along polylines
 - [ ] Add full 3D polylines
 - [ ] Fix transparency
 - [ ] Add non-planar pathing
-- [ ] Add robot + tool visualization
-- [ ] Add movement animation
-- [ ] Add inverse kinematics and collision control for path validation
+- [ ] Add collision control for path validation
 
 
 <!-- IDEAS -->

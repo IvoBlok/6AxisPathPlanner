@@ -1,8 +1,10 @@
 #include "renderer.hpp"
 #include "meshIntersectGUI.hpp"
 #include "toolPath2_5DGUI.hpp"
+#include "robotGUI.hpp"
 
 int main() {
+
 	try {
 		VulkanRenderEngine renderer;
 		renderer.initialize();
@@ -12,6 +14,9 @@ int main() {
 
 		toolPath2_5D::ToolPath2_5DGUI toolPath2_5DGui;
 		toolPath2_5DGui.registerWithRenderer(renderer);
+
+		kinematics::RobotGUI robotGui;
+		robotGui.registerWithRenderer(renderer);
 
 		// form the actual rendering loop
 		while (!glfwWindowShouldClose(renderer.window)) {

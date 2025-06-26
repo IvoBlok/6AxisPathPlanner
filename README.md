@@ -38,6 +38,9 @@ For path planning:
 * https://github.com/intents-software/mesh-plane-intersection/tree/master
 * https://github.com/jbuckmccready/CavalierContours
 
+For math:
+* Eigen
+
 ### Installation
 
 1. Clone the repository.
@@ -87,7 +90,7 @@ Start PCodeSender with the supplied PCode text file, which awaits untill the con
 - [ ] Fix transparency
 - [ ] Add non-planar pathing
 - [ ] Add collision control for path validation
-
+- [ ] Update CMakeFile to create a release executable with proper Eigen optimization
 
 <!-- IDEAS -->
 ## Ideas

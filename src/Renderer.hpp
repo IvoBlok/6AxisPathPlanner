@@ -127,7 +127,6 @@ namespace VulkanHelper {
 /* 
 LoadedObject stores a certain triangle-based geometry. This geometry itself is not intended to be modified. 
 The geometry can be used in read-only fashion for other operations. For these applications a separate geometry/mesh format is used, known as ObjectShape.
-Whenever the location, orientation or scale of the 'renderer' geometry is modified, is it required to update the ObjectShape with a updateObjectShape() call.
 */
 class LoadedObject {
 private:
@@ -187,15 +186,11 @@ public:
     LoadedTexture texture;
     glm::mat4 rotationMatrix;
 
-	// 'objectShape' is effectively the same data as the model, but now with the position, scale and rotation applied into the vertices and normals. 
-	// the renderer requires the model/mesh data to be in a certain format, but that's not a great format to apply math to. So 'objectShape' is set up for easy data manipulation.
-	core::ObjectShape objectShape;
-
 	LoadedObject();
 	LoadedObject(std::string objectName, bool visible = true);
 
-	core::ObjectShape& updateObjectShape();
-	core::ObjectShape& getObjectShape();
+	// getObjectShape converts the object geometry from vertex data in one format and the position,scale, rotation data together into a new vertex data format, where the transformations have been applied.
+	core::ObjectShape getObjectShape();
 
 	core::Plane<double> getPlane();
 

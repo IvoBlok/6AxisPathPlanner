@@ -97,7 +97,7 @@ private:
                     std::advance(stockObj, selectedIdx2);
 
                     facePassInfo.slicingPlane = planeObj->getPlane();
-                    facePassInfo.stock = stockObj->updateObjectShape();
+                    facePassInfo.stock = stockObj->getObjectShape();
 
                     core::Polyline2_5D<double> result = generateFacePass2_5D(facePassInfo);
                     
@@ -205,7 +205,7 @@ private:
 
                     surfacePassInfo.startPlane = startPlaneObj->getPlane();
                     surfacePassInfo.endPlane = endPlaneObj->getPlane();
-                    surfacePassInfo.shape = shapeObj->updateObjectShape();
+                    surfacePassInfo.shape = shapeObj->getObjectShape();
 
                     core::Polyline2_5D<double> result = generateSurfacePass2_5D(surfacePassInfo);
                     
@@ -338,8 +338,8 @@ private:
 
                     clearingPassInfo.startPlane = startPlaneObj->getPlane();
                     clearingPassInfo.endPlane = endPlaneObj->getPlane();
-                    clearingPassInfo.shape = shapeObj->updateObjectShape();
-                    clearingPassInfo.stock = stockObj->updateObjectShape();
+                    clearingPassInfo.shape = shapeObj->getObjectShape();
+                    clearingPassInfo.stock = stockObj->getObjectShape();
 
                     core::Polyline2_5D<double> result = generateClearingPass2_5D(clearingPassInfo);
                     

@@ -576,8 +576,6 @@ LoadedObject::LoadedObject() {
 
     model = LoadedModel{};
     texture = LoadedTexture{};
-
-    objectShape = core::ObjectShape{};
 }
 
 LoadedObject::LoadedObject(std::string objectName, bool visible) {
@@ -594,17 +592,13 @@ LoadedObject::LoadedObject(std::string objectName, bool visible) {
 
     model = LoadedModel{};
     texture = LoadedTexture{};
-
-    objectShape = core::ObjectShape{};
 }
 
-core::ObjectShape& LoadedObject::updateObjectShape() {
+core::ObjectShape LoadedObject::getObjectShape() {
     glm::mat4 transformationMatrix = getTransformationMatrix();
 
-    objectShape.vertices.clear();
-    objectShape.indices.clear();
-    objectShape.normals.clear();
-
+    core::ObjectShape objectShape{};
+    
     objectShape.vertices.reserve(model.vertices.size());
     objectShape.indices.reserve(model.indices.size());
     objectShape.normals.reserve(model.vertices.size());
@@ -621,10 +615,6 @@ core::ObjectShape& LoadedObject::updateObjectShape() {
     {
         objectShape.indices.push_back(model.indices[i]);
     }
-    return objectShape;
-}
-
-core::ObjectShape& LoadedObject::getObjectShape() {
     return objectShape;
 }
 

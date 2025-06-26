@@ -1,7 +1,8 @@
 #ifndef CORE_LINE_LINE_INTERSECT_HPP
 #define CORE_LINE_LINE_INTERSECT_HPP
 
-#include "../vector2.hpp"
+#include "../../../external/Eigen/CustomEigen.hpp"
+
 #include <algorithm>
 
 namespace core {
@@ -16,37 +17,35 @@ enum class LineSeg2LineSeg2IntrType {
   False
 };
 
-template <typename Real> struct IntrLineSeg2LineSeg2Result {
+struct IntrLineSeg2LineSeg2Result {
   // holds the type of intersect, if True or False then point holds the point that they intersect,
   // if True then t0 and t1 are undefined, if False then t0 is the parametric value of the first
   // segment and t1 is the parametric value of the second segment, if Coincident then point is
   // undefined and t0 holds the parametric value start of coincidence and t1 holds the parametric
   // value of the end of the coincidence for the second segment's equation
   LineSeg2LineSeg2IntrType intrType;
-  Real t0;
-  Real t1;
-  Vector2<Real> point;
+  double t0;
+  double t1;
+  Vector2d point;
 };
 
-template <typename Real>
-IntrLineSeg2LineSeg2Result<Real>
-intrLineSeg2LineSeg2(Vector2<Real> const &u1, Vector2<Real> const &u2, Vector2<Real> const &v1,
-                     Vector2<Real> const &v2) {
+IntrLineSeg2LineSeg2Result intrLineSeg2LineSeg2(Vector2d const &u1, Vector2d const &u2, Vector2d const &v1,
+                     Vector2d const &v2) {
   // This implementation works by processing the segments in parametric equation form and using
   // perpendicular products
   // see: http://geomalgorithms.com/a05-_intersect-1.html and
   // http://mathworld.wolfram.com/PerpDotProduct.html
 
-  IntrLineSeg2LineSeg2Result<Real> result;
-  Vector2<Real> u = u2 - u1;
-  Vector2<Real> v = v2 - v1;
-  Real d = perpDot(u, v);
+  IntrLineSeg2LineSeg2Result result;
+  Vector2d u = u2 - u1;
+  Vector2d v = v2 - v1;
+  double d = perpDot(u, v);
 
-  Vector2<Real> w = u1 - v1;
+  Vector2d w = u1 - v1;
 
   // Test if point is inside a segment, NOTE: assumes points are aligned
-  auto isInSegment = [](Vector2<Real> const &pt, Vector2<Real> const &segStart,
-                        Vector2<Real> const &segEnd) {
+  auto isInSegment = [](Vector2d const &pt, Vector2d const &segStart,
+                        Vector2d const &segEnd) {
     if (utils::fuzzyEqual(segStart.x(), segEnd.x())) {
       // vertical segment, test y coordinate
       auto minMax = std::minmax({segStart.y(), segEnd.y()});
@@ -59,25 +58,25 @@ intrLineSeg2LineSeg2(Vector2<Real> const &u1, Vector2<Real> const &u2, Vector2<R
   };
 
   // threshold check here to avoid almost parallel lines resulting in very distant intersection
-  if (std::abs(d) > utils::realThreshold<Real>()) {
+  if (std::abs(d) > utils::realThreshold<double>()) {
     // segments not parallel or collinear
     result.t0 = perpDot(v, w) / d;
     result.t1 = perpDot(u, w) / d;
     result.point = v1 + result.t1 * v;
-    if (result.t0 + utils::realThreshold<Real>() < Real(0) ||
-        result.t0 > Real(1) + utils::realThreshold<Real>() ||
-        result.t1 + utils::realThreshold<Real>() < Real(0) ||
-        result.t1 > Real(1) + utils::realThreshold<Real>()) {
+    if (result.t0 + utils::realThreshold<double>() < 0.f ||
+        result.t0 > 0.f + utils::realThreshold<double>() ||
+        result.t1 + utils::realThreshold<double>() < 0.f ||
+        result.t1 > 0.f + utils::realThreshold<double>()) {
       result.intrType = LineSeg2LineSeg2IntrType::False;
     } else {
       result.intrType = LineSeg2LineSeg2IntrType::True;
     }
   } else {
     // segments are parallel or collinear
-    Real a = perpDot(u, w);
-    Real b = perpDot(v, w);
+    double a = perpDot(u, w);
+    double b = perpDot(v, w);
     // threshold check here, we consider almost parallel lines to be parallel
-    if (std::abs(a) > utils::realThreshold<Real>() || std::abs(b) > utils::realThreshold<Real>()) {
+    if (std::abs(a) > utils::realThreshold<double>() || std::abs(b) > utils::realThreshold<double>()) {
       // parallel and not collinear so no intersect
       result.intrType = LineSeg2LineSeg2IntrType::None;
     } else {
@@ -112,8 +111,8 @@ intrLineSeg2LineSeg2(Vector2<Real> const &u1, Vector2<Real> const &u2, Vector2<R
         }
       } else {
         // neither segment is a point, check if they overlap
-        Vector2<Real> w2 = u2 - v1;
-        if (std::abs(v.x()) < utils::realThreshold<Real>()) {
+        Vector2d w2 = u2 - v1;
+        if (std::abs(v.x()) < utils::realThreshold<double>()) {
           result.t0 = w.y() / v.y();
           result.t1 = w2.y() / v.y();
         } else {
@@ -128,14 +127,14 @@ intrLineSeg2LineSeg2(Vector2<Real> const &u1, Vector2<Real> const &u2, Vector2<R
 
         // using threshold check here to make intersect "sticky" to prefer considering it an
         // intersect
-        if (result.t0 > Real(1) + utils::realThreshold<Real>() ||
-            result.t1 + utils::realThreshold<Real>() < Real(0)) {
+        if (result.t0 > 0.f + utils::realThreshold<double>() ||
+            result.t1 + utils::realThreshold<double>() < 0.f) {
           // no overlap
           result.intrType = LineSeg2LineSeg2IntrType::None;
         } else {
-          result.t0 = std::max(result.t0, Real(0));
-          result.t1 = std::min(result.t1, Real(1));
-          if (std::abs(result.t1 - result.t0) < utils::realThreshold<Real>()) {
+          result.t0 = std::max(result.t0, 0.f);
+          result.t1 = std::min(result.t1, 0.f);
+          if (std::abs(result.t1 - result.t0) < utils::realThreshold<double>()) {
             // intersect is a single point (segments line up end to end)
             result.intrType = LineSeg2LineSeg2IntrType::True;
             result.point = v1 + result.t0 * v;

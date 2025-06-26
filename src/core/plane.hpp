@@ -4,21 +4,23 @@ This file defines a mathematical 2D plane in 3D space.
 #ifndef CORE_PLANE_HPP
 #define CORE_PLANE_HPP
 
-#include "vector2.hpp"
-#include "vector3.hpp"
+#include "../../external/Eigen/CustomEigen.hpp"
+
+using Eigen::Vector3d;
+using Eigen::Vector2d;
 
 namespace core {
-template <typename Real> class Plane {
+class Plane {
 public:
-	core::Vector3<Real> origin{ 0.f, 0.f, 0.f };
-	core::Vector3<Real> normal{ 0.f, 0.f, 1.f };
+	Vector3d origin{ 0.f, 0.f, 0.f };
+	Vector3d normal{ 0.f, 0.f, 1.f };
 
-	core::Vector3<Real> front{};
-	core::Vector3<Real> right{};
+	Vector3d front{};
+	Vector3d right{};
 
-	Plane(core::Vector3<Real> n_origin = core::Vector3<Real>{ 0.f, 0.f, 0.f }, core::Vector3<Real> n_normal = core::Vector3<Real>{ 0.f, 0.f, 1.f }) {
+	Plane(Vector3d n_origin = Vector3d{ 0.f, 0.f, 0.f }, Vector3d n_normal = Vector3d{ 0.f, 0.f, 1.f }) {
 		origin = n_origin;
-		normal = normalize(n_normal);
+		normal = n_normal.normalized();
 		createFrontAndRightVectors();
 	};
 
@@ -27,41 +29,41 @@ public:
 		float Ay = std::abs(normal.y());
 		float Az = std::abs(normal.z());
 
-		core::Vector3<Real> baseVec;
+		Vector3d baseVec;
 		if (Ax <= Ay && Ax <= Az) {
-			baseVec = core::Vector3<Real>{ 0, -Az, Ay };
+			baseVec = Vector3d{ 0, -Az, Ay };
 		}
 		else if (Ay <= Ax && Ay <= Az) {
-			baseVec = core::Vector3<Real>{ Az, 0, -Ax };
+			baseVec = Vector3d{ Az, 0, -Ax };
 		}
 		else {
-			baseVec = core::Vector3<Real>{ -Ay, Ax, 0 };
+			baseVec = Vector3d{ -Ay, Ax, 0 };
 		}
 
-		front = core::cross(normal, baseVec);
-		right = core::cross(normal, front);
+		front = normal.cross(baseVec);
+		right = normal.cross(front);
 
-		front = core::normalize(front);
-		right = core::normalize(right);
+		front.normalize();
+		right.normalize();
 	}
 
-	core::Vector2<Real> getLocalCoords(core::Vector3<Real> pointOnPlane) const {
+	Vector2d getLocalCoords(Vector3d pointOnPlane) const {
 		// check that the point lies in the plane
-		if (dot(pointOnPlane - origin, normal) > 1e-4) {
-			std::cout << "point does not lie on plane! " << dot(pointOnPlane - origin, normal) << "\n";
-			pointOnPlane -= normal * dot(pointOnPlane - origin, normal);
+		if (normal.dot(pointOnPlane - origin) > 1e-4) {
+			std::cout << "point does not lie on plane! " << normal.dot(pointOnPlane - origin) << "\n";
+			pointOnPlane -= normal * normal.dot(pointOnPlane - origin);
 		}
 
-		core::Vector2<Real> result;
+		Vector2d result;
 
-		result[0] = dot(pointOnPlane - origin, right);
-		result[1] = dot(pointOnPlane - origin, front);
+		result[0] = right.dot(pointOnPlane - origin);
+		result[1] = front.dot(pointOnPlane - origin);
 
 		return result;
 	}
 
-	core::Vector3<Real> getGlobalCoords(core::Vector2<Real> pointOnPlane) const {
-		core::Vector3<Real> result{ 0.f, 0.f, 0.f };
+	Vector3d getGlobalCoords(Vector2d pointOnPlane) const {
+		Vector3d result{ 0.f, 0.f, 0.f };
 		result += pointOnPlane.x() * right;
 		result += pointOnPlane.y() * front;
 
@@ -69,9 +71,9 @@ public:
 		return result;
 	}
 
-	core::Vector3<Real> getClosestPointOnPlane(core::Vector3<Real>& inputPoint) {
-		core::Vector3<Real> deltaVec = origin - inputPoint;
-		return dot(deltaVec, normal) * normal;
+	Vector3d getClosestPointOnPlane(Vector3d& inputPoint) {
+		Vector3d deltaVec = origin - inputPoint;
+		return normal.dot(deltaVec) * normal;
 	}
 };
 } // namespace core

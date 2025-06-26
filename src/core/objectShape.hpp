@@ -6,28 +6,18 @@ the positions in 'vertices' are world positions; there is no separate translatio
 #ifndef OBJECT_SHAPE_HPP
 #define OBJECT_SHAPE_HPP
 
-#define GLM_FORCE_SWIZZLE
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#define GLMF_FORCE_DEFAULT_ALIGNED_GENTYPES
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/rotate_vector.hpp>
-#include <glm/gtx/hash.hpp>
-
 #include <vector>
 #include <utility>
 #include <functional>
 #include <string>
 
-#include "vector2.hpp"
-#include "vector3.hpp"
+#include "../../external/Eigen/CustomEigen.hpp"
 
 namespace core {
 class ObjectShape {
 public:
-	std::vector<Vector3<double>> vertices;
-	std::vector<Vector3<double>> normals;
+	std::vector<Vector3d> vertices;
+	std::vector<Vector3d> normals;
 	std::vector<uint32_t> indices;
 };
 } // namespace core

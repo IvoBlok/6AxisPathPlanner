@@ -19,88 +19,89 @@ See 'https://www.afralisp.net/archive/lisp/Bulges1.htm' for the geometric relati
 #include "intersect/circleLineIntersect.hpp"
 #include "intersect/LineLineIntersect.hpp"
 
+#include "../../external/Eigen/CustomEigen.hpp"
+
 #include "mathUtils.hpp"
-#include "vector2.hpp"
 #include "plane.hpp"
 
 namespace core {
-template <typename Real> class PlineVertex2D {
+class PlineVertex2D {
 public:
   PlineVertex2D() = default;
-  PlineVertex2D(Real x, Real y, Real bulge) : positionVec(x, y), bulgeVal(bulge) {}
-  PlineVertex2D(Vector2<Real> position, Real bulge)
+  PlineVertex2D(double x, double y, double bulge) : positionVec(x, y), bulgeVal(bulge) {}
+  PlineVertex2D(Vector2d position, double bulge)
       : PlineVertex2D(position.x(), position.y(), bulge) {}
 
-  Real x() const { return positionVec.x(); }
-  Real &x() { return positionVec.x(); }
+  double x() const { return positionVec.x(); }
+  double &x() { return positionVec.x(); }
 
-  Real y() const { return positionVec.y(); }
-  Real &y() { return positionVec.y(); }
+  double y() const { return positionVec.y(); }
+  double &y() { return positionVec.y(); }
 
-  Real bulge() const { return bulgeVal; }
-  Real &bulge() { return bulgeVal; }
+  double bulge() const { return bulgeVal; }
+  double &bulge() { return bulgeVal; }
 
-  bool bulgeIsZero(Real epsilon = utils::realPrecision<Real>()) const {
+  bool bulgeIsZero(double epsilon = utils::realPrecision<double>()) const {
     return std::abs(bulgeVal) < epsilon;
   }
 
-  bool bulgeIsNeg() const { return bulgeVal < Real(0); }
-  bool bulgeIsPos() const { return bulgeVal > Real(0); }
+  bool bulgeIsNeg() const { return bulgeVal < 0.f; }
+  bool bulgeIsPos() const { return bulgeVal > 0.f; }
 
-  Vector2<Real> const &pos() const { return positionVec; }
-  Vector2<Real> &pos() { return positionVec; }
+  Vector2d const &pos() const { return positionVec; }
+  Vector2d &pos() { return positionVec; }
 
-  Vector3<Real> const& normal() const { return normalVec; }
-  Vector3<Real>& normal() { return normalVec; }
+  Vector3d const& normal() const { return normalVec; }
+  Vector3d& normal() { return normalVec; }
 
 private:
-  Vector2<Real> positionVec;
-  Vector3<Real> normalVec = Vector3<Real>{ 0.f, 0.f, 0.f };
-  Real bulgeVal;
+  Vector2d positionVec;
+  Vector3d normalVec = Vector3d{ 0.f, 0.f, 0.f };
+  double bulgeVal;
 };
 
-template <typename Real> class PlineVertex2_5D {
+class PlineVertex2_5D {
 public:
   PlineVertex2_5D() {
     bulge = 0.f;
-    point = Vector3<Real>(0.f, 0.f, 0.f);
-    plane = Plane<Real>();
+    point = Vector3d(0.f, 0.f, 0.f);
+    plane = Plane();
   }
 
-  PlineVertex2_5D(Real newBulge, Vector3<Real> newPoint, Plane<Real> newPlane) {
+  PlineVertex2_5D(double newBulge, Vector3d newPoint, Plane newPlane) {
     plane = newPlane;
     bulge = newBulge;
     point = newPoint;
   }
 
-  PlineVertex2D<double> getVertexInPlaneCoords() {
-    PlineVertex2D<double> result;
+  PlineVertex2D getVertexInPlaneCoords() {
+    PlineVertex2D result;
     result.bulge() = bulge;
     result.pos() = plane.getLocalCoords(point);
     return result;
   }
 
-  Vector2<Real> getPointInPlaneCoords() {
+  Vector2d getPointInPlaneCoords() {
     return plane.getLocalCoords(point);
   }
 
-  bool bulgeIsZero(Real epsilon = utils::realPrecision<Real>()) const {
+  bool bulgeIsZero(double epsilon = utils::realPrecision<double>()) const {
     return std::abs(bulge) < epsilon;
   }
 
-  Real bulge;
-  Vector3<Real> point;
-  Plane<Real> plane;
+  double bulge;
+  Vector3d point;
+  Plane plane;
 };
 
 /// Axis aligned bounding box (AABB).
-template <typename Real> struct AABB {
-  Real xMin;
-  Real yMin;
-  Real xMax;
-  Real yMax;
+struct AABB {
+  double xMin;
+  double yMin;
+  double xMax;
+  double yMax;
 
-  void expand(Real val) {
+  void expand(double val) {
     xMin -= val;
     yMin -= val;
     xMax += val;
@@ -109,82 +110,80 @@ template <typename Real> struct AABB {
 };
 
 /// Result from computing the arc radius and arc center of a segment.
-template <typename Real> struct ArcRadiusAndCenter {
-  Real radius;
-  Vector2<Real> center;
+struct ArcRadiusAndCenter {
+  double radius;
+  Vector2d center;
 };
 
 /// Compute the arc radius and arc center of a arc segment defined by v1 to v2.
-template <typename Real>
-ArcRadiusAndCenter<Real> arcRadiusAndCenter(PlineVertex2D<Real> const &v1,
-                                            PlineVertex2D<Real> const &v2) {
+ArcRadiusAndCenter arcRadiusAndCenter(PlineVertex2D const &v1,
+                                            PlineVertex2D const &v2) {
   CORE_ASSERT(!v1.bulgeIsZero(), "v1 to v2 must be an arc");
   CORE_ASSERT(!fuzzyEqual(v1.pos(), v2.pos()), "v1 must not be ontop of v2");
 
   // compute radius
-  Real b = std::abs(v1.bulge());
-  Vector2<Real> v = v2.pos() - v1.pos();
-  Real d = length(v);
-  Real r = d * (b * b + Real(1)) / (Real(4) * b);
+  double b = std::abs(v1.bulge());
+  Vector2d v = v2.pos() - v1.pos();
+  double d = v.norm();
+  double r = d * (b * b + double(1)) / (double(4) * b);
 
   // compute center
-  Real s = b * d / Real(2);
-  Real m = r - s;
-  Real offsX = -m * v.y() / d;
-  Real offsY = m * v.x() / d;
+  double s = b * d / double(2);
+  double m = r - s;
+  double offsX = -m * v.y() / d;
+  double offsY = m * v.x() / d;
   if (v1.bulgeIsNeg()) {
     offsX = -offsX;
     offsY = -offsY;
   }
 
-  Vector2<Real> c(v1.x() + v.x() / Real(2) + offsX, v1.y() + v.y() / Real(2) + offsY);
-  return ArcRadiusAndCenter<Real>{r, c};
+  Vector2d c(v1.x() + v.x() / double(2) + offsX, v1.y() + v.y() / double(2) + offsY);
+  return ArcRadiusAndCenter{r, c};
 }
 
 /// Result of splitting a segment v1 to v2.
-template <typename Real> struct SplitResult {
+struct SplitResult {
   /// Updated starting vertex.
-  PlineVertex2D<Real> updatedStart;
+  PlineVertex2D updatedStart;
   /// Vertex at the split point.
-  PlineVertex2D<Real> splitVertex;
+  PlineVertex2D splitVertex;
 };
 
 /// Split the segment defined by v1 to v2 at some point defined along it.
-template <typename Real>
-SplitResult<Real> splitAtPoint(PlineVertex2D<Real> const &v1, PlineVertex2D<Real> const &v2,
-                               Vector2<Real> const &point) {
-  SplitResult<Real> result;
+SplitResult splitAtPoint(PlineVertex2D const &v1, PlineVertex2D const &v2,
+                               Vector2d const &point) {
+  SplitResult result;
   if (v1.bulgeIsZero()) {
     result.updatedStart = v1;
-    result.splitVertex = PlineVertex2D<Real>(point, Real(0));
-  } else if (fuzzyEqual(v1.pos(), v2.pos(), utils::realPrecision<Real>()) ||
-             fuzzyEqual(v1.pos(), point, utils::realPrecision<Real>())) {
-    result.updatedStart = PlineVertex2D<Real>(point, Real(0));
-    result.splitVertex = PlineVertex2D<Real>(point, v1.bulge());
-  } else if (fuzzyEqual(v2.pos(), point, utils::realPrecision<Real>())) {
+    result.splitVertex = PlineVertex2D(point, 0.f);
+  } else if (fuzzyEqual(v1.pos(), v2.pos(), utils::realPrecision<double>()) ||
+             fuzzyEqual(v1.pos(), point, utils::realPrecision<double>())) {
+    result.updatedStart = PlineVertex2D(point, 0.f);
+    result.splitVertex = PlineVertex2D(point, v1.bulge());
+  } else if (fuzzyEqual(v2.pos(), point, utils::realPrecision<double>())) {
     result.updatedStart = v1;
-    result.splitVertex = PlineVertex2D<Real>(v2.pos(), Real(0));
+    result.splitVertex = PlineVertex2D(v2.pos(), 0.f);
   } else {
     auto radiusAndCenter = arcRadiusAndCenter(v1, v2);
-    Vector2<Real> arcCenter = radiusAndCenter.center;
-    Real a = angle(arcCenter, point);
-    Real arcStartAngle = angle(arcCenter, v1.pos());
-    Real theta1 = utils::deltaAngle(arcStartAngle, a);
-    Real bulge1 = std::tan(theta1 / Real(4));
-    Real arcEndAngle = angle(arcCenter, v2.pos());
-    Real theta2 = utils::deltaAngle(a, arcEndAngle);
-    Real bulge2 = std::tan(theta2 / Real(4));
+    Vector2d arcCenter = radiusAndCenter.center;
+    double a = angle(arcCenter, point);
+    double arcStartAngle = angle(arcCenter, v1.pos());
+    double theta1 = utils::deltaAngle(arcStartAngle, a);
+    double bulge1 = std::tan(theta1 / double(4));
+    double arcEndAngle = angle(arcCenter, v2.pos());
+    double theta2 = utils::deltaAngle(a, arcEndAngle);
+    double bulge2 = std::tan(theta2 / double(4));
 
-    result.updatedStart = PlineVertex2D<Real>(v1.pos(), bulge1);
-    result.splitVertex = PlineVertex2D<Real>(point, bulge2);
+    result.updatedStart = PlineVertex2D(v1.pos(), bulge1);
+    result.splitVertex = PlineVertex2D(point, bulge2);
   }
 
   return result;
 }
 
-template <typename Real>
-Vector2<Real> segTangentVector(PlineVertex2D<Real> const &v1, PlineVertex2D<Real> const &v2,
-                               Vector2<Real> const &pointOnSeg) {
+
+Vector2d segTangentVector(PlineVertex2D const &v1, PlineVertex2D const &v2,
+                               Vector2d const &pointOnSeg) {
   if (v1.bulgeIsZero()) {
     return v2.pos() - v1.pos();
   }
@@ -192,17 +191,16 @@ Vector2<Real> segTangentVector(PlineVertex2D<Real> const &v1, PlineVertex2D<Real
   auto arc = arcRadiusAndCenter(v1, v2);
   if (v1.bulgeIsPos()) {
     // ccw, rotate vector from center to pointOnCurve 90 degrees
-    return Vector2<Real>(-(pointOnSeg.y() - arc.center.y()), pointOnSeg.x() - arc.center.x());
+    return Vector2d(-(pointOnSeg.y() - arc.center.y()), pointOnSeg.x() - arc.center.x());
   }
 
   // cw, rotate vector from center to pointOnCurve -90 degrees
-  return Vector2<Real>(pointOnSeg.y() - arc.center.y(), -(pointOnSeg.x() - arc.center.x()));
+  return Vector2d(pointOnSeg.y() - arc.center.y(), -(pointOnSeg.x() - arc.center.x()));
 }
 
 /// Compute the closest point on a segment defined by v1 to v2 to the point given.
-template <typename Real>
-Vector2<Real> closestPointOnSeg(PlineVertex2D<Real> const &v1, PlineVertex2D<Real> const &v2,
-                                Vector2<Real> const &point) {
+Vector2d closestPointOnSeg(PlineVertex2D const &v1, PlineVertex2D const &v2,
+                                Vector2d const &point) {
   if (v1.bulgeIsZero()) {
     return closestPointOnLineSeg(v1.pos(), v2.pos(), point);
   }
@@ -216,14 +214,14 @@ Vector2<Real> closestPointOnSeg(PlineVertex2D<Real> const &v1, PlineVertex2D<Rea
 
   if (pointWithinArcSweepAngle(arc.center, v1.pos(), v2.pos(), v1.bulge(), point)) {
     // closest point is on the arc
-    Vector2<Real> vToPoint = point - arc.center;
-    normalize(vToPoint);
+    Vector2d vToPoint = point - arc.center;
+    vToPoint.normalize();
     return arc.radius * vToPoint + arc.center;
   }
 
   // else closest point is one of the ends
-  Real dist1 = distSquared(v1.pos(), point);
-  Real dist2 = distSquared(v2.pos(), point);
+  double dist1 = distSquared(v1.pos(), point);
+  double dist2 = distSquared(v2.pos(), point);
   if (dist1 < dist2) {
     return v1.pos();
   }
@@ -233,9 +231,8 @@ Vector2<Real> closestPointOnSeg(PlineVertex2D<Real> const &v1, PlineVertex2D<Rea
 
 /// Computes a fast approximate AABB of a segment described by v1 to v2, bounding box may be larger
 /// than the true bounding box for the segment
-template <typename Real>
-AABB<Real> createFastApproxBoundingBox(PlineVertex2D<Real> const &v1, PlineVertex2D<Real> const &v2) {
-  AABB<Real> result;
+AABB createFastApproxBoundingBox(PlineVertex2D const &v1, PlineVertex2D const &v2) {
+  AABB result;
   if (v1.bulgeIsZero()) {
     if (v1.x() < v2.x()) {
       result.xMin = v1.x();
@@ -259,16 +256,16 @@ AABB<Real> createFastApproxBoundingBox(PlineVertex2D<Real> const &v1, PlineVerte
   // For arcs we don't compute the actual extents which is slower, instead we create an approximate
   // bounding box from the rectangle formed by extending the chord by the sagitta, NOTE: this
   // approximate bounding box is always equal to or bigger than the true bounding box
-  Real b = v1.bulge();
-  Real offsX = b * (v2.y() - v1.y()) / Real(2);
-  Real offsY = -b * (v2.x() - v1.x()) / Real(2);
+  double b = v1.bulge();
+  double offsX = b * (v2.y() - v1.y()) / double(2);
+  double offsY = -b * (v2.x() - v1.x()) / double(2);
 
-  Real pt1X = v1.x() + offsX;
-  Real pt2X = v2.x() + offsX;
-  Real pt1Y = v1.y() + offsY;
-  Real pt2Y = v2.y() + offsY;
+  double pt1X = v1.x() + offsX;
+  double pt2X = v2.x() + offsX;
+  double pt1Y = v1.y() + offsY;
+  double pt2Y = v2.y() + offsY;
 
-  Real endPointXMin, endPointXMax;
+  double endPointXMin, endPointXMax;
   if (v1.x() < v2.x()) {
     endPointXMin = v1.x();
     endPointXMax = v2.x();
@@ -277,7 +274,7 @@ AABB<Real> createFastApproxBoundingBox(PlineVertex2D<Real> const &v1, PlineVerte
     endPointXMax = v1.x();
   }
 
-  Real ptXMin, ptXMax;
+  double ptXMin, ptXMax;
   if (pt1X < pt2X) {
     ptXMin = pt1X;
     ptXMax = pt2X;
@@ -286,7 +283,7 @@ AABB<Real> createFastApproxBoundingBox(PlineVertex2D<Real> const &v1, PlineVerte
     ptXMax = pt1X;
   }
 
-  Real endPointYMin, endPointYMax;
+  double endPointYMin, endPointYMax;
   if (v1.y() < v2.y()) {
     endPointYMin = v1.y();
     endPointYMax = v2.y();
@@ -295,7 +292,7 @@ AABB<Real> createFastApproxBoundingBox(PlineVertex2D<Real> const &v1, PlineVerte
     endPointYMax = v1.y();
   }
 
-  Real ptYMin, ptYMax;
+  double ptYMin, ptYMax;
   if (pt1Y < pt2Y) {
     ptYMin = pt1Y;
     ptYMax = pt2Y;
@@ -312,9 +309,9 @@ AABB<Real> createFastApproxBoundingBox(PlineVertex2D<Real> const &v1, PlineVerte
 }
 
 /// Calculate the path length for the segment defined from v1 to v2.
-template <typename Real> Real segLength(PlineVertex2D<Real> const &v1, PlineVertex2D<Real> const &v2) {
+double segLength(PlineVertex2D const &v1, PlineVertex2D const &v2) {
   if (fuzzyEqual(v1.pos(), v2.pos())) {
-    return Real(0);
+    return 0.f;
   }
 
   if (v1.bulgeIsZero()) {
@@ -322,24 +319,23 @@ template <typename Real> Real segLength(PlineVertex2D<Real> const &v1, PlineVert
   }
 
   auto arc = arcRadiusAndCenter(v1, v2);
-  Real startAngle = angle(arc.center, v1.pos());
-  Real endAngle = angle(arc.center, v2.pos());
+  double startAngle = angle(arc.center, v1.pos());
+  double endAngle = angle(arc.center, v2.pos());
   return std::abs(arc.radius * utils::deltaAngle(startAngle, endAngle));
 }
 
 /// Return the mid point along a segment path.
-template <typename Real>
-Vector2<Real> segMidpoint(PlineVertex2D<Real> const &v1, PlineVertex2D<Real> const &v2) {
+Vector2d segMidpoint(PlineVertex2Dconst &v1, PlineVertex2D const &v2) {
   if (v1.bulgeIsZero()) {
     return midpoint(v1.pos(), v2.pos());
   }
 
   auto arc = arcRadiusAndCenter(v1, v2);
-  Real a1 = angle(arc.center, v1.pos());
-  Real a2 = angle(arc.center, v2.pos());
-  Real angleOffset = std::abs(utils::deltaAngle(a1, a2) / Real(2));
+  double a1 = angle(arc.center, v1.pos());
+  double a2 = angle(arc.center, v2.pos());
+  double angleOffset = std::abs(utils::deltaAngle(a1, a2) / double(2));
   // use arc direction to determine offset sign to robustly handle half circles
-  Real midAngle = v1.bulgeIsPos() ? a1 + angleOffset : a1 - angleOffset;
+  double midAngle = v1.bulgeIsPos() ? a1 + angleOffset : a1 - angleOffset;
   return pointOnCircle(arc.radius, arc.center, midAngle);
 }
 
@@ -352,33 +348,32 @@ enum class PlineSegIntrType {
   ArcOverlap
 };
 
-template <typename Real> struct IntrPlineSegsResult {
+struct IntrPlineSegsResult {
   PlineSegIntrType intrType;
-  Vector2<Real> point1;
-  Vector2<Real> point2;
+  Vector2d point1;
+  Vector2d point2;
 };
 
-template <typename Real>
-IntrPlineSegsResult<Real> intrPlineSegs(PlineVertex2D<Real> const &v1, PlineVertex2D<Real> const &v2,
-                                        PlineVertex2D<Real> const &u1, PlineVertex2D<Real> const &u2) {
-  IntrPlineSegsResult<Real> result;
+IntrPlineSegsResult intrPlineSegs(PlineVertex2D const &v1, PlineVertex2D const &v2,
+                                        PlineVertex2D const &u1, PlineVertex2D const &u2) {
+  IntrPlineSegsResult result;
   const bool vIsLine = v1.bulgeIsZero();
   const bool uIsLine = u1.bulgeIsZero();
 
   // helper function to process line arc intersect
-  auto processLineArcIntr = [&result](Vector2<Real> const &p0, Vector2<Real> const &p1,
-                                      PlineVertex2D<Real> const &a1, PlineVertex2D<Real> const &a2) {
+  auto processLineArcIntr = [&result](Vector2d const &p0, Vector2d const &p1,
+                                      PlineVertex2D const &a1, PlineVertex2D const &a2) {
     auto arc = arcRadiusAndCenter(a1, a2);
     auto intrResult = intrLineSeg2Circle2(p0, p1, arc.radius, arc.center);
 
     // helper function to test and get point within arc sweep
-    auto pointInSweep = [&](Real t) {
-      if (t + utils::realThreshold<Real>() < Real(0) ||
-          t > Real(1) + utils::realThreshold<Real>()) {
-        return std::make_pair(false, Vector2<Real>());
+    auto pointInSweep = [&](double t) {
+      if (t + utils::realThreshold<double>() < 0.f ||
+          t > double(1) + utils::realThreshold<double>()) {
+        return std::make_pair(false, Vector2d());
       }
 
-      Vector2<Real> p = pointFromParametric(p0, p1, t);
+      Vector2d p = pointFromParametric(p0, p1, t);
       bool withinSweep = pointWithinArcSweepAngle(arc.center, a1.pos(), a2.pos(), a1.bulge(), p);
       return std::make_pair(withinSweep, p);
     };
@@ -443,13 +438,13 @@ IntrPlineSegsResult<Real> intrPlineSegs(PlineVertex2D<Real> const &v1, PlineVert
     auto arc1 = arcRadiusAndCenter(v1, v2);
     auto arc2 = arcRadiusAndCenter(u1, u2);
 
-    auto startAndSweepAngle = [](Vector2<Real> const &sp, Vector2<Real> const &center, Real bulge) {
-      Real startAngle = utils::normalizeRadians(angle(center, sp));
-      Real sweepAngle = Real(4) * std::atan(bulge);
+    auto startAndSweepAngle = [](Vector2d const &sp, Vector2d const &center, double bulge) {
+      double startAngle = utils::normalizeRadians(angle(center, sp));
+      double sweepAngle = double(4) * std::atan(bulge);
       return std::make_pair(startAngle, sweepAngle);
     };
 
-    auto bothArcsSweepPoint = [&](Vector2<Real> const &pt) {
+    auto bothArcsSweepPoint = [&](Vector2d const &pt) {
       return pointWithinArcSweepAngle(arc1.center, v1.pos(), v2.pos(), v1.bulge(), pt) &&
              pointWithinArcSweepAngle(arc2.center, u1.pos(), u2.pos(), u1.bulge(), pt);
     };
@@ -502,12 +497,12 @@ IntrPlineSegsResult<Real> intrPlineSegs(PlineVertex2D<Real> const &v1, PlineVert
       auto arc2End = arc2StartAndSweep.first + arc2StartAndSweep.second;
 
       if (std::abs(utils::deltaAngle(arc1StartAndSweep.first, arc2End)) <
-          utils::realThreshold<Real>()) {
+          utils::realThreshold<double>()) {
         // only end points touch at start of arc1
         result.intrType = PlineSegIntrType::OneIntersect;
         result.point1 = v1.pos();
       } else if (std::abs(utils::deltaAngle(arc2StartAndSweep.first, arc1End)) <
-                 utils::realThreshold<Real>()) {
+                 utils::realThreshold<double>()) {
         // only end points touch at start of arc2
         result.intrType = PlineSegIntrType::OneIntersect;
         result.point1 = u1.pos();

@@ -2,6 +2,7 @@
 #define CORE_LINE_LINE_INTERSECT_HPP
 
 #include "../../../external/Eigen/CustomEigen.hpp"
+#include "../mathUtils.hpp"
 
 #include <algorithm>
 
@@ -29,7 +30,7 @@ struct IntrLineSeg2LineSeg2Result {
   Vector2d point;
 };
 
-IntrLineSeg2LineSeg2Result intrLineSeg2LineSeg2(Vector2d const &u1, Vector2d const &u2, Vector2d const &v1,
+inline IntrLineSeg2LineSeg2Result intrLineSeg2LineSeg2(Vector2d const &u1, Vector2d const &u2, Vector2d const &v1,
                      Vector2d const &v2) {
   // This implementation works by processing the segments in parametric equation form and using
   // perpendicular products
@@ -132,8 +133,8 @@ IntrLineSeg2LineSeg2Result intrLineSeg2LineSeg2(Vector2d const &u1, Vector2d con
           // no overlap
           result.intrType = LineSeg2LineSeg2IntrType::None;
         } else {
-          result.t0 = std::max(result.t0, 0.f);
-          result.t1 = std::min(result.t1, 0.f);
+          result.t0 = std::max(result.t0, 0.0);
+          result.t1 = std::min(result.t1, 0.0);
           if (std::abs(result.t1 - result.t0) < utils::realThreshold<double>()) {
             // intersect is a single point (segments line up end to end)
             result.intrType = LineSeg2LineSeg2IntrType::True;

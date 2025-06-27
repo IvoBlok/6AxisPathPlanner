@@ -14,11 +14,12 @@ This file defines a static spatial index. It effectively sorts varying rectangle
 #include "mathUtils.hpp"
 
 namespace core {
-template <std::size_t NodeSize = 16> class StaticSpatialIndex {
+inline std::size_t NodeSize = 16;
+
+class StaticSpatialIndex {
 public:
   StaticSpatialIndex(std::size_t numItems) {
     CORE_ASSERT(numItems > 0, "number of items must be greater than 0");
-    static_assert(NodeSize >= 2 && NodeSize <= 65535, "node size must be between 2 and 65535");
     // calculate the total number of nodes in the R-tree to allocate space for
     // and the index of each tree level (used in search later)
     m_numItems = numItems;

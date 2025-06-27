@@ -30,10 +30,9 @@ struct ProcessForCombineResult {
   }
 };
 
-template <std::size_t N>
-ProcessForCombineResult
+inline ProcessForCombineResult
 processForCombine(Polyline2D const &pline1, Polyline2D const &pline2,
-                  StaticSpatialIndex<N> const &pline1SpatialIndex) {
+                  StaticSpatialIndex const &pline1SpatialIndex) {
 
   CORE_ASSERT(pline1.isClosed() && pline2.isClosed(), "combining only works with closed polylines");
 

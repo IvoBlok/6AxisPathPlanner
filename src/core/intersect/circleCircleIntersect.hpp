@@ -2,6 +2,7 @@
 #define CORE_CIRCLE_CIRCLE_INTERSECT_HPP
 
 #include "../../../external/Eigen/CustomEigen.hpp"
+#include "../mathUtils.hpp"
 
 namespace core {
 enum class Circle2Circle2IntrType {
@@ -25,7 +26,7 @@ struct IntrCircle2Circle2Result {
 };
 
 // Find intersect between two circles in 2D.
-IntrCircle2Circle2Result intrCircle2Circle2(double radius1, Vector2d const &center1,
+inline IntrCircle2Circle2Result intrCircle2Circle2(double radius1, Vector2d const &center1,
                                                   double radius2, Vector2d const &center2) {
   // Reference algorithm: http://paulbourke.net/geometry/circlesphere/
 

@@ -93,8 +93,8 @@ public:
     insertPolyLine2D(polyline, plane);
   }
 
-  Polyline2_5D(Polyline2_5D& polyline, Plane& plane) {
-    insertPolyLine2_5D(polyline, plane);
+  Polyline2_5D(Polyline2_5D& polyline) {
+    insertPolyLine2_5D(polyline);
   }
 
   void insertPolyLine2D(Polyline2D& polyline, Plane& plane) {
@@ -156,14 +156,14 @@ private:
 };
 
 /// Scale X and Y of polyline by scaleFactor.
-void scalePolyline(Polyline2D &pline, double scaleFactor) {
+inline void scalePolyline(Polyline2D &pline, double scaleFactor) {
   for (auto &v : pline.vertexes()) {
     v = PlineVertex2D(scaleFactor * v.pos(), v.bulge());
   }
 }
 
 /// Translate the polyline by some offset vector.
-void translatePolyline(Polyline2D &pline, Vector2d const &offset) {
+inline void translatePolyline(Polyline2D &pline, Vector2d const &offset) {
   for (auto &v : pline.vertexes()) {
     v = PlineVertex2D(offset.x() + v.x(), offset.y() + v.y(), v.bulge());
   }
@@ -171,7 +171,7 @@ void translatePolyline(Polyline2D &pline, Vector2d const &offset) {
 
 /// Compute the extents of a polyline, if there are no vertexes than -infinity to infinity bounding
 /// box is returned.
-AABB getExtents(Polyline2D const &pline) {
+inline AABB getExtents(Polyline2D const &pline) {
   if (pline.size() == 0) {
     return {std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(),
             -std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity()};
@@ -249,7 +249,7 @@ AABB getExtents(Polyline2D const &pline) {
 
 /// Compute the area of a closed polyline, assumes no self intersects, returns positive number if
 /// polyline direction is counter clockwise, negative if clockwise, zero if not closed
-double getArea(Polyline2D const &pline) {
+inline double getArea(Polyline2D const &pline) {
   // Implementation notes:
   // Using the shoelace formula (https://en.wikipedia.org/wiki/Shoelace_formula) modified to support
   // arcs defined by a bulge value. The shoelace formula returns a negative value for clockwise
@@ -270,7 +270,7 @@ double getArea(Polyline2D const &pline) {
       // add arc segment area
       double b = std::abs(pline[i].bulge());
       double sweepAngle = 4.f * std::atan(b);
-      double triangleBase = length(pline[j].pos() - pline[i].pos());
+      double triangleBase = (pline[j].pos() - pline[i].pos()).norm();
       double radius = triangleBase * (b * b + 1.f) / (4.f * b);
       double sagitta = b * triangleBase / 2.f;
       double triangleHeight = radius - sagitta;
@@ -295,7 +295,7 @@ double getArea(Polyline2D const &pline) {
   return doubleAreaTotal / 2.f;
 }
 
-bool isPathClockwise(Polyline2D const& pline) {
+inline bool isPathClockwise(Polyline2D const& pline) {
   return getArea(pline) < 0.f;
 }
 
@@ -311,7 +311,7 @@ public:
     CORE_ASSERT(pline.vertexes().size() > 0, "empty polyline has no closest point");
     if (pline.vertexes().size() == 1) {
       m_index = 0;
-      m_distance = length(point - pline[0].pos());
+      m_distance = (point - pline[0].pos()).norm();
       m_point = pline[0].pos();
       return;
     }
@@ -321,7 +321,7 @@ public:
     auto visitor = [&](std::size_t i, std::size_t j) {
       Vector2d cp = closestPointOnSeg(pline[i], pline[j], point);
       auto diffVec = point - cp;
-      double dist2 = dot(diffVec, diffVec);
+      double dist2 = diffVec.dot(diffVec);
       if (dist2 < m_distance) {
         m_index = i;
         m_point = cp;
@@ -361,7 +361,7 @@ private:
 /// Returns a new polyline with all arc segments converted to line segments, error is the maximum
 /// distance from any line segment to the arc it is approximating. Line segments are circumscribed
 /// by the arc (all end points lie on the arc path).
-Polyline2D convertArcsToLines(Polyline2D const &pline, double error) {
+inline Polyline2D convertArcsToLines(Polyline2D const &pline, double error) {
   core::Polyline2D result;
   result.isClosed() = pline.isClosed();
   auto visitor = [&](std::size_t i, std::size_t j) {
@@ -412,7 +412,7 @@ Polyline2D convertArcsToLines(Polyline2D const &pline, double error) {
 
 /// Returns a new polyline with all singularities (repeating vertex positions) from the polyline
 /// given removed.
-Polyline2D pruneSingularities(Polyline2D const &pline, double epsilon) {
+inline Polyline2D pruneSingularities(Polyline2D const &pline, double epsilon) {
   Polyline2D result;
   result.isClosed() = pline.isClosed();
 
@@ -446,7 +446,7 @@ Polyline2D pruneSingularities(Polyline2D const &pline, double epsilon) {
 /// Inverts the direction of the polyline given. If polyline is closed then this just changes the
 /// direction from clockwise to counter clockwise, if polyline is open then the starting vertex
 /// becomes the end vertex and the end vertex becomes the starting vertex.
-void invertDirection(Polyline2D &pline) {
+inline void invertDirection(Polyline2D &pline) {
   if (pline.size() < 2) {
     return;
   }
@@ -464,7 +464,7 @@ void invertDirection(Polyline2D &pline) {
 
 /// Creates an approximate spatial index for all the segments in the polyline given using
 /// createFastApproxBoundingBox.
-StaticSpatialIndex createApproxSpatialIndex(Polyline2D const &pline) {
+inline StaticSpatialIndex createApproxSpatialIndex(Polyline2D const &pline) {
   CORE_ASSERT(pline.size() > 1, "need at least 2 vertexes to form segments for spatial index");
 
   std::size_t segmentCount = pline.isClosed() ? pline.size() : pline.size() - 1;
@@ -487,7 +487,7 @@ StaticSpatialIndex createApproxSpatialIndex(Polyline2D const &pline) {
 }
 
 /// Calculate the total path length of a polyline.
-double getPathLength(Polyline2D const &pline) {
+inline double getPathLength(Polyline2D const &pline) {
   if (pline.size() < 2) {
     return 0.f;
   }
@@ -506,7 +506,7 @@ double getPathLength(Polyline2D const &pline) {
 /// the first vertex does not overlap the last vertex then 0 is always returned. This algorithm is
 /// adapted from http://geomalgorithms.com/a03-_inclusion.html to support arc segments. NOTE: The
 /// result is not defined if the point lies ontop of the polyline.
-int getWindingNumber(Polyline2D const &pline, Vector2d const &point) {
+inline int getWindingNumber(Polyline2D const &pline, Vector2d const &point) {
   if (!pline.isClosed() || pline.size() < 2) {
     return 0;
   }
@@ -634,7 +634,7 @@ int getWindingNumber(Polyline2D const &pline, Vector2d const &point) {
 
 
 namespace internal {
-void addOrReplaceIfSamePos(Polyline2D &pline, PlineVertex2D const &vertex,
+inline void addOrReplaceIfSamePos(Polyline2D &pline, PlineVertex2D const &vertex,
                            double epsilon = utils::realPrecision<double>()) {
   if (pline.size() == 0) {
     pline.addVertex(vertex);

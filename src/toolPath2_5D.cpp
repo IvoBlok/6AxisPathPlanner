@@ -8,11 +8,11 @@ std::vector<core::Polyline2D> toolPath2_5D::filterOutPocketIntersects(std::vecto
 
 		// get a non-zero normal from the path
 		for (const core::PlineVertex2D& vertex : path.vertexes()) {
-			if (core::length(vertex.normal()) == 0.f)
+			if (vertex.normal().norm() == 0.f)
 				continue;
 
 			// project the normal on the plane
-			Vector3d projectedVector = vertex.normal() - slicingPlane.normal * (core::dot(slicingPlane.normal, vertex.normal()));
+			Vector3d projectedVector = vertex.normal() - slicingPlane.normal * (slicingPlane.normal.dot(vertex.normal()));
 			projectedVector.normalize();
 
 			// retrieve a point in the direction of the projected normal
@@ -34,7 +34,7 @@ std::vector<core::Polyline2D> toolPath2_5D::filterOutPocketIntersects(std::vecto
 
 core::Polyline2_5D toolPath2_5D::generateClearingPass2_5D(ClearingPass2_5DInfo& info) {
 
-	if (!core::fuzzyEqual(info.startPlane.normal, info.endPlane.normal)) {
+	if (!fuzzyEqual(info.startPlane.normal, info.endPlane.normal)) {
 		std::cout << "Given start and end plane don't have the same orientation!\n";
 		return core::Polyline2_5D{};
 	}
@@ -43,7 +43,7 @@ core::Polyline2_5D toolPath2_5D::generateClearingPass2_5D(ClearingPass2_5DInfo& 
 	Vector3d startingPoint = info.startPlane.origin;
 	Vector3d planeNormal = info.startPlane.normal;
 	// ensure that the plane normal (of the start plane) is facing 'away' from the end plane
-	if(!core::dot(planeNormal, info.startPlane.origin - info.endPlane.origin))
+	if(!planeNormal.dot(info.startPlane.origin - info.endPlane.origin))
 		planeNormal = -planeNormal;
 
 	core::Plane safeTraversalPlane = core::Plane(startingPoint + info.safeTraverseHeight * 0.001f * planeNormal, planeNormal);
@@ -59,7 +59,7 @@ core::Polyline2_5D toolPath2_5D::generateClearingPass2_5D(ClearingPass2_5DInfo& 
 	// ========================================================================================
 
 	// calculate perpendicular distance between start- and endplanes.
-	double remainingHeight = core::dot(info.startPlane.origin - info.endPlane.origin, planeNormal);
+	double remainingHeight = planeNormal.dot(info.startPlane.origin - info.endPlane.origin);
 	
 	while (remainingHeight > (double)0.f) {
 		// check if this is the last plane of the path, and update the remaining height variable accordingly
@@ -144,7 +144,7 @@ core::Polyline2_5D toolPath2_5D::generateClearingPass2_5D(ClearingPass2_5DInfo& 
 
 core::Polyline2_5D toolPath2_5D::generateSurfacePass2_5D(SurfacePass2_5DInfo& info) {
 
-	if (!core::fuzzyEqual(info.startPlane.normal, info.endPlane.normal)) {
+	if (!fuzzyEqual(info.startPlane.normal, info.endPlane.normal)) {
 		std::cout << "Given start and end plane don't have the same orientation!\n";
 		return core::Polyline2_5D{};
 	}
@@ -153,7 +153,7 @@ core::Polyline2_5D toolPath2_5D::generateSurfacePass2_5D(SurfacePass2_5DInfo& in
 	Vector3d startingPoint = info.startPlane.origin;
 	Vector3d planeNormal = info.startPlane.normal;
 	// ensure that the plane normal (of the start plane) is facing 'away' from the end plane
-	if(!core::dot(planeNormal, info.startPlane.origin - info.endPlane.origin))
+	if(!planeNormal.dot(info.startPlane.origin - info.endPlane.origin))
 		planeNormal = -planeNormal;
 
 	core::Plane safeTraversalPlane = core::Plane(startingPoint + info.safeTraverseHeight * 0.001f * planeNormal, planeNormal);
@@ -169,7 +169,7 @@ core::Polyline2_5D toolPath2_5D::generateSurfacePass2_5D(SurfacePass2_5DInfo& in
 	// ========================================================================================
 
 	// calculate perpendicular distance between start- and endplanes.
-	double remainingHeight = core::dot(info.startPlane.origin - info.endPlane.origin, planeNormal);
+	double remainingHeight = planeNormal.dot(info.startPlane.origin - info.endPlane.origin);
 	while (remainingHeight > (double)0.f) {
 		// check if this is the last plane of the path, and update the remaining height variable accordingly
 		remainingHeight = remainingHeight - info.depthOfCut * 0.001f;

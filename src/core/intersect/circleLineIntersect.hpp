@@ -2,6 +2,7 @@
 #define CORE_CIRCLE_LINE_INTERSECT_HPP
 
 #include "../../../external/Eigen/CustomEigen.hpp"
+#include "../mathUtils.hpp"
 
 namespace core {
 struct IntrLineSeg2Circle2Result {
@@ -18,7 +19,7 @@ struct IntrLineSeg2Circle2Result {
 // occurs only when extending the segment out past the points given (if t < 0 intersect nearest v1,
 // if t > 0 then intersect nearest v2), intersects are "sticky" and "snap" to tangent points, e.g. a
 // segment very close to being a tangent will be returned as a single intersect point
-IntrLineSeg2Circle2Result intrLineSeg2Circle2(Vector2d const &p0,
+inline IntrLineSeg2Circle2Result intrLineSeg2Circle2(Vector2d const &p0,
                                                     Vector2d const &p1, double radius,
                                                     Vector2d const &circleCenter) {
   // This function solves for t by substituting the parametric equations for the segment x = v1.X +

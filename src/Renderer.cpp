@@ -837,8 +837,8 @@ void LoadedLine::loadPolylineIntoRendererFormat(Vector3d lineColor) {
             Vector2d localv2Coords = nextVertex.getPointInPlaneCoords();
             core::ArcRadiusAndCenter arcInfo = core::arcRadiusAndCenter(pathVertices[i].getVertexInPlaneCoords(), nextVertex.getVertexInPlaneCoords());
             
-            float startAngle = core::angle(arcInfo.center, localv1Coords);
-            float endAngle = core::angle(arcInfo.center, localv2Coords);
+            float startAngle = angle(arcInfo.center, localv1Coords);
+            float endAngle = angle(arcInfo.center, localv2Coords);
 
             float deltaAngle = core::utils::deltaAngle(startAngle, endAngle);
 

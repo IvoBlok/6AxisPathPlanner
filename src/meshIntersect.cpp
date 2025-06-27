@@ -4,7 +4,7 @@ namespace meshIntersect {
 double signedDistanceOfVertexToPlane(const Vector3d& vertex, const core::Plane& plane) {
     // the dot product of the plane normal and the vector from the vertex to the plane gives you the square of the shortest distance between the point and the plane
     // this result is signed, where the sign signifies on which side of the plane it lies
-    return dot(plane.normal, vertex - plane.origin);
+    return plane.normal.dot(vertex - plane.origin);
 }
 
 const std::vector<double> signedDistancesToPlane(const std::vector<Vector3d>& vertices, const core::Plane& plane) {
@@ -129,16 +129,16 @@ bool insertConnectingEdgePath(const std::vector<core::Polyline2D>& paths, std::v
 			continue;
 		}
 		
-		if (core::fuzzyEqual(path.vertexes().front().pos(), currentChain.vertexes().back().pos(), 1e-6)) {
+		if (fuzzyEqual(path.vertexes().front().pos(), currentChain.vertexes().back().pos(), 1e-6)) {
 			currentChain.vertexes().insert(currentChain.vertexes().end(), path.vertexes().begin() + 1, path.vertexes().end());
 		}
-		else if (core::fuzzyEqual(path.vertexes().back().pos(), currentChain.vertexes().back().pos(), 1e-6)) {
+		else if (fuzzyEqual(path.vertexes().back().pos(), currentChain.vertexes().back().pos(), 1e-6)) {
 			currentChain.vertexes().insert(currentChain.vertexes().end(), path.vertexes().rbegin() + 1, path.vertexes().rend());
 		}
-		else if (core::fuzzyEqual(path.vertexes().back().pos(), currentChain.vertexes().front().pos(), 1e-6)) {
+		else if (fuzzyEqual(path.vertexes().back().pos(), currentChain.vertexes().front().pos(), 1e-6)) {
 			currentChain.vertexes().insert(currentChain.vertexes().begin(), path.vertexes().begin(), path.vertexes().end() - 1);
 		}
-		else if (core::fuzzyEqual(path.vertexes().front().pos(), currentChain.vertexes().front().pos(), 1e-6)) {
+		else if (fuzzyEqual(path.vertexes().front().pos(), currentChain.vertexes().front().pos(), 1e-6)) {
 			currentChain.vertexes().insert(currentChain.vertexes().begin(), path.vertexes().rbegin(), path.vertexes().rend() - 1);
 		}
 		else continue;
@@ -199,7 +199,7 @@ std::vector<core::Polyline2D> constructGeometricPaths(const core::Plane& plane, 
 
 				Vector3d newPoint = edgeStart + (edgeEnd - edgeStart) * factor;
 				Vector3d newNormal = normalStart + (normalEnd - normalStart) * factor;
-				if(!core::fuzzyZero(newNormal))
+				if(!fuzzyZero(newNormal))
 					newNormal.normalize();
 				path.vertexes().push_back(core::PlineVertex2D{ plane.getLocalCoords(newPoint), 0.f });
 				path.vertexes().back().normal() = newNormal;
@@ -245,7 +245,7 @@ std::vector<core::Polyline2D> getMeshPlaneIntersection(core::Plane& plane, core:
 	{
 		newPaths[i].isClosed() = true;
 		
-		bool isClosed = core::fuzzyEqual(newPaths[i].vertexes().front().pos(), newPaths[i].vertexes().back().pos(), 1e-6);
+		bool isClosed = fuzzyEqual(newPaths[i].vertexes().front().pos(), newPaths[i].vertexes().back().pos(), 1e-6);
 		if (isClosed) {
 			newPaths[i].vertexes().pop_back();
 		}

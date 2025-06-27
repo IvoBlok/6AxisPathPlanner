@@ -264,7 +264,7 @@ void arcToLineJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
         }
       }
 
-      addOrReplaceIfSamePos(result, PlineVertex2D>(intersect,0.f));
+      addOrReplaceIfSamePos(result, PlineVertex2D(intersect, 0.0));
 
     } else {
       connectUsingArc();
@@ -450,9 +450,8 @@ void offsetCircleIntersectsWithPline(Polyline2D const &pline, double offset,
 }
 
 /// Function to test if a point is a valid distance from the original polyline.
-template <std::size_t N>
 bool pointValidForOffset(Polyline2D const &pline, double offset,
-                         StaticSpatialIndex<N> const &spatialIndex,
+                         StaticSpatialIndex const &spatialIndex,
                          Vector2d const &point, std::vector<std::size_t> &queryStack,
                          double offsetTol = utils::offsetThreshold<double>()) {
   const double absOffset = std::abs(offset) - offsetTol;

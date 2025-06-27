@@ -116,7 +116,7 @@ struct ArcRadiusAndCenter {
 };
 
 /// Compute the arc radius and arc center of a arc segment defined by v1 to v2.
-ArcRadiusAndCenter arcRadiusAndCenter(PlineVertex2D const &v1,
+inline ArcRadiusAndCenter arcRadiusAndCenter(PlineVertex2D const &v1,
                                             PlineVertex2D const &v2) {
   CORE_ASSERT(!v1.bulgeIsZero(), "v1 to v2 must be an arc");
   CORE_ASSERT(!fuzzyEqual(v1.pos(), v2.pos()), "v1 must not be ontop of v2");
@@ -150,7 +150,7 @@ struct SplitResult {
 };
 
 /// Split the segment defined by v1 to v2 at some point defined along it.
-SplitResult splitAtPoint(PlineVertex2D const &v1, PlineVertex2D const &v2,
+inline SplitResult splitAtPoint(PlineVertex2D const &v1, PlineVertex2D const &v2,
                                Vector2d const &point) {
   SplitResult result;
   if (v1.bulgeIsZero()) {
@@ -182,7 +182,7 @@ SplitResult splitAtPoint(PlineVertex2D const &v1, PlineVertex2D const &v2,
 }
 
 
-Vector2d segTangentVector(PlineVertex2D const &v1, PlineVertex2D const &v2,
+inline Vector2d segTangentVector(PlineVertex2D const &v1, PlineVertex2D const &v2,
                                Vector2d const &pointOnSeg) {
   if (v1.bulgeIsZero()) {
     return v2.pos() - v1.pos();
@@ -199,7 +199,7 @@ Vector2d segTangentVector(PlineVertex2D const &v1, PlineVertex2D const &v2,
 }
 
 /// Compute the closest point on a segment defined by v1 to v2 to the point given.
-Vector2d closestPointOnSeg(PlineVertex2D const &v1, PlineVertex2D const &v2,
+inline Vector2d closestPointOnSeg(PlineVertex2D const &v1, PlineVertex2D const &v2,
                                 Vector2d const &point) {
   if (v1.bulgeIsZero()) {
     return closestPointOnLineSeg(v1.pos(), v2.pos(), point);
@@ -231,7 +231,7 @@ Vector2d closestPointOnSeg(PlineVertex2D const &v1, PlineVertex2D const &v2,
 
 /// Computes a fast approximate AABB of a segment described by v1 to v2, bounding box may be larger
 /// than the true bounding box for the segment
-AABB createFastApproxBoundingBox(PlineVertex2D const &v1, PlineVertex2D const &v2) {
+inline AABB createFastApproxBoundingBox(PlineVertex2D const &v1, PlineVertex2D const &v2) {
   AABB result;
   if (v1.bulgeIsZero()) {
     if (v1.x() < v2.x()) {
@@ -309,7 +309,7 @@ AABB createFastApproxBoundingBox(PlineVertex2D const &v1, PlineVertex2D const &v
 }
 
 /// Calculate the path length for the segment defined from v1 to v2.
-double segLength(PlineVertex2D const &v1, PlineVertex2D const &v2) {
+inline double segLength(PlineVertex2D const &v1, PlineVertex2D const &v2) {
   if (fuzzyEqual(v1.pos(), v2.pos())) {
     return 0.f;
   }
@@ -325,7 +325,7 @@ double segLength(PlineVertex2D const &v1, PlineVertex2D const &v2) {
 }
 
 /// Return the mid point along a segment path.
-Vector2d segMidpoint(PlineVertex2Dconst &v1, PlineVertex2D const &v2) {
+inline Vector2d segMidpoint(PlineVertex2D const &v1, PlineVertex2D const &v2) {
   if (v1.bulgeIsZero()) {
     return midpoint(v1.pos(), v2.pos());
   }
@@ -354,7 +354,7 @@ struct IntrPlineSegsResult {
   Vector2d point2;
 };
 
-IntrPlineSegsResult intrPlineSegs(PlineVertex2D const &v1, PlineVertex2D const &v2,
+inline IntrPlineSegsResult intrPlineSegs(PlineVertex2D const &v1, PlineVertex2D const &v2,
                                         PlineVertex2D const &u1, PlineVertex2D const &u2) {
   IntrPlineSegsResult result;
   const bool vIsLine = v1.bulgeIsZero();

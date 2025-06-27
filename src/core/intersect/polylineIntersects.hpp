@@ -34,7 +34,7 @@ struct PlineCoincidentIntersect {
   /// One end point of the coincident slice
   Vector2d point1;
   /// Other end point of the coincident slice
-  Vector2dpoint2;
+  Vector2d point2;
   PlineCoincidentIntersect() = default;
   PlineCoincidentIntersect(std::size_t si1, std::size_t si2, Vector2d const &point1,
                            Vector2d const &point2)
@@ -55,7 +55,7 @@ struct CoincidentSlicesResult {
   std::vector<bool> coincidentIsOpposingDirection;
 };
 
-CoincidentSlicesResult sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect> &coincidentIntrs,
+inline CoincidentSlicesResult sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect> &coincidentIntrs,
                             Polyline2D const &pline1, Polyline2D const &pline2) {
   CoincidentSlicesResult result;
 
@@ -102,7 +102,7 @@ CoincidentSlicesResult sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIn
     auto const &t2 = segTangentVector(u1, u2, u1.pos());
     // tangent vectors are either going same direction or opposite direction, just test dot product
     // sign to determine if going same direction
-    auto dotP = dot(t1, t2);
+    auto dotP = t1.dot(t2);
     bool sameDirection = dotP > 0.f;
     coincidentIsOpposingDirection.push_back(!sameDirection);
 
@@ -201,7 +201,7 @@ CoincidentSlicesResult sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIn
 /// Finds all local self intersects of the polyline, local self intersects are defined as between
 /// two polyline segments that share a vertex. NOTES:
 /// - Singularities (repeating vertexes) are returned as coincident intersects
-void localSelfIntersects(Polyline2D const &pline, std::vector<PlineIntersect> &output) {
+inline void localSelfIntersects(Polyline2D const &pline, std::vector<PlineIntersect> &output) {
   if (pline.size() < 2) {
     return;
   }
@@ -276,9 +276,8 @@ void localSelfIntersects(Polyline2D const &pline, std::vector<PlineIntersect> &o
 /// NOTES:
 /// - We never include intersects at a segment's start point, the matching intersect from the
 /// previous segment's end point is included (no sense in including both)
-template <std::size_t N>
-void globalSelfIntersects(Polyline2D const &pline, std::vector<PlineIntersect> &output,
-                          StaticSpatialIndex<N> const &spatialIndex) {
+inline void globalSelfIntersects(Polyline2D const &pline, std::vector<PlineIntersect> &output,
+                          StaticSpatialIndex const &spatialIndex) {
   if (pline.size() < 3) {
     return;
   }
@@ -363,17 +362,15 @@ void globalSelfIntersects(Polyline2D const &pline, std::vector<PlineIntersect> &
 
 /// Finds all self intersects of the polyline (equivalent to calling localSelfIntersects and
 /// globalSelfIntersects).
-template <std::size_t N>
-void allSelfIntersects(Polyline2D const &pline, std::vector<PlineIntersect> &output,
-                       StaticSpatialIndex<N> const &spatialIndex) {
+inline void allSelfIntersects(Polyline2D const &pline, std::vector<PlineIntersect> &output,
+                       StaticSpatialIndex const &spatialIndex) {
   localSelfIntersects(pline, output);
   globalSelfIntersects(pline, output, spatialIndex);
 }
 
 /// Finds all intersects between pline1 and pline2.
-template <std::size_t N>
-void findIntersects(Polyline2D const &pline1, Polyline2D const &pline2,
-                    StaticSpatialIndex<N> const &pline1SpatialIndex,
+inline void findIntersects(Polyline2D const &pline1, Polyline2D const &pline2,
+                    StaticSpatialIndex const &pline1SpatialIndex,
                     PlineIntersectsResult &output) {
   std::vector<std::size_t> queryResults;
   std::vector<std::size_t> queryStack;

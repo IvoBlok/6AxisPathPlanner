@@ -74,10 +74,10 @@ public:
                     auto obj2 = objects.begin();
                     std::advance(obj2, selectedIdx2);
 
-                    core::Plane<double> plane = obj1->getPlane();
+                    core::Plane plane = obj1->getPlane();
                     core::ObjectShape& shape = obj2->getObjectShape();
 
-                    std::vector<core::Polyline2D<double>> meshPlaneIntersect = getMeshPlaneIntersection(plane, shape);
+                    std::vector<core::Polyline2D> meshPlaneIntersect = getMeshPlaneIntersection(plane, shape);
                     
                     for (auto& curve : meshPlaneIntersect) 
                         renderer.createLine(curve, plane);

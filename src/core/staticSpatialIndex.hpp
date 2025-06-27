@@ -14,7 +14,7 @@ This file defines a static spatial index. It effectively sorts varying rectangle
 #include "mathUtils.hpp"
 
 namespace core {
-template <typename Real, std::size_t NodeSize = 16> class StaticSpatialIndex {
+template <std::size_t NodeSize = 16> class StaticSpatialIndex {
 public:
   StaticSpatialIndex(std::size_t numItems) {
     CORE_ASSERT(numItems > 0, "number of items must be greater than 0");
@@ -38,21 +38,21 @@ public:
     } while (n != 1);
 
     m_numNodes = numNodes;
-    m_boxes = std::unique_ptr<Real[]>(new Real[numNodes * 4]);
+    m_boxes = std::unique_ptr<double[]>(new double[numNodes * 4]);
     m_indices = std::unique_ptr<std::size_t[]>(new std::size_t[numNodes]);
     m_pos = 0;
-    m_minX = std::numeric_limits<Real>::infinity();
-    m_minY = std::numeric_limits<Real>::infinity();
-    m_maxX = -std::numeric_limits<Real>::infinity();
-    m_maxY = -std::numeric_limits<Real>::infinity();
+    m_minX = std::numeric_limits<double>::infinity();
+    m_minY = std::numeric_limits<double>::infinity();
+    m_maxX = -std::numeric_limits<double>::infinity();
+    m_maxY = -std::numeric_limits<double>::infinity();
   }
 
-  Real minX() const { return m_minX; }
-  Real minY() const { return m_minY; }
-  Real maxX() const { return m_maxX; }
-  Real maxY() const { return m_maxY; }
+  double minX() const { return m_minX; }
+  double minY() const { return m_minY; }
+  double maxX() const { return m_maxX; }
+  double maxY() const { return m_maxY; }
 
-  void add(Real minX, Real minY, Real maxX, Real maxY) {
+  void add(double minX, double minY, double maxX, double maxY) {
     std::size_t index = m_pos >> 2;
     m_indices[index] = index;
     m_boxes[m_pos++] = minX;
@@ -85,28 +85,28 @@ public:
       return;
     }
 
-    Real width = m_maxX - m_minX;
-    Real height = m_maxY - m_minY;
+    double width = m_maxX - m_minX;
+    double height = m_maxY - m_minY;
     std::unique_ptr<std::uint32_t[]> hilbertValues(new std::uint32_t[m_numItems]);
 
     std::size_t pos = 0;
 
     for (std::size_t i = 0; i < m_numItems; ++i) {
       pos = 4 * i;
-      Real minX = m_boxes[pos++];
-      Real minY = m_boxes[pos++];
-      Real maxX = m_boxes[pos++];
-      Real maxY = m_boxes[pos++];
+      double minX = m_boxes[pos++];
+      double minY = m_boxes[pos++];
+      double maxX = m_boxes[pos++];
+      double maxY = m_boxes[pos++];
 
       // hilbert max input value for x and y
-      const Real hilbertMax = static_cast<Real>((1 << 16) - 1);
+      const double hilbertMax = static_cast<double>((1 << 16) - 1);
       // mapping the x and y coordinates of the center of the box to values in the range
       // [0 -> n - 1] such that the min of the entire set of bounding boxes maps to 0 and the max of
       // the entire set of bounding boxes maps to n - 1 our 2d space is x: [0 -> n-1] and
       // y: [0 -> n-1], our 1d hilbert curve value space is d: [0 -> n^2 - 1]
-      Real x = std::floor(hilbertMax * ((minX + maxX) / 2 - m_minX) / width);
+      double x = std::floor(hilbertMax * ((minX + maxX) / 2 - m_minX) / width);
       std::uint32_t hx = static_cast<std::uint32_t>(x);
-      Real y = std::floor(hilbertMax * ((minY + maxY) / 2 - m_minY) / height);
+      double y = std::floor(hilbertMax * ((minY + maxY) / 2 - m_minY) / height);
       std::uint32_t hy = static_cast<std::uint32_t>(y);
       hilbertValues[i] = hilbertXYToIndex(hx, hy);
     }
@@ -121,10 +121,10 @@ public:
 
       // generate a parent node for each block of consecutive <nodeSize> nodes
       while (pos < end) {
-        auto nodeMinX = std::numeric_limits<Real>::infinity();
-        auto nodeMinY = std::numeric_limits<Real>::infinity();
-        auto nodeMaxX = -1 * std::numeric_limits<Real>::infinity();
-        auto nodeMaxY = -1 * std::numeric_limits<Real>::infinity();
+        auto nodeMinX = std::numeric_limits<double>::infinity();
+        auto nodeMinY = std::numeric_limits<double>::infinity();
+        auto nodeMaxX = -1 * std::numeric_limits<double>::infinity();
+        auto nodeMaxY = -1 * std::numeric_limits<double>::infinity();
         auto nodeIndex = pos;
 
         // calculate bbox for the new node
@@ -154,7 +154,7 @@ public:
   }
 
   // Visit all the bounding boxes in the spatial index. Visitor function has the signature
-  // bool(std::size_t level, Real xmin, Real ymin, Real xmax, Real ymax, std::size_t level).
+  // bool(std::size_t level, double xmin, double ymin, double xmax, double ymax, std::size_t level).
   // Visiting stops early if false is returned.
   template <typename F> void visitBoundingBoxes(F &&visitor) const {
     std::size_t nodeIndex = 4 * m_numNodes - 4;
@@ -190,7 +190,7 @@ public:
   }
 
   // Visit only the item bounding boxes in the spatial index. Visitor function has the signature
-  // bool(std::size_t index, Real xmin, Real ymin, Real xmax, Real ymax). Visiting stops early if
+  // bool(std::size_t index, double xmin, double ymin, double xmax, double ymax). Visiting stops early if
   // false is returned.
   template <typename F> void visitItemBoxes(F &&visitor) const {
     for (std::size_t i = 0; i < m_levelBounds[0]; i += 4) {
@@ -201,7 +201,7 @@ public:
   }
 
   // See other overloads for details.
-  void query(Real minX, Real minY, Real maxX, Real maxY, std::vector<std::size_t> &results) const {
+  void query(double minX, double minY, double maxX, double maxY, std::vector<std::size_t> &results) const {
     auto visitor = [&](std::size_t index) {
       results.push_back(index);
       return true;
@@ -212,7 +212,7 @@ public:
 
   // Query the spatial index adding indexes to the results vector given. This overload accepts an
   // existing vector to use as a stack and takes care of clearing the stack before use.
-  void query(Real minX, Real minY, Real maxX, Real maxY, std::vector<std::size_t> &results,
+  void query(double minX, double minY, double maxX, double maxY, std::vector<std::size_t> &results,
              std::vector<std::size_t> &stack) const {
     auto visitor = [&](std::size_t index) {
       results.push_back(index);
@@ -224,7 +224,7 @@ public:
 
   // See other overloads for details.
   template <typename F>
-  void visitQuery(Real minX, Real minY, Real maxX, Real maxY, F &&visitor) const {
+  void visitQuery(double minX, double minY, double maxX, double maxY, F &&visitor) const {
     std::vector<std::size_t> stack;
     stack.reserve(16);
     visitQuery(minX, minY, maxX, maxY, std::forward<F>(visitor), stack);
@@ -235,7 +235,7 @@ public:
   // the query stops early, otherwise the query continues. This overload accepts an existing vector
   // to use as a stack and takes care of clearing the stack before use.
   template <typename F>
-  void visitQuery(Real minX, Real minY, Real maxX, Real maxY, F &&visitor,
+  void visitQuery(double minX, double minY, double maxX, double maxY, F &&visitor,
                   std::vector<std::size_t> &stack) const {
     CORE_ASSERT(m_pos == 4 * m_numNodes, "data not yet indexed - call Finish() before querying");
 
@@ -339,16 +339,16 @@ public:
   }
 
 private:
-  Real m_minX;
-  Real m_minY;
-  Real m_maxX;
-  Real m_maxY;
+  double m_minX;
+  double m_minY;
+  double m_maxX;
+  double m_maxY;
   std::size_t m_numItems;
   std::size_t m_numLevels;
   // using std::unique_ptr arrays for uninitialized memory optimization
   std::unique_ptr<std::size_t[]> m_levelBounds;
   std::size_t m_numNodes;
-  std::unique_ptr<Real[]> m_boxes;
+  std::unique_ptr<double[]> m_boxes;
   std::unique_ptr<std::size_t[]> m_indices;
   std::size_t m_pos;
 
@@ -364,7 +364,7 @@ private:
   }
 
   // quicksort that partially sorts the bounding box data alongside the Hilbert values
-  static void sort(std::uint32_t *values, Real *boxes, std::size_t *indices, std::size_t left,
+  static void sort(std::uint32_t *values, double *boxes, std::size_t *indices, std::size_t left,
                    std::size_t right) {
     CORE_ASSERT(left <= right, "left index should never be past right index");
 
@@ -393,7 +393,7 @@ private:
     sort(values, boxes, indices, j + 1, right);
   }
 
-  static void swap(std::uint32_t *values, Real *boxes, std::size_t *indices, std::size_t i,
+  static void swap(std::uint32_t *values, double *boxes, std::size_t *indices, std::size_t i,
                    std::size_t j) {
     auto temp = values[i];
     values[i] = values[j];

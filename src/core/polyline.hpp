@@ -6,7 +6,6 @@ This file defines the 2D and 2.5D polylines, and various functions that operate 
 
 #include "polylineVertex.hpp"
 #include "staticSpatialIndex.hpp"
-#include "vector2.hpp"
 #include "plane.hpp"
 
 #include <algorithm>
@@ -15,7 +14,7 @@ This file defines the 2D and 2.5D polylines, and various functions that operate 
 #include <algorithm>
 
 namespace core {
-template <typename Real> class Polyline2D {
+class Polyline2D {
 public:
 
   // when the polyline is closed, 'isPocket' signifies if the area enclosed by the polyline is desired material, or material to be removed
@@ -24,7 +23,7 @@ public:
   /// Construct an empty open polyline.
   Polyline2D() : isClosedVal(false), vertices() {}
 
-  using PVertex = PlineVertex2D<Real>;
+  using PVertex = PlineVertex2D;
   inline PVertex const &operator[](std::size_t i) const { return vertices[i]; }
   inline PVertex &operator[](std::size_t i) { return vertices[i]; }
 
@@ -46,7 +45,7 @@ public:
     vertices.back().bulge() = -firstBulge;
   }
 
-  void addVertex(Real x, Real y, Real bulge) { vertices.emplace_back(x, y, bulge); }
+  void addVertex(double x, double y, double bulge) { vertices.emplace_back(x, y, bulge); }
   void addVertex(PVertex vertex) { addVertex(vertex.x(), vertex.y(), vertex.bulge()); }
 
   std::size_t size() const { return vertices.size(); }
@@ -85,28 +84,28 @@ private:
   std::vector<PVertex> vertices;
 };
 
-template <typename Real> class Polyline2_5D {
+class Polyline2_5D {
 public:
   /// Construct an empty open polyline.
   Polyline2_5D() : isClosedVal(false), vertices() {}
 
-  Polyline2_5D(Polyline2D<Real>& polyline, Plane<Real>& plane) {
+  Polyline2_5D(Polyline2D& polyline, Plane& plane) {
     insertPolyLine2D(polyline, plane);
   }
 
-  Polyline2_5D(Polyline2_5D<Real>& polyline, Plane<Real>& plane) {
+  Polyline2_5D(Polyline2_5D& polyline, Plane& plane) {
     insertPolyLine2_5D(polyline, plane);
   }
 
-  void insertPolyLine2D(Polyline2D<Real>& polyline, Plane<Real>& plane) {
+  void insertPolyLine2D(Polyline2D& polyline, Plane& plane) {
     vertices.clear();
 
     isClosedVal = polyline.isClosed();
 
-    std::vector<PlineVertex2D<Real>>& inputVertices = polyline.vertexes();
+    std::vector<PlineVertex2D>& inputVertices = polyline.vertexes();
     for (size_t i = 0; i < inputVertices.size(); i++)
     {
-      PlineVertex2_5D<Real> new3DVertex;
+      PlineVertex2_5D new3DVertex;
       new3DVertex.bulge = inputVertices[i].bulge();
       new3DVertex.point = plane.getGlobalCoords(inputVertices[i].pos());
       new3DVertex.plane = plane;
@@ -115,14 +114,14 @@ public:
     }
   }
 
-  void insertPolyLine2_5D(Polyline2_5D<Real>& polyline) {
+  void insertPolyLine2_5D(Polyline2_5D& polyline) {
     vertices.clear();
 
     isClosedVal = polyline.isClosed();
     vertices.insert(vertices.end(), polyline.vertexes().begin(), polyline.vertexes().end());
   }
 
-  void addPolyline2_5D(Polyline2_5D<Real>& polyline) {
+  void addPolyline2_5D(Polyline2_5D& polyline) {
     if(vertices.size() == 0) {
       insertPolyLine2_5D(polyline);
     } else {
@@ -132,8 +131,8 @@ public:
     }
   }
 
-  void movePolyline(Vector3<Real> translation) {
-    for (PlineVertex2_5D<Real>& vertex : vertices) {
+  void movePolyline(Vector3d translation) {
+    for (PlineVertex2_5D& vertex : vertices) {
       vertex.point += translation;
       vertex.plane.origin += translation;
     }
@@ -143,7 +142,7 @@ public:
     return isClosedVal;
   }
 
-  std::vector<PlineVertex2_5D<Real>>& vertexes() {
+  std::vector<PlineVertex2_5D>& vertexes() {
     return vertices;
   }
 
@@ -153,36 +152,35 @@ public:
 
 private:
   bool isClosedVal;
-  std::vector<PlineVertex2_5D<Real>> vertices;
+  std::vector<PlineVertex2_5D> vertices;
 };
 
 /// Scale X and Y of polyline by scaleFactor.
-template <typename Real> void scalePolyline(Polyline2D<Real> &pline, Real scaleFactor) {
+void scalePolyline(Polyline2D &pline, double scaleFactor) {
   for (auto &v : pline.vertexes()) {
-    v = PlineVertex2D<Real>(scaleFactor * v.pos(), v.bulge());
+    v = PlineVertex2D(scaleFactor * v.pos(), v.bulge());
   }
 }
 
 /// Translate the polyline by some offset vector.
-template <typename Real>
-void translatePolyline(Polyline2D<Real> &pline, Vector2<Real> const &offset) {
+void translatePolyline(Polyline2D &pline, Vector2d const &offset) {
   for (auto &v : pline.vertexes()) {
-    v = PlineVertex2D<Real>(offset.x() + v.x(), offset.y() + v.y(), v.bulge());
+    v = PlineVertex2D(offset.x() + v.x(), offset.y() + v.y(), v.bulge());
   }
 }
 
 /// Compute the extents of a polyline, if there are no vertexes than -infinity to infinity bounding
 /// box is returned.
-template <typename Real> AABB<Real> getExtents(Polyline2D<Real> const &pline) {
+AABB getExtents(Polyline2D const &pline) {
   if (pline.size() == 0) {
-    return {std::numeric_limits<Real>::infinity(), std::numeric_limits<Real>::infinity(),
-            -std::numeric_limits<Real>::infinity(), -std::numeric_limits<Real>::infinity()};
+    return {std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(),
+            -std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity()};
   }
 
-  AABB<Real> result{pline[0].x(), pline[0].y(), pline[0].x(), pline[0].y()};
+  AABB result{pline[0].x(), pline[0].y(), pline[0].x(), pline[0].y()};
 
   auto visitor = [&](std::size_t i, std::size_t j) {
-    PlineVertex2D<Real> const &v1 = pline[i];
+    PlineVertex2D const &v1 = pline[i];
     if (v1.bulgeIsZero()) {
       if (v1.x() < result.xMin)
         result.xMin = v1.x();
@@ -193,38 +191,38 @@ template <typename Real> AABB<Real> getExtents(Polyline2D<Real> const &pline) {
       if (v1.y() > result.yMax)
         result.yMax = v1.y();
     } else {
-      PlineVertex2D<Real> const &v2 = pline[j];
+      PlineVertex2D const &v2 = pline[j];
       auto arc = arcRadiusAndCenter(v1, v2);
 
-      Real startAngle = angle(arc.center, v1.pos());
-      Real endAngle = angle(arc.center, v2.pos());
-      Real sweepAngle = utils::deltaAngle(startAngle, endAngle);
+      double startAngle = angle(arc.center, v1.pos());
+      double endAngle = angle(arc.center, v2.pos());
+      double sweepAngle = utils::deltaAngle(startAngle, endAngle);
 
-      Real arcXMin, arcYMin, arcXMax, arcYMax;
+      double arcXMin, arcYMin, arcXMax, arcYMax;
 
       // crosses PI/2
-      if (utils::angleIsWithinSweep(startAngle, sweepAngle, Real(0.5) * utils::pi<Real>())) {
+      if (utils::angleIsWithinSweep(startAngle, sweepAngle, 0.5f * utils::pi<double>())) {
         arcYMax = arc.center.y() + arc.radius;
       } else {
         arcYMax = std::max(v1.y(), v2.y());
       }
 
       // crosses PI
-      if (utils::angleIsWithinSweep(startAngle, sweepAngle, utils::pi<Real>())) {
+      if (utils::angleIsWithinSweep(startAngle, sweepAngle, utils::pi<double>())) {
         arcXMin = arc.center.x() - arc.radius;
       } else {
         arcXMin = std::min(v1.x(), v2.x());
       }
 
       // crosses 3PI/2
-      if (utils::angleIsWithinSweep(startAngle, sweepAngle, Real(1.5) * utils::pi<Real>())) {
+      if (utils::angleIsWithinSweep(startAngle, sweepAngle, 1.5f * utils::pi<double>())) {
         arcYMin = arc.center.y() - arc.radius;
       } else {
         arcYMin = std::min(v1.y(), v2.y());
       }
 
       // crosses 2PI
-      if (utils::angleIsWithinSweep(startAngle, sweepAngle, Real(2) * utils::pi<Real>())) {
+      if (utils::angleIsWithinSweep(startAngle, sweepAngle, 2.f * utils::pi<double>())) {
         arcXMax = arc.center.x() + arc.radius;
       } else {
         arcXMax = std::max(v1.x(), v2.x());
@@ -251,7 +249,7 @@ template <typename Real> AABB<Real> getExtents(Polyline2D<Real> const &pline) {
 
 /// Compute the area of a closed polyline, assumes no self intersects, returns positive number if
 /// polyline direction is counter clockwise, negative if clockwise, zero if not closed
-template <typename Real> Real getArea(Polyline2D<Real> const &pline) {
+double getArea(Polyline2D const &pline) {
   // Implementation notes:
   // Using the shoelace formula (https://en.wikipedia.org/wiki/Shoelace_formula) modified to support
   // arcs defined by a bulge value. The shoelace formula returns a negative value for clockwise
@@ -261,24 +259,24 @@ template <typename Real> Real getArea(Polyline2D<Real> const &pline) {
   // the arc sector minus the area of the triangle defined by the chord and center of circle.
   // See https://en.wikipedia.org/wiki/Circular_segment
   if (!pline.isClosed() || pline.size() < 2) {
-    return Real(0);
+    return 0.f;
   }
 
-  Real doubleAreaTotal = Real(0);
+  double doubleAreaTotal = 0.f;
 
   auto visitor = [&](std::size_t i, std::size_t j) {
-    Real doubleArea = pline[i].x() * pline[j].y() - pline[i].y() * pline[j].x();
+    double doubleArea = pline[i].x() * pline[j].y() - pline[i].y() * pline[j].x();
     if (!pline[i].bulgeIsZero()) {
       // add arc segment area
-      Real b = std::abs(pline[i].bulge());
-      Real sweepAngle = Real(4) * std::atan(b);
-      Real triangleBase = length(pline[j].pos() - pline[i].pos());
-      Real radius = triangleBase * (b * b + Real(1)) / (Real(4) * b);
-      Real sagitta = b * triangleBase / Real(2);
-      Real triangleHeight = radius - sagitta;
-      Real doubleSectorArea = sweepAngle * radius * radius;
-      Real doubleTriangleArea = triangleBase * triangleHeight;
-      Real doubleArcSegArea = doubleSectorArea - doubleTriangleArea;
+      double b = std::abs(pline[i].bulge());
+      double sweepAngle = 4.f * std::atan(b);
+      double triangleBase = length(pline[j].pos() - pline[i].pos());
+      double radius = triangleBase * (b * b + 1.f) / (4.f * b);
+      double sagitta = b * triangleBase / 2.f;
+      double triangleHeight = radius - sagitta;
+      double doubleSectorArea = sweepAngle * radius * radius;
+      double doubleTriangleArea = triangleBase * triangleHeight;
+      double doubleArcSegArea = doubleSectorArea - doubleTriangleArea;
       if (pline[i].bulgeIsNeg()) {
         doubleArcSegArea = -doubleArcSegArea;
       }
@@ -294,22 +292,22 @@ template <typename Real> Real getArea(Polyline2D<Real> const &pline) {
 
   pline.visitSegIndices(visitor);
 
-  return doubleAreaTotal / Real(2);
+  return doubleAreaTotal / 2.f;
 }
 
-template <typename Real> bool isPathClockwise(Polyline2D<Real> const& pline) {
-  return getArea(pline) < Real(0);
+bool isPathClockwise(Polyline2D const& pline) {
+  return getArea(pline) < 0.f;
 }
 
 /// Class to compute the closest point and starting vertex index from a polyline to a point given.
-template <typename Real> class ClosestPoint {
+class ClosestPoint {
 public:
   /// Constructs the object to hold the results and performs the computation
-  explicit ClosestPoint(Polyline2D<Real> const &pline, Vector2<Real> const &point) {
+  explicit ClosestPoint(Polyline2D const &pline, Vector2d const &point) {
     compute(pline, point);
   }
 
-  void compute(Polyline2D<Real> const &pline, Vector2<Real> const &point) {
+  void compute(Polyline2D const &pline, Vector2d const &point) {
     CORE_ASSERT(pline.vertexes().size() > 0, "empty polyline has no closest point");
     if (pline.vertexes().size() == 1) {
       m_index = 0;
@@ -318,12 +316,12 @@ public:
       return;
     }
 
-    m_distance = std::numeric_limits<Real>::infinity();
+    m_distance = std::numeric_limits<double>::infinity();
 
     auto visitor = [&](std::size_t i, std::size_t j) {
-      Vector2<Real> cp = closestPointOnSeg(pline[i], pline[j], point);
+      Vector2d cp = closestPointOnSeg(pline[i], pline[j], point);
       auto diffVec = point - cp;
-      Real dist2 = dot(diffVec, diffVec);
+      double dist2 = dot(diffVec, diffVec);
       if (dist2 < m_distance) {
         m_index = i;
         m_point = cp;
@@ -350,22 +348,21 @@ public:
   /// Starting vertex index of the segment that has the closest point
   std::size_t index() const { return m_index; }
   /// The closest point
-  Vector2<Real> const &point() const { return m_point; }
+  Vector2d const &point() const { return m_point; }
   /// Distance between the points
-  Real distance() const { return m_distance; }
+  double distance() const { return m_distance; }
 
 private:
   std::size_t m_index = 0;
-  Vector2<Real> m_point = Vector2<Real>::zero();
-  Real m_distance;
+  Vector2d m_point = Vector2d::Zero();
+  double m_distance;
 };
 
 /// Returns a new polyline with all arc segments converted to line segments, error is the maximum
 /// distance from any line segment to the arc it is approximating. Line segments are circumscribed
 /// by the arc (all end points lie on the arc path).
-template <typename Real>
-Polyline2D<Real> convertArcsToLines(Polyline2D<Real> const &pline, Real error) {
-  core::Polyline2D<Real> result;
+Polyline2D convertArcsToLines(Polyline2D const &pline, double error) {
+  core::Polyline2D result;
   result.isClosed() = pline.isClosed();
   auto visitor = [&](std::size_t i, std::size_t j) {
     const auto &v1 = pline[i];
@@ -381,10 +378,10 @@ Polyline2D<Real> convertArcsToLines(Polyline2D<Real> const &pline, Real error) {
 
       auto startAngle = angle(arc.center, v1.pos());
       auto endAngle = angle(arc.center, v2.pos());
-      Real deltaAngle = std::abs(core::utils::deltaAngle(startAngle, endAngle));
+      double deltaAngle = std::abs(core::utils::deltaAngle(startAngle, endAngle));
 
       error = std::abs(error);
-      Real segmentSubAngle = std::abs(Real(2) * std::acos(Real(1) - error / arc.radius));
+      double segmentSubAngle = std::abs(2.f * std::acos(1.f - error / arc.radius));
       std::size_t segmentCount = static_cast<std::size_t>(std::ceil(deltaAngle / segmentSubAngle));
       // update segment subangle for equal length segments
       segmentSubAngle = deltaAngle / segmentCount;
@@ -396,7 +393,7 @@ Polyline2D<Real> convertArcsToLines(Polyline2D<Real> const &pline, Real error) {
       result.addVertex(v1.x(), v1.y(), 0.0);
       // add the remaining points
       for (std::size_t i = 1; i < segmentCount; ++i) {
-        Real angle = i * segmentSubAngle + startAngle;
+        double angle = i * segmentSubAngle + startAngle;
         result.addVertex(arc.radius * std::cos(angle) + arc.center.x(),
                          arc.radius * std::sin(angle) + arc.center.y(), 0);
       }
@@ -415,9 +412,8 @@ Polyline2D<Real> convertArcsToLines(Polyline2D<Real> const &pline, Real error) {
 
 /// Returns a new polyline with all singularities (repeating vertex positions) from the polyline
 /// given removed.
-template <typename Real>
-Polyline2D<Real> pruneSingularities(Polyline2D<Real> const &pline, Real epsilon) {
-  Polyline2D<Real> result;
+Polyline2D pruneSingularities(Polyline2D const &pline, double epsilon) {
+  Polyline2D result;
   result.isClosed() = pline.isClosed();
 
   if (pline.size() == 0) {
@@ -450,14 +446,14 @@ Polyline2D<Real> pruneSingularities(Polyline2D<Real> const &pline, Real epsilon)
 /// Inverts the direction of the polyline given. If polyline is closed then this just changes the
 /// direction from clockwise to counter clockwise, if polyline is open then the starting vertex
 /// becomes the end vertex and the end vertex becomes the starting vertex.
-template <typename Real> void invertDirection(Polyline2D<Real> &pline) {
+void invertDirection(Polyline2D &pline) {
   if (pline.size() < 2) {
     return;
   }
   std::reverse(std::begin(pline.vertexes()), std::end(pline.vertexes()));
 
   // shift and negate bulge (to maintain same geometric path)
-  Real firstBulge = pline[0].bulge();
+  double firstBulge = pline[0].bulge();
 
   for (std::size_t i = 1; i < pline.size(); ++i) {
     pline[i - 1].bulge() = -pline[i].bulge();
@@ -468,21 +464,20 @@ template <typename Real> void invertDirection(Polyline2D<Real> &pline) {
 
 /// Creates an approximate spatial index for all the segments in the polyline given using
 /// createFastApproxBoundingBox.
-template <typename Real>
-StaticSpatialIndex<Real> createApproxSpatialIndex(Polyline2D<Real> const &pline) {
+StaticSpatialIndex createApproxSpatialIndex(Polyline2D const &pline) {
   CORE_ASSERT(pline.size() > 1, "need at least 2 vertexes to form segments for spatial index");
 
   std::size_t segmentCount = pline.isClosed() ? pline.size() : pline.size() - 1;
-  StaticSpatialIndex<Real> result(segmentCount);
+  StaticSpatialIndex result(segmentCount);
 
   for (std::size_t i = 0; i < pline.size() - 1; ++i) {
-    AABB<Real> approxBB = createFastApproxBoundingBox(pline[i], pline[i + 1]);
+    AABB approxBB = createFastApproxBoundingBox(pline[i], pline[i + 1]);
     result.add(approxBB.xMin, approxBB.yMin, approxBB.xMax, approxBB.yMax);
   }
 
   if (pline.isClosed()) {
     // add final segment from last to first
-    AABB<Real> approxBB = createFastApproxBoundingBox(pline.lastVertex(), pline[0]);
+    AABB approxBB = createFastApproxBoundingBox(pline.lastVertex(), pline[0]);
     result.add(approxBB.xMin, approxBB.yMin, approxBB.xMax, approxBB.yMax);
   }
 
@@ -492,11 +487,11 @@ StaticSpatialIndex<Real> createApproxSpatialIndex(Polyline2D<Real> const &pline)
 }
 
 /// Calculate the total path length of a polyline.
-template <typename Real> Real getPathLength(Polyline2D<Real> const &pline) {
+double getPathLength(Polyline2D const &pline) {
   if (pline.size() < 2) {
-    return Real(0);
+    return 0.f;
   }
-  Real result = Real(0);
+  double result = 0.f;
   auto visitor = [&](std::size_t i, std::size_t j) {
     result += segLength(pline[i], pline[j]);
     return true;
@@ -511,8 +506,7 @@ template <typename Real> Real getPathLength(Polyline2D<Real> const &pline) {
 /// the first vertex does not overlap the last vertex then 0 is always returned. This algorithm is
 /// adapted from http://geomalgorithms.com/a03-_inclusion.html to support arc segments. NOTE: The
 /// result is not defined if the point lies ontop of the polyline.
-template <typename Real>
-int getWindingNumber(Polyline2D<Real> const &pline, Vector2<Real> const &point) {
+int getWindingNumber(Polyline2D const &pline, Vector2d const &point) {
   if (!pline.isClosed() || pline.size() < 2) {
     return 0;
   }
@@ -533,7 +527,7 @@ int getWindingNumber(Polyline2D<Real> const &pline, Vector2<Real> const &point) 
   // Helper function to determine if point is inside an arc sector area
   auto distToArcCenterLessThanRadius = [](const auto &v1, const auto &v2, const auto &pt) {
     auto arc = arcRadiusAndCenter(v1, v2);
-    Real dist2 = distSquared(arc.center, pt);
+    double dist2 = distSquared(arc.center, pt);
     return dist2 < arc.radius * arc.radius;
   };
 
@@ -640,9 +634,8 @@ int getWindingNumber(Polyline2D<Real> const &pline, Vector2<Real> const &point) 
 
 
 namespace internal {
-template <typename Real>
-void addOrReplaceIfSamePos(Polyline2D<Real> &pline, PlineVertex2D<Real> const &vertex,
-                           Real epsilon = utils::realPrecision<Real>()) {
+void addOrReplaceIfSamePos(Polyline2D &pline, PlineVertex2D const &vertex,
+                           double epsilon = utils::realPrecision<double>()) {
   if (pline.size() == 0) {
     pline.addVertex(vertex);
     return;

@@ -3,13 +3,13 @@
 namespace kinematics {
 
 LinearJoint::LinearJoint() {
-    position = core::Vector3<double>{};
-    direction = core::Vector3<double>{};
+    position = Vector3d::Zero();
+    direction = Vector3d::Zero();
     negativeLimit = 0.f;
     positiveLimit = 0.f;
 }
 
-LinearJoint::LinearJoint(core::Vector3<double> inputPosition, core::Vector3<double> inputDirection, float inputNegLimit, float inputPosLimit) {
+LinearJoint::LinearJoint(Vector3d inputPosition, Vector3d inputDirection, float inputNegLimit, float inputPosLimit) {
     position = inputPosition;
     direction = inputDirection;
     negativeLimit = inputNegLimit;
@@ -17,13 +17,13 @@ LinearJoint::LinearJoint(core::Vector3<double> inputPosition, core::Vector3<doub
 }
 
 RotationJoint::RotationJoint() {
-    position = core::Vector3<double>{};
-    direction = core::Vector3<double>{};
+    position = Vector3d::Zero();
+    direction = Vector3d::Zero();
     negativeLimit = 0.f;
     positiveLimit = 0.f;
 }
 
-RotationJoint::RotationJoint(core::Vector3<double> inputPosition, core::Vector3<double> inputDirection, float inputNegLimit, float inputPosLimit) {
+RotationJoint::RotationJoint(Vector3d inputPosition, Vector3d inputDirection, float inputNegLimit, float inputPosLimit) {
     position = inputPosition;
     direction = inputDirection;
     negativeLimit = inputNegLimit;
@@ -31,7 +31,7 @@ RotationJoint::RotationJoint(core::Vector3<double> inputPosition, core::Vector3<
 }
 
 RobotKinematics::RobotKinematics() {
-    position = core::Vector3<double>{};
+    position = Vector3d::Zero();
 }
 
 }

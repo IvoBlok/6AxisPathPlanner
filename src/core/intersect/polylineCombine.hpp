@@ -9,18 +9,18 @@
 
 namespace core {
 namespace internal {
-template <typename Real> struct ProcessForCombineResult {
-  std::vector<Polyline2D<Real>> coincidentSlices;
-  std::vector<PlineIntersect<Real>> nonCoincidentIntersects;
-  std::vector<PlineIntersect<Real>> coincidentSliceStartPoints;
-  std::vector<PlineIntersect<Real>> coincidentSliceEndPoints;
+struct ProcessForCombineResult {
+  std::vector<Polyline2D> coincidentSlices;
+  std::vector<PlineIntersect> nonCoincidentIntersects;
+  std::vector<PlineIntersect> coincidentSliceStartPoints;
+  std::vector<PlineIntersect> coincidentSliceEndPoints;
   std::vector<bool> coincidentIsOpposingDirection;
   bool pline1IsCW = false;
   bool pline2IsCW = false;
   bool completelyCoincident() const {
     return coincidentSliceStartPoints.size() == 1 && coincidentSliceEndPoints.size() == 1 &&
            fuzzyEqual(coincidentSliceStartPoints[0].pos, coincidentSliceEndPoints[0].pos,
-                      utils::realPrecision<Real>());
+                      utils::realPrecision<double>());
   }
 
   bool plineOpposingDirections() const { return pline1IsCW != pline2IsCW; }
@@ -30,17 +30,17 @@ template <typename Real> struct ProcessForCombineResult {
   }
 };
 
-template <typename Real, std::size_t N>
-ProcessForCombineResult<Real>
-processForCombine(Polyline2D<Real> const &pline1, Polyline2D<Real> const &pline2,
-                  StaticSpatialIndex<Real, N> const &pline1SpatialIndex) {
+template <std::size_t N>
+ProcessForCombineResult
+processForCombine(Polyline2D const &pline1, Polyline2D const &pline2,
+                  StaticSpatialIndex<N> const &pline1SpatialIndex) {
 
   CORE_ASSERT(pline1.isClosed() && pline2.isClosed(), "combining only works with closed polylines");
 
-  PlineIntersectsResult<Real> intrs;
+  PlineIntersectsResult intrs;
   findIntersects(pline1, pline2, pline1SpatialIndex, intrs);
 
-  ProcessForCombineResult<Real> result;
+  ProcessForCombineResult result;
   result.pline1IsCW = getArea(pline1) < 0.0;
   result.pline2IsCW = getArea(pline2) < 0.0;
   result.nonCoincidentIntersects.swap(intrs.intersects);
@@ -59,11 +59,11 @@ processForCombine(Polyline2D<Real> const &pline1, Polyline2D<Real> const &pline2
   return result;
 }
 
-template <typename Real> struct SlicePoint {
-  Vector2<Real> pos;
+struct SlicePoint {
+  Vector2d pos;
   // indicates slice point is the start of a coincident slice
   bool startOfCoincidentSlice;
-  SlicePoint(Vector2<Real> const &pos, bool startOfCoincidentSlice)
+  SlicePoint(Vector2d const &pos, bool startOfCoincidentSlice)
       : pos(pos), startOfCoincidentSlice(startOfCoincidentSlice) {}
 };
 
@@ -72,51 +72,51 @@ template <typename Real> struct SlicePoint {
 /// index is used. pointOnSlicePred is called on at least one point from each slice, if it returns
 /// true then the slice is kept, otherwise it is discarded. result is populated with open polylines
 /// that represent all the slices.
-template <typename Real, typename PointOnSlicePred>
-void sliceAtIntersects(Polyline2D<Real> const &pline,
-                       ProcessForCombineResult<Real> const &combineInfo, bool useSecondIndex,
-                       PointOnSlicePred &&pointOnSlicePred, std::vector<Polyline2D<Real>> &result) {
+template <typename PointOnSlicePred>
+void sliceAtIntersects(Polyline2D const &pline,
+                       ProcessForCombineResult const &combineInfo, bool useSecondIndex,
+                       PointOnSlicePred &&pointOnSlicePred, std::vector<Polyline2D> &result) {
 
-  std::unordered_map<std::size_t, std::vector<SlicePoint<Real>>> intersectsLookup;
+  std::unordered_map<std::size_t, std::vector<SlicePoint>> intersectsLookup;
   intersectsLookup.reserve(combineInfo.nonCoincidentIntersects.size() +
                            combineInfo.coincidentSliceStartPoints.size() +
                            combineInfo.coincidentSliceEndPoints.size());
 
   if (useSecondIndex) {
     // use sIndex2 for lookup
-    for (PlineIntersect<Real> const &intr : combineInfo.nonCoincidentIntersects) {
-      intersectsLookup[intr.sIndex2].push_back(SlicePoint<Real>(intr.pos, false));
+    for (PlineIntersect const &intr : combineInfo.nonCoincidentIntersects) {
+      intersectsLookup[intr.sIndex2].push_back(SlicePoint(intr.pos, false));
     }
 
     for (std::size_t i = 0; i < combineInfo.coincidentSliceStartPoints.size(); ++i) {
       auto const &sp = combineInfo.coincidentSliceStartPoints[i];
       auto const &ep = combineInfo.coincidentSliceEndPoints[i];
       if (combineInfo.coincidentIsOpposingDirection[i]) {
-        intersectsLookup[sp.sIndex2].push_back(SlicePoint<Real>(sp.pos, false));
-        intersectsLookup[ep.sIndex2].push_back(SlicePoint<Real>(ep.pos, true));
+        intersectsLookup[sp.sIndex2].push_back(SlicePoint(sp.pos, false));
+        intersectsLookup[ep.sIndex2].push_back(SlicePoint(ep.pos, true));
       } else {
-        intersectsLookup[sp.sIndex2].push_back(SlicePoint<Real>(sp.pos, true));
-        intersectsLookup[ep.sIndex2].push_back(SlicePoint<Real>(ep.pos, false));
+        intersectsLookup[sp.sIndex2].push_back(SlicePoint(sp.pos, true));
+        intersectsLookup[ep.sIndex2].push_back(SlicePoint(ep.pos, false));
       }
     }
   } else {
     // use sIndex1 for lookup
-    for (PlineIntersect<Real> const &intr : combineInfo.nonCoincidentIntersects) {
-      intersectsLookup[intr.sIndex1].push_back(SlicePoint<Real>(intr.pos, false));
+    for (PlineIntersect const &intr : combineInfo.nonCoincidentIntersects) {
+      intersectsLookup[intr.sIndex1].push_back(SlicePoint(intr.pos, false));
     }
-    for (PlineIntersect<Real> const &intr : combineInfo.coincidentSliceStartPoints) {
-      intersectsLookup[intr.sIndex1].push_back(SlicePoint<Real>(intr.pos, true));
+    for (PlineIntersect const &intr : combineInfo.coincidentSliceStartPoints) {
+      intersectsLookup[intr.sIndex1].push_back(SlicePoint(intr.pos, true));
     }
 
-    for (PlineIntersect<Real> const &intr : combineInfo.coincidentSliceEndPoints) {
-      intersectsLookup[intr.sIndex1].push_back(SlicePoint<Real>(intr.pos, false));
+    for (PlineIntersect const &intr : combineInfo.coincidentSliceEndPoints) {
+      intersectsLookup[intr.sIndex1].push_back(SlicePoint(intr.pos, false));
     }
   }
 
   // sort intersects by distance from start vertex
   for (auto &kvp : intersectsLookup) {
-    Vector2<Real> startPos = pline[kvp.first].pos();
-    auto cmp = [&](SlicePoint<Real> const &i1, SlicePoint<Real> const &i2) {
+    Vector2d startPos = pline[kvp.first].pos();
+    auto cmp = [&](SlicePoint const &i1, SlicePoint const &i2) {
       return distSquared(i1.pos, startPos) < distSquared(i2.pos, startPos);
     };
     std::sort(kvp.second.begin(), kvp.second.end(), cmp);
@@ -126,7 +126,7 @@ void sliceAtIntersects(Polyline2D<Real> const &pline,
     // start index for the slice we're about to build
     std::size_t sIndex = kvp.first;
     // intersect list for this start index
-    std::vector<SlicePoint<Real>> const &intrsList = kvp.second;
+    std::vector<SlicePoint> const &intrsList = kvp.second;
 
     const auto &firstSegStartVertex = pline[sIndex];
     std::size_t nextIndex = utils::nextWrappingIndex(sIndex, pline);
@@ -135,11 +135,11 @@ void sliceAtIntersects(Polyline2D<Real> const &pline,
     if (intrsList.size() != 1) {
       // build all the segments between the N intersects in siList (N > 1), skipping the first
       // segment (to be processed at the end)
-      SplitResult<Real> firstSplit =
+      SplitResult firstSplit =
           splitAtPoint(firstSegStartVertex, firstSegEndVertex, intrsList[0].pos);
       auto prevVertex = firstSplit.splitVertex;
       for (std::size_t i = 1; i < intrsList.size(); ++i) {
-        SplitResult<Real> split = splitAtPoint(prevVertex, firstSegEndVertex, intrsList[i].pos);
+        SplitResult split = splitAtPoint(prevVertex, firstSegEndVertex, intrsList[i].pos);
         // update prevVertex for next loop iteration
         prevVertex = split.splitVertex;
 
@@ -149,7 +149,7 @@ void sliceAtIntersects(Polyline2D<Real> const &pline,
         }
 
         if (fuzzyEqual(split.updatedStart.pos(), split.splitVertex.pos(),
-                       utils::realPrecision<Real>())) {
+                       utils::realPrecision<double>())) {
           continue;
         }
 
@@ -170,10 +170,9 @@ void sliceAtIntersects(Polyline2D<Real> const &pline,
       continue;
     }
     // build the segment between the last intersect in instrsList and the next intersect found
-    SplitResult<Real> split =
-        splitAtPoint(firstSegStartVertex, firstSegEndVertex, intrsList.back().pos);
+    SplitResult split = splitAtPoint(firstSegStartVertex, firstSegEndVertex, intrsList.back().pos);
 
-    Polyline2D<Real> currSlice;
+    Polyline2D currSlice;
     currSlice.addVertex(split.splitVertex);
 
     std::size_t index = nextIndex;
@@ -192,13 +191,12 @@ void sliceAtIntersects(Polyline2D<Real> const &pline,
       auto nextIntr = intersectsLookup.find(index);
       if (nextIntr != intersectsLookup.end()) {
         // there is an intersect, slice is done
-        Vector2<Real> const &intersectPos = nextIntr->second[0].pos;
+        Vector2d const &intersectPos = nextIntr->second[0].pos;
 
         // trim last added vertex and add final intersect position
-        PlineVertex2D<Real> endVertex = PlineVertex2D<Real>(intersectPos, Real(0));
+        PlineVertex2D endVertex = PlineVertex2D(intersectPos, 0.f);
         std::size_t nextIndex = utils::nextWrappingIndex(index, pline);
-        SplitResult<Real> split =
-            splitAtPoint(currSlice.lastVertex(), pline[nextIndex], intersectPos);
+        SplitResult split = splitAtPoint(currSlice.lastVertex(), pline[nextIndex], intersectPos);
         currSlice.lastVertex() = split.updatedStart;
         internal::addOrReplaceIfSamePos(currSlice, endVertex);
         break;
@@ -220,20 +218,20 @@ void sliceAtIntersects(Polyline2D<Real> const &pline,
 /// following: non-coincident slices from plineA, followed by non-coincident slices from plineB,
 /// followed by coincident slices from plineA, followed by coincident slices from plineB
 /// other fields hold the index markers
-template <typename Real> struct CollectedSlices {
-  std::vector<Polyline2D<Real>> slicesRemaining;
+struct CollectedSlices {
+  std::vector<Polyline2D> slicesRemaining;
   std::size_t startOfPlineBSlicesIdx;
   std::size_t startOfPlineACoincidentSlicesIdx;
   std::size_t startOfPlineBCoincidentSlicesIdx;
 };
 
-template <typename Real, typename PlineAPointOnSlicePred, typename PlineBPointOnSlicePred>
-CollectedSlices<Real> collectSlices(Polyline2D<Real> const &plineA, Polyline2D<Real> const &plineB,
-                                    ProcessForCombineResult<Real> const &combineInfo,
+template <typename PlineAPointOnSlicePred, typename PlineBPointOnSlicePred>
+CollectedSlices collectSlices(Polyline2D const &plineA, Polyline2D const &plineB,
+                                    ProcessForCombineResult const &combineInfo,
                                     PlineAPointOnSlicePred &&plineAPointOnSlicePred,
                                     PlineBPointOnSlicePred &&plineBPointOnSlicePred,
                                     bool setOpposingOrientation) {
-  CollectedSlices<Real> result;
+  CollectedSlices result;
   auto &slicesRemaining = result.slicesRemaining;
 
   // slice plineA
@@ -287,19 +285,19 @@ struct StitchFirstAvailable {
 /// Stitches open polyline slices together into closed polylines. The open polylines must be
 /// ordered/agree on direction (every start point connects with an end point). sitchSelector may be
 /// used to determine priority of stitching in the case multiple possibilities exist.
-template <typename Real, typename StitchSelector = StitchFirstAvailable>
-std::vector<Polyline2D<Real>>
-stitchOrderedSlicesIntoClosedPolylines(std::vector<Polyline2D<Real>> const &slices,
+template <typename StitchSelector = StitchFirstAvailable>
+std::vector<Polyline2D>
+stitchOrderedSlicesIntoClosedPolylines(std::vector<Polyline2D> const &slices,
                                        StitchSelector stitchSelector = StitchFirstAvailable(),
-                                       Real joinThreshold = utils::sliceJoinThreshold<Real>()) {
-  std::vector<Polyline2D<Real>> result;
+                                       double joinThreshold = utils::sliceJoinThreshold<double>()) {
+  std::vector<Polyline2D> result;
   if (slices.size() == 0) {
     return result;
   }
 
   // load all the slice start points into spatial index
-  StaticSpatialIndex<Real> spatialIndex(slices.size());
-  auto addEndPoint = [&](Vector2<Real> const &pt) {
+  StaticSpatialIndex spatialIndex(slices.size());
+  auto addEndPoint = [&](Vector2d const &pt) {
     spatialIndex.add(pt.x() - joinThreshold, pt.y() - joinThreshold, pt.x() + joinThreshold,
                      pt.y() + joinThreshold);
   };
@@ -315,7 +313,7 @@ stitchOrderedSlicesIntoClosedPolylines(std::vector<Polyline2D<Real>> const &slic
   std::vector<std::size_t> queryStack;
   queryStack.reserve(8);
 
-  auto closePline = [&](Polyline2D<Real> &pline) {
+  auto closePline = [&](Polyline2D &pline) {
     if (pline.size() < 3) {
       // skip slice in the case of just two vertexes ontop of each other
       return;
@@ -335,7 +333,7 @@ stitchOrderedSlicesIntoClosedPolylines(std::vector<Polyline2D<Real>> const &slic
     visitedSliceIndexes[i] = true;
 
     // create new polyline
-    Polyline2D<Real> currPline;
+    Polyline2D currPline;
     currPline.vertexes().insert(currPline.vertexes().end(), slices[i].vertexes().begin(),
                                 slices[i].vertexes().end());
 
@@ -403,27 +401,26 @@ enum class PlineCombineMode { Union, Exclude, Intersect, XOR };
 /// Type to hold result of combining closed polylines. remaining holds the resulting closed
 /// polylines after the operation. subtracted holds closed polylines that represent subtracted space
 /// (these polylines are always fully enclosed by one the polylines in remaining).
-template <typename Real> struct CombineResult {
-  std::vector<Polyline2D<Real>> remaining;
-  std::vector<Polyline2D<Real>> subtracted;
+struct CombineResult {
+  std::vector<Polyline2D> remaining;
+  std::vector<Polyline2D> subtracted;
 };
 
 /// Combine two closed polylines applying a particular combine mode (boolean operation).
-template <typename Real>
-CombineResult<Real> combinePolylines(Polyline2D<Real> const &plineA, Polyline2D<Real> const &plineB,
+CombineResult combinePolylines(Polyline2D const &plineA, Polyline2D const &plineB,
                                      PlineCombineMode combineMode) {
   CORE_ASSERT(plineA.isClosed() && plineB.isClosed(), "combining only supports closed polylines");
   using namespace internal;
 
   auto plASpatialIndex = createApproxSpatialIndex(plineA);
-  ProcessForCombineResult<Real> combineInfo = processForCombine(plineA, plineB, plASpatialIndex);
+  ProcessForCombineResult combineInfo = processForCombine(plineA, plineB, plASpatialIndex);
 
-  CombineResult<Real> result;
+  CombineResult result;
 
   // helper function test if point is inside A
-  auto pointInA = [&](Vector2<Real> const &pt) { return getWindingNumber(plineA, pt) != 0; };
+  auto pointInA = [&](Vector2d const &pt) { return getWindingNumber(plineA, pt) != 0; };
   // helper function test if point is inside B
-  auto pointInB = [&](Vector2<Real> const &pt) { return getWindingNumber(plineB, pt) != 0; };
+  auto pointInB = [&](Vector2d const &pt) { return getWindingNumber(plineB, pt) != 0; };
 
   // helper functions (assuming no intersects between A and B)
   auto isAInsideB = [&] { return pointInB(plineA[0].pos()); };
@@ -547,11 +544,11 @@ CombineResult<Real> combinePolylines(Polyline2D<Real> const &plineA, Polyline2D<
       auto stitchSelector =
           createUnionAndIntersectStitchSelector(collectedSlices.startOfPlineACoincidentSlicesIdx);
 
-      std::vector<Polyline2D<Real>> remaining =
+      std::vector<Polyline2D> remaining =
           stitchOrderedSlicesIntoClosedPolylines(collectedSlices.slicesRemaining, stitchSelector);
 
       for (std::size_t i = 0; i < remaining.size(); ++i) {
-        const bool isCW = getArea(remaining[i]) < Real(0);
+        const bool isCW = getArea(remaining[i]) < 0.f;
         if (isCW != combineInfo.pline1IsCW) {
           // orientation flipped from original, therefore it is a subtracted island
           result.subtracted.push_back(std::move(remaining[i]));

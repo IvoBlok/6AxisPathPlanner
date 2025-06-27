@@ -48,8 +48,6 @@ Note that all objects/lines/points class instances in the scene live in the Rend
 #include <filesystem>
 #include <functional>
 
-#include "core/vector2.hpp"
-#include "core/vector3.hpp"
 #include "core/objectShape.hpp"
 #include "core/polyline.hpp"
 #include "core/plane.hpp"
@@ -192,10 +190,10 @@ public:
 	// getObjectShape converts the object geometry from vertex data in one format and the position,scale, rotation data together into a new vertex data format, where the transformations have been applied.
 	core::ObjectShape getObjectShape();
 
-	core::Plane<double> getPlane();
+	core::Plane getPlane();
 
-	void load(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
-    void load(const char* modelPath, core::Vector3<double> objectColor, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
+	void load(const char* modelPath, const char* texturePath, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
+    void load(const char* modelPath, Vector3d objectColor, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
     void destroy();
     glm::mat4 getTransformationMatrix();
     void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
@@ -214,12 +212,12 @@ public:
 	float lineWidth;
 	
 	LoadedLine();
-	void load(core::Polyline2_5D<double>& polylineIn, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
+	void load(core::Polyline2_5D& polylineIn, float lineTransparency = 1.f, Vector3d lineColor = Vector3d{ 1.f, 0.f, 0.f });
 	
 	void destroyRenderData();
 	void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 
-	core::Polyline2_5D<double>& getPolyline();
+	core::Polyline2_5D& getPolyline();
 
 	// updateRendererLine updates the renderer version of the polyline. Without calling this function the renderer will  not show changes to the polyline
 	void updateRendererLine();
@@ -229,7 +227,7 @@ private:
 	// Exceptions to this might be purely visual indications, like gizmos. There polyline is irrelevant, and it is only the 'vertices'/'indices' that matters.
 	// currently this is a2.5D polyline. This doesn't support lines that don't fully lay in a single plane. 
 	// TODO when a proper 3D polyline is added, replace the 2.5D with the 3D version
-	core::Polyline2_5D<double> polyline;
+	core::Polyline2_5D polyline;
 
 	std::vector<RendererVertex> vertices;
     std::vector<uint32_t> indices;
@@ -239,11 +237,11 @@ private:
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
-	core::Vector3<double> defaultColor;
+	Vector3d defaultColor;
 
 	void createVertexBuffer();
 	void createIndexBuffer();
-	void loadPolylineIntoRendererFormat(core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
+	void loadPolylineIntoRendererFormat(Vector3d lineColor = Vector3d{ 1.f, 0.f, 0.f });
 };
 
 class VulkanRenderEngine {
@@ -266,11 +264,11 @@ public:
     void drawFrame();
     void cleanup();
 
-    LoadedObject& createObject(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
-    LoadedObject& createObject(const char* modelPath, core::Vector3<double> objectColor = { 0.f, 0.f, 0.f }, core::Vector3<double> basePosition = { 0.f, 0.f, 0.f }, core::Vector3<double> baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
+    LoadedObject& createObject(const char* modelPath, const char* texturePath, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
+    LoadedObject& createObject(const char* modelPath, Vector3d objectColor = { 0.f, 0.f, 0.f }, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
     
-	LoadedLine& createLine(core::Polyline2_5D<double>& polyline, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
-	LoadedLine& createLine(core::Polyline2D<double>& polyline, core::Plane<double> plane, float lineTransparency = 1.f, core::Vector3<double> lineColor = core::Vector3<double>{ 1.f, 0.f, 0.f });
+	LoadedLine& createLine(core::Polyline2_5D& polyline, float lineTransparency = 1.f, Vector3d lineColor = Vector3d{ 1.f, 0.f, 0.f });
+	LoadedLine& createLine(core::Polyline2D& polyline, core::Plane plane, float lineTransparency = 1.f, Vector3d lineColor = Vector3d{ 1.f, 0.f, 0.f });
 
 	void handleUserInput();
 

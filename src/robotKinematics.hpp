@@ -4,7 +4,7 @@
 #include <list>
 #include <variant>
 
-#include "core/vector3.hpp"
+#include "../external/Eigen/CustomEigen.hpp"
 
 namespace kinematics {
 
@@ -13,30 +13,30 @@ namespace kinematics {
 // It also defines this line/vector of motion, be it in the direction of motion for linear type, or the direction of rotation for the single-axis rotation type.
 // Lastly it lists joint limits in both directions. Future additions might add stuff like allowed velocities, accelerations, etc...
 struct LinearJoint {
-    core::Vector3<double> position;
-    core::Vector3<double> direction;
+    Vector3d position;
+    Vector3d direction;
     float negativeLimit;
     float positiveLimit;
 
     LinearJoint();
-    LinearJoint(core::Vector3<double> inputPosition, core::Vector3<double> inputDirection, float inputNegLimit, float inputPosLimit);
+    LinearJoint(Vector3d inputPosition, Vector3d inputDirection, float inputNegLimit, float inputPosLimit);
 };
 
 struct RotationJoint {
-    core::Vector3<double> position;
-    core::Vector3<double> direction;
+    Vector3d position;
+    Vector3d direction;
     float negativeLimit;
     float positiveLimit;
 
     RotationJoint();
-    RotationJoint(core::Vector3<double> inputPosition, core::Vector3<double> inputDirection, float inputNegLimit, float inputPosLimit);
+    RotationJoint(Vector3d inputPosition, Vector3d inputDirection, float inputNegLimit, float inputPosLimit);
 };
 
 
 
 class RobotKinematics {
 public:
-    core::Vector3<double> position;
+    Vector3d position;
     std::list<std::variant<LinearJoint, RotationJoint>> joints;
 
     RobotKinematics();

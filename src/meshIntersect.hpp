@@ -21,9 +21,9 @@ typedef std::vector<Edge> EdgePath;
 
 typedef std::map<Edge, uint32_t> CrossingFaceMap;
 
-double signedDistanceOfVertexToPlane(const core::Vector3<double>& vertex, const core::Plane<double>& plane);
+double signedDistanceOfVertexToPlane(const Vector3d& vertex, const core::Plane& plane);
 
-const std::vector<double> signedDistancesToPlane(const std::vector<core::Vector3<double>>& vertices, const core::Plane<double>& plane);
+const std::vector<double> signedDistancesToPlane(const std::vector<Vector3d>& vertices, const core::Plane& plane);
 
 CrossingFaceMap getCrossingFaces(const std::vector<Face>& faces, const std::vector<double>& vertexDistances);
 
@@ -35,17 +35,17 @@ EdgePath getEdgePath(CrossingFaceMap& crossingFaces);
 
 std::vector<EdgePath> getEdgePaths(const std::vector<Face>& faces, const std::vector<double>& vertexDistances);
 
-bool getStartingItem(const std::vector<core::Polyline2D<double>>& items, std::vector<bool>& usedItems, core::Polyline2D<double>& startItem);
+bool getStartingItem(const std::vector<core::Polyline2D>& items, std::vector<bool>& usedItems, core::Polyline2D& startItem);
 
-bool insertConnectingEdgePath(const std::vector<core::Polyline2D<double>>& paths, std::vector<bool>& usedPaths, core::Polyline2D<double>& currentChain);
+bool insertConnectingEdgePath(const std::vector<core::Polyline2D>& paths, std::vector<bool>& usedPaths, core::Polyline2D& currentChain);
 
-void chainEdgePaths(std::vector<core::Polyline2D<double>>& paths);
+void chainEdgePaths(std::vector<core::Polyline2D>& paths);
 
-std::vector<core::Polyline2D<double>> constructGeometricPaths(const core::Plane<double>& plane, const std::vector<core::Vector3<double>>& vertices, const std::vector<core::Vector3<double>>& normals, const std::vector<EdgePath>& edgePaths, const std::vector<double>& vertexDistances);
+std::vector<core::Polyline2D> constructGeometricPaths(const core::Plane& plane, const std::vector<Vector3d>& vertices, const std::vector<Vector3d>& normals, const std::vector<EdgePath>& edgePaths, const std::vector<double>& vertexDistances);
 
 std::vector<Face> constructFaces(const std::vector<uint32_t> indices);
 
-std::vector<core::Polyline2D<double>> getMeshPlaneIntersection(core::Plane<double>& plane, core::ObjectShape& desiredShape);
+std::vector<core::Polyline2D> getMeshPlaneIntersection(core::Plane& plane, core::ObjectShape& desiredShape);
 
 } // namespace meshIntersect
 

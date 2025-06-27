@@ -607,8 +607,8 @@ core::ObjectShape LoadedObject::getObjectShape() {
     {
         glm::vec3 vertexWithAppliedMatrix = transformationMatrix * glm::vec4{ model.vertices[i].pos, 1.f };
         glm::vec3 normalWithAppliedMatrix = transformationMatrix * glm::vec4{ model.vertices[i].normal, 0.f };
-        objectShape.vertices.push_back(core::Vector3<double>{ vertexWithAppliedMatrix.x, vertexWithAppliedMatrix.y, vertexWithAppliedMatrix.z });
-        objectShape.normals.push_back(core::Vector3<double>{ normalWithAppliedMatrix.x, normalWithAppliedMatrix.y, normalWithAppliedMatrix.z });
+        objectShape.vertices.push_back(Vector3d{ vertexWithAppliedMatrix.x, vertexWithAppliedMatrix.y, vertexWithAppliedMatrix.z });
+        objectShape.normals.push_back(Vector3d{ normalWithAppliedMatrix.x, normalWithAppliedMatrix.y, normalWithAppliedMatrix.z });
     }
 
     for (size_t i = 0; i < model.indices.size(); i++)
@@ -618,7 +618,7 @@ core::ObjectShape LoadedObject::getObjectShape() {
     return objectShape;
 }
 
-core::Plane<double> LoadedObject::getPlane() {
+core::Plane LoadedObject::getPlane() {
     rotationMatrix = glm::yawPitchRoll(glm::radians(yawPitchRoll.x), 
                                     glm::radians(yawPitchRoll.y), 
                                     glm::radians(yawPitchRoll.z));
@@ -626,11 +626,11 @@ core::Plane<double> LoadedObject::getPlane() {
     glm::vec4 normal{0.f, 0.f, 1.f, 0.f};
     normal = rotationMatrix * normal;
 
-    core::Plane<double> objectPlane{core::Vector3<double>{position.x, position.y, position.z}, core::Vector3<double>{normal.x, normal.y, normal.z}};
+    core::Plane objectPlane{Vector3d{position.x, position.y, position.z}, Vector3d{normal.x, normal.y, normal.z}};
     return objectPlane;
 }
 
-void LoadedObject::load(const char* modelPath, const char* texturePath, core::Vector3<double> basePosition, core::Vector3<double> baseScale, glm::mat4 baseRotationMatrix, float modelTransparency) {
+void LoadedObject::load(const char* modelPath, const char* texturePath, Vector3d basePosition, Vector3d baseScale, glm::mat4 baseRotationMatrix, float modelTransparency) {
     model.load(modelPath, modelTransparency);
     texture.load(texturePath);
 
@@ -640,7 +640,7 @@ void LoadedObject::load(const char* modelPath, const char* texturePath, core::Ve
     rotationMatrix = baseRotationMatrix;
 }
 
-void LoadedObject::load(const char* modelPath, core::Vector3<double> objectColor, core::Vector3<double> basePosition, core::Vector3<double> baseScale, glm::mat4 baseRotationMatrix, float modelTransparency) {
+void LoadedObject::load(const char* modelPath, Vector3d objectColor, Vector3d basePosition, Vector3d baseScale, glm::mat4 baseRotationMatrix, float modelTransparency) {
     model.load(modelPath, modelTransparency);
 
     isOneColor = true;
@@ -696,10 +696,10 @@ LoadedLine::LoadedLine() {
     renderLine = true;
     name = "line";
     lineWidth = 3.f;
-    defaultColor = core::Vector3<double>{ 1.f, 0.f, 0.f };
+    defaultColor = Vector3d{ 1.f, 0.f, 0.f };
 }
 
-void LoadedLine::load(core::Polyline2_5D<double>& polylineIn, float lineTransparency, core::Vector3<double> lineColor) {
+void LoadedLine::load(core::Polyline2_5D& polylineIn, float lineTransparency, Vector3d lineColor) {
     defaultColor = lineColor;
     if(polyline.vertexes().size() != 0)
         throw std::runtime_error("load() called for non-empty LoadedLine!\n");
@@ -742,7 +742,7 @@ void LoadedLine::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeline
     vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 }
 
-core::Polyline2_5D<double>& LoadedLine::getPolyline() {
+core::Polyline2_5D& LoadedLine::getPolyline() {
     return polyline;
 }
 
@@ -806,15 +806,15 @@ void LoadedLine::createIndexBuffer() {
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-void LoadedLine::loadPolylineIntoRendererFormat(core::Vector3<double> lineColor) {
+void LoadedLine::loadPolylineIntoRendererFormat(Vector3d lineColor) {
 
-    std::vector<core::PlineVertex2_5D<double>>& pathVertices = polyline.vertexes();
+    std::vector<core::PlineVertex2_5D>& pathVertices = polyline.vertexes();
 
     for (size_t i = 0; i < pathVertices.size(); i++)
     {
         if (!pathVertices[i].bulgeIsZero()) {
 
-            core::PlineVertex2_5D<double> nextVertex;
+            core::PlineVertex2_5D nextVertex;
             if (polyline.isClosed() && i == pathVertices.size() - 1) {
                 nextVertex = pathVertices[0];
             }
@@ -833,9 +833,9 @@ void LoadedLine::loadPolylineIntoRendererFormat(core::Vector3<double> lineColor)
                 nextVertex = pathVertices[i + 1];
             }
 
-            core::Vector2<double> localv1Coords = pathVertices[i].getPointInPlaneCoords();
-            core::Vector2<double> localv2Coords = nextVertex.getPointInPlaneCoords();
-            core::ArcRadiusAndCenter<double> arcInfo = core::arcRadiusAndCenter(pathVertices[i].getVertexInPlaneCoords(), nextVertex.getVertexInPlaneCoords());
+            Vector2d localv1Coords = pathVertices[i].getPointInPlaneCoords();
+            Vector2d localv2Coords = nextVertex.getPointInPlaneCoords();
+            core::ArcRadiusAndCenter arcInfo = core::arcRadiusAndCenter(pathVertices[i].getVertexInPlaneCoords(), nextVertex.getVertexInPlaneCoords());
             
             float startAngle = core::angle(arcInfo.center, localv1Coords);
             float endAngle = core::angle(arcInfo.center, localv2Coords);
@@ -844,13 +844,13 @@ void LoadedLine::loadPolylineIntoRendererFormat(core::Vector3<double> lineColor)
 
             for (size_t k = 0; k < 10; k++)
             {
-                core::Vector2<double> localPosition;
+                Vector2d localPosition;
                 localPosition.x() = arcInfo.center.x() + arcInfo.radius * std::cos(startAngle + (deltaAngle / 10.f) * k);
                 localPosition.y() = arcInfo.center.y() + arcInfo.radius * std::sin(startAngle + (deltaAngle / 10.f) * k);
 
                 RendererVertex vertex;
 
-                core::Vector3<double> vertexPosition = pathVertices[i].plane.getGlobalCoords(localPosition);
+                Vector3d vertexPosition = pathVertices[i].plane.getGlobalCoords(localPosition);
                 vertex.pos = glm::vec3{ vertexPosition.x(), vertexPosition.y(), vertexPosition.z() };
                 vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
                 vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
@@ -1032,8 +1032,8 @@ void VulkanRenderEngine::cleanup() {
 LoadedObject& VulkanRenderEngine::createObject(
     const char* modelPath, 
     const char* texturePath, 
-    core::Vector3<double> basePosition, 
-    core::Vector3<double> baseScale, 
+    Vector3d basePosition, 
+    Vector3d baseScale, 
     glm::mat4 rotationMatrix, float modelTransparency) 
 {
     if (loadedObjects.size() >= MAX_OBJECTS)
@@ -1047,9 +1047,9 @@ LoadedObject& VulkanRenderEngine::createObject(
 
 LoadedObject& VulkanRenderEngine::createObject(
     const char* modelPath, 
-    core::Vector3<double> objectColor,
-    core::Vector3<double> basePosition,
-    core::Vector3<double> baseScale, 
+    Vector3d objectColor,
+    Vector3d basePosition,
+    Vector3d baseScale, 
     glm::mat4 rotationMatrix, 
     float modelTransparency) 
 {
@@ -1063,9 +1063,9 @@ LoadedObject& VulkanRenderEngine::createObject(
 }
 
 LoadedLine& VulkanRenderEngine::createLine(
-    core::Polyline2_5D<double>& polyline, 
+    core::Polyline2_5D& polyline, 
     float lineTransparency, 
-    core::Vector3<double> lineColor) 
+    Vector3d lineColor) 
 {
     if (loadedLines.size() >= MAX_LINES)
         throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
@@ -1077,17 +1077,17 @@ LoadedLine& VulkanRenderEngine::createLine(
 }
 
 LoadedLine& VulkanRenderEngine::createLine(
-    core::Polyline2D<double>& polyline, 
-    core::Plane<double> plane,
+    core::Polyline2D& polyline, 
+    core::Plane plane,
     float lineTransparency, 
-    core::Vector3<double> lineColor) 
+    Vector3d lineColor) 
 {
     if (loadedLines.size() >= MAX_LINES)
         throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
 
     loadedLines.push_back(LoadedLine{});
 
-    core::Polyline2_5D<double> newPolyline{polyline, plane};
+    core::Polyline2_5D newPolyline{polyline, plane};
     loadedLines.back().load(newPolyline, lineTransparency, lineColor);
 
     return loadedLines.back();
@@ -2314,8 +2314,8 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
         if(ImGui::Button("Generate Cube")) {
             LoadedObject& object = createObject(
                     "../../resources/assets/cube.obj",
-                    core::Vector3<double>{ 0.f, 0.f, 1.f }, // color
-                    core::Vector3<double>{ 0.f, 5.f, 0.f }  // position
+                    Vector3d{ 0.f, 0.f, 1.f }, // color
+                    Vector3d{ 0.f, 5.f, 0.f }  // position
                 );
             
             object.name = "cube";
@@ -2323,8 +2323,8 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
         if(ImGui::Button("Generate Plane")) {
             LoadedObject& object = createObject(
                     "../../resources/assets/plane.obj",
-                    core::Vector3<double>{ 1.f, 0.9f, 0.f }, // color
-                    core::Vector3<double>{ 0.f, 0.f, 0.f }  // position
+                    Vector3d{ 1.f, 0.9f, 0.f }, // color
+                    Vector3d{ 0.f, 0.f, 0.f }  // position
                 );
             
             object.name = "plane";
@@ -2336,8 +2336,8 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
             if ( result == NFD_OKAY ) {
                 LoadedObject& object = createObject(
                         outPath,
-                        core::Vector3<double>{ 0.1f, 0.3f, 0.5f }, // color
-                        core::Vector3<double>{ 0.f, 0.f, 0.f }  // position
+                        Vector3d{ 0.1f, 0.3f, 0.5f }, // color
+                        Vector3d{ 0.f, 0.f, 0.f }  // position
                     );
                 
                 object.name = outPath;

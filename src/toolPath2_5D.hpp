@@ -20,8 +20,8 @@ struct ClearingPass2_5DInfo {
 
     core::ObjectShape shape;
     core::ObjectShape stock;
-    core::Plane<double> startPlane;
-    core::Plane<double> endPlane;
+    core::Plane startPlane;
+    core::Plane endPlane;
 };
 
 struct SurfacePass2_5DInfo {
@@ -36,8 +36,8 @@ struct SurfacePass2_5DInfo {
     double depthOfCut;
 
     core::ObjectShape shape;
-    core::Plane<double> startPlane;
-    core::Plane<double> endPlane;
+    core::Plane startPlane;
+    core::Plane endPlane;
 };
 
 struct FacePass2_5DInfo {
@@ -50,21 +50,21 @@ struct FacePass2_5DInfo {
     double stepOver;
 
     core::ObjectShape stock;
-    core::Plane<double> slicingPlane;
+    core::Plane slicingPlane;
 };
 
-std::vector<core::Polyline2D<double>> filterOutPocketIntersects(std::vector<core::Polyline2D<double>>& intersectPaths, core::Plane<double> slicingPlane);
+std::vector<core::Polyline2D> filterOutPocketIntersects(std::vector<core::Polyline2D>& intersectPaths, core::Plane slicingPlane);
 
 // this function generates the full 2.5D toolpath given the milling info, where the planar slices of the 2.5D are defined by the given plane normal, start height and end height
 // this only applies to situations where the milling needs to happen from the outside of the stock up to some given curve. For pocket milling use some other function
 // 'planeStartingHeight' is defined along the length of 'planeNormal', where the start of planeNormal is the zero point of the stock given in 'millingInfo'
 // 'planeEndingHeight' is defined along the length of 'planeNormal', where the start of planeNormal is the zero point of the stock given in 'millingInfo'
-core::Polyline2_5D<double> generateClearingPass2_5D(ClearingPass2_5DInfo& info);
+core::Polyline2_5D generateClearingPass2_5D(ClearingPass2_5DInfo& info);
 
-core::Polyline2_5D<double> generateSurfacePass2_5D(SurfacePass2_5DInfo& info);
+core::Polyline2_5D generateSurfacePass2_5D(SurfacePass2_5DInfo& info);
 
 
-core::Polyline2_5D<double> generateFacePass2_5D(FacePass2_5DInfo& info);
+core::Polyline2_5D generateFacePass2_5D(FacePass2_5DInfo& info);
 
 }  // namespace toolPath2_5D
 

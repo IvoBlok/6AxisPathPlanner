@@ -10,30 +10,30 @@
 
 namespace core {
 
-template <typename Real> struct OffsetLoop {
+struct OffsetLoop {
   std::size_t parentLoopIndex;
-  Polyline2D<Real> polyline;
-  StaticSpatialIndex<Real> spatialIndex;
+  Polyline2D polyline;
+  StaticSpatialIndex spatialIndex;
 };
 
-template <typename Real> struct OffsetLoopSet {
-  std::vector<OffsetLoop<Real>> ccwLoops;
-  std::vector<OffsetLoop<Real>> cwLoops;
+struct OffsetLoopSet {
+  std::vector<OffsetLoop> ccwLoops;
+  std::vector<OffsetLoop> cwLoops;
 };
 
-template <typename Real> class ParallelOffsetIslands {
+class ParallelOffsetIslands {
 public:
   ParallelOffsetIslands() {}
-  OffsetLoopSet<Real> computeOneSidedOffsets(OffsetLoopSet<Real>& input, Real offsetDelta);
-  OffsetLoopSet<Real> computeTwoSidedOffsets(OffsetLoopSet<Real> const& input, Real offsetDelta);
-  std::vector<core::Polyline2D<Real>> computeTwoSidedOffsets(std::vector<core::Polyline2D<Real>> innerBounds, std::vector<core::Polyline2D<Real>> outerBounds, Real offset);
-  std::vector<core::Polyline2D<Real>> computeOneSidedOffsets(std::vector<core::Polyline2D<Real>> innerBounds, core::Polyline2D<Real> outerBound, Real offset);
+  OffsetLoopSet computeOneSidedOffsets(OffsetLoopSet& input, double offsetDelta);
+  OffsetLoopSet computeTwoSidedOffsets(OffsetLoopSet const& input, double offsetDelta);
+  std::vector<core::Polyline2D> computeTwoSidedOffsets(std::vector<core::Polyline2D> innerBounds, std::vector<core::Polyline2D> outerBounds, double offset);
+  std::vector<core::Polyline2D> computeOneSidedOffsets(std::vector<core::Polyline2D> innerBounds, core::Polyline2D outerBound, double offset);
 
 private:
   // type to represent a slice point (intersect) on an OffsetLoop
   struct LoopSlicePoint {
     // intersect between loops
-    PlineIntersect<Real> intr;
+    PlineIntersect intr;
     bool noSliceAfterForIndex1;
   };
 
@@ -48,29 +48,29 @@ private:
   };
 
   // get an offset loop by index i, maps to ccw then cw offset loops
-  OffsetLoop<Real> &getOffsetLoop(std::size_t i) {
+  OffsetLoop &getOffsetLoop(std::size_t i) {
     return i < m_ccwOffsetLoops.size() ? m_ccwOffsetLoops[i]
                                        : m_cwOffsetLoops[i - m_ccwOffsetLoops.size()];
   }
 
-  OffsetLoop<Real> const &getParentLoop(std::size_t i) {
+  OffsetLoop const &getParentLoop(std::size_t i) {
     return i < m_inputSet->ccwLoops.size() ? m_inputSet->ccwLoops[i]
                                            : m_inputSet->cwLoops[i - m_inputSet->ccwLoops.size()];
   }
 
-  void createOffsetLoops(const OffsetLoopSet<Real>& input, Real absDelta);
-  void createOneSidedOffsetLoops(OffsetLoopSet<Real> &input, Real absDelta);
+  void createOffsetLoops(const OffsetLoopSet& input, double absDelta);
+  void createOneSidedOffsetLoops(OffsetLoopSet &input, double absDelta);
   void createOffsetLoopsIndex();
   void createSlicePoints();
 
   struct DissectionPoint {
     std::size_t otherLoopIndex;
-    Vector2<Real> pos;
+    Vector2d pos;
   };
 
   struct DissectedSlice {
     // open polyline representing the slice
-    Polyline2D<Real> pline;
+    Polyline2D pline;
     // index of the loop the slice is from
     std::size_t sliceParentIndex;
     // index of the loop that intersected the parent loop to form the start of the slice
@@ -79,19 +79,19 @@ private:
     std::size_t endLoopIndex;
   };
 
-  bool pointOnOffsetValid(std::size_t skipIndex, Vector2<Real> const &pt, Real absDelta);
-  void createSlicesFromLoop(std::size_t loopIndex, Real absDelta,
+  bool pointOnOffsetValid(std::size_t skipIndex, Vector2d const &pt, double absDelta);
+  void createSlicesFromLoop(std::size_t loopIndex, double absDelta,
                             std::vector<DissectedSlice> &result);
 
-  OffsetLoopSet<Real> const *m_inputSet;
+  OffsetLoopSet const *m_inputSet;
 
   // counter clockwise offset loops, these surround the clockwise offset loops
-  std::vector<OffsetLoop<Real>> m_ccwOffsetLoops;
+  std::vector<OffsetLoop> m_ccwOffsetLoops;
   // clockwise (island) offset loops, these are surrounded by the counter clockwise loops
-  std::vector<OffsetLoop<Real>> m_cwOffsetLoops;
+  std::vector<OffsetLoop> m_cwOffsetLoops;
   std::size_t totalOffsetLoopsCount() { return m_ccwOffsetLoops.size() + m_cwOffsetLoops.size(); }
   // spatial index of all the offset loops
-  std::unique_ptr<StaticSpatialIndex<Real>> m_offsetLoopsIndex;
+  std::unique_ptr<StaticSpatialIndex> m_offsetLoopsIndex;
   using IndexPair = std::pair<std::size_t, std::size_t>;
   // set to keep track of already visited pairs of loops when finding intersects
   std::unordered_set<IndexPair, utils::IndexPairHash> m_visitedLoopPairs;
@@ -107,9 +107,8 @@ private:
   std::unordered_map<std::size_t, std::vector<DissectionPoint>> m_loopDissectionPoints;
 };
 
-template <typename Real>
-void ParallelOffsetIslands<Real>::createOffsetLoops(const OffsetLoopSet<Real> &input,
-                                                    Real absDelta) {
+void ParallelOffsetIslands::createOffsetLoops(const OffsetLoopSet &input,
+                                                    double absDelta) {
   // create counter clockwise offset loops
   m_ccwOffsetLoops.clear();
   std::size_t parentIndex = 0;
@@ -117,7 +116,7 @@ void ParallelOffsetIslands<Real>::createOffsetLoops(const OffsetLoopSet<Real> &i
     auto offsets = parallelOffset(loop.polyline, absDelta);
     for (auto &offset : offsets) {
       // must check if orientation inverted (due to collapse of very narrow or small input)
-      if (getArea(offset) < Real(0)) {
+      if (getArea(offset) < 0.f) {
         continue;
       }
       auto index = createApproxSpatialIndex(offset);
@@ -132,7 +131,7 @@ void ParallelOffsetIslands<Real>::createOffsetLoops(const OffsetLoopSet<Real> &i
     auto offsets = parallelOffset(loop.polyline, absDelta);
     for (auto &offset : offsets) {
       auto index = createApproxSpatialIndex(offset);
-      if (getArea(offset) < Real(0)) {
+      if (getArea(offset) < 0.f) {
         m_cwOffsetLoops.push_back({parentIndex, std::move(offset), std::move(index)});
       } else {
         m_ccwOffsetLoops.push_back({parentIndex, std::move(offset), std::move(index)});
@@ -142,9 +141,8 @@ void ParallelOffsetIslands<Real>::createOffsetLoops(const OffsetLoopSet<Real> &i
   }
 }
 
-template <typename Real>
-void ParallelOffsetIslands<Real>::createOneSidedOffsetLoops(OffsetLoopSet<Real>& input,
-  Real absDelta) {
+void ParallelOffsetIslands::createOneSidedOffsetLoops(OffsetLoopSet& input,
+  double absDelta) {
   // create counter clockwise offset loops
   m_ccwOffsetLoops.clear();
   std::size_t parentIndex = 0;
@@ -152,7 +150,7 @@ void ParallelOffsetIslands<Real>::createOneSidedOffsetLoops(OffsetLoopSet<Real>&
   auto offsets = parallelOffset(input.ccwLoops.front().polyline, absDelta);
   for (auto& offset : offsets) {
     // must check if orientation inverted (due to collapse of very narrow or small input)
-    if (getArea(offset) < Real(0)) {
+    if (getArea(offset) < 0.f) {
       continue;
     }
     auto index = createApproxSpatialIndex(offset);
@@ -171,9 +169,9 @@ void ParallelOffsetIslands<Real>::createOneSidedOffsetLoops(OffsetLoopSet<Real>&
   }
 }
 
-template <typename Real> void ParallelOffsetIslands<Real>::createOffsetLoopsIndex() {
+void ParallelOffsetIslands::createOffsetLoopsIndex() {
   // create spatial index for all offset loop bounding boxes
-  m_offsetLoopsIndex = std::make_unique<StaticSpatialIndex<Real>>(totalOffsetLoopsCount());
+  m_offsetLoopsIndex = std::make_unique<StaticSpatialIndex>(totalOffsetLoopsCount());
   for (auto const &posC : m_ccwOffsetLoops) {
     auto const &i = posC.spatialIndex;
     m_offsetLoopsIndex->add(i.minX(), i.minY(), i.maxX(), i.maxY());
@@ -186,7 +184,7 @@ template <typename Real> void ParallelOffsetIslands<Real>::createOffsetLoopsInde
   m_offsetLoopsIndex->finish();
 }
 
-template <typename Real> void ParallelOffsetIslands<Real>::createSlicePoints() {
+void ParallelOffsetIslands::createSlicePoints() {
   m_visitedLoopPairs.clear();
   m_slicePointSets.clear();
   m_slicePointsLookup.clear();
@@ -194,7 +192,7 @@ template <typename Real> void ParallelOffsetIslands<Real>::createSlicePoints() {
   // find all intersects between all offsets
   std::size_t totalOffsetCount = totalOffsetLoopsCount();
   m_slicePointsLookup.resize(totalOffsetCount);
-  PlineIntersectsResult<Real> intrsResults;
+  PlineIntersectsResult intrsResults;
   for (std::size_t i = 0; i < totalOffsetCount; ++i) {
     auto const &loop1 = getOffsetLoop(i);
     auto const &index1 = loop1.spatialIndex;
@@ -246,9 +244,8 @@ template <typename Real> void ParallelOffsetIslands<Real>::createSlicePoints() {
   }
 }
 
-template <typename Real>
-bool ParallelOffsetIslands<Real>::pointOnOffsetValid(std::size_t skipIndex, const Vector2<Real> &pt,
-                                                     Real absDelta) {
+bool ParallelOffsetIslands::pointOnOffsetValid(std::size_t skipIndex, const Vector2d &pt,
+                                                     double absDelta) {
   // test distance against input polylines
   std::size_t const inputTotalCount = m_inputSet->ccwLoops.size() + m_inputSet->cwLoops.size();
   for (std::size_t i = 0; i < inputTotalCount; ++i) {
@@ -265,12 +262,11 @@ bool ParallelOffsetIslands<Real>::pointOnOffsetValid(std::size_t skipIndex, cons
   return true;
 }
 
-template <typename Real>
-void ParallelOffsetIslands<Real>::createSlicesFromLoop(std::size_t loopIndex, Real absDelta,
+void ParallelOffsetIslands::createSlicesFromLoop(std::size_t loopIndex, double absDelta,
                                                        std::vector<DissectedSlice> &result) {
-  OffsetLoop<Real> const &offsetLoop = getOffsetLoop(loopIndex);
+  OffsetLoop const &offsetLoop = getOffsetLoop(loopIndex);
   std::size_t const parentIndex = offsetLoop.parentLoopIndex;
-  Polyline2D<Real> const &pline = offsetLoop.polyline;
+  Polyline2D const &pline = offsetLoop.polyline;
   m_loopDissectionPoints.clear();
   for (auto const &setIndex : m_slicePointsLookup[loopIndex]) {
     auto const &set = m_slicePointSets[setIndex];
@@ -288,7 +284,7 @@ void ParallelOffsetIslands<Real>::createSlicesFromLoop(std::size_t loopIndex, Re
 
   // sort points by distance from start vertex
   for (auto &kvp : m_loopDissectionPoints) {
-    Vector2<Real> startPos = pline[kvp.first].pos();
+    Vector2d startPos = pline[kvp.first].pos();
     auto cmp = [&](DissectionPoint const &p1, DissectionPoint const &p2) {
       return distSquared(p1.pos, startPos) < distSquared(p2.pos, startPos);
     };
@@ -309,18 +305,18 @@ void ParallelOffsetIslands<Real>::createSlicesFromLoop(std::size_t loopIndex, Re
     if (intrsList.size() != 1) {
       // build all the segments between the N intersects in siList (N > 1), skipping the first
       // segment (to be processed at the end)
-      SplitResult<Real> firstSplit =
+      SplitResult firstSplit =
           splitAtPoint(firstSegStartVertex, firstSegEndVertex, intrsList[0].pos);
       auto prevVertex = firstSplit.splitVertex;
       for (std::size_t i = 1; i < intrsList.size(); ++i) {
         std::size_t const sliceStartIndex = intrsList[i - 1].otherLoopIndex;
         std::size_t const sliceEndIndex = intrsList[i].otherLoopIndex;
-        SplitResult<Real> split = splitAtPoint(prevVertex, firstSegEndVertex, intrsList[i].pos);
+        SplitResult split = splitAtPoint(prevVertex, firstSegEndVertex, intrsList[i].pos);
         // update prevVertex for next loop iteration
         prevVertex = split.splitVertex;
 
         if (fuzzyEqual(split.updatedStart.pos(), split.splitVertex.pos(),
-                       utils::realPrecision<Real>())) {
+                       utils::realPrecision<double>())) {
           continue;
         }
 
@@ -340,7 +336,7 @@ void ParallelOffsetIslands<Real>::createSlicesFromLoop(std::size_t loopIndex, Re
     }
 
     // build the segment between the last intersect in instrsList and the next intersect found
-    SplitResult<Real> split =
+    SplitResult split =
         splitAtPoint(firstSegStartVertex, firstSegEndVertex, intrsList.back().pos);
 
     DissectedSlice currSlice;
@@ -364,12 +360,12 @@ void ParallelOffsetIslands<Real>::createSlicesFromLoop(std::size_t loopIndex, Re
       auto nextIntr = m_loopDissectionPoints.find(index);
       if (nextIntr != m_loopDissectionPoints.end()) {
         // there is an intersect, slice is done
-        Vector2<Real> const &intersectPos = nextIntr->second[0].pos;
+        Vector2d const &intersectPos = nextIntr->second[0].pos;
 
         // trim last added vertex and add final intersect position
-        PlineVertex2D<Real> endVertex = PlineVertex2D<Real>(intersectPos, Real(0));
+        PlineVertex2D endVertex = PlineVertex2D(intersectPos, 0.f);
         std::size_t nextIndex = utils::nextWrappingIndex(index, pline);
-        SplitResult<Real> split =
+        SplitResult split =
             splitAtPoint(currSlice.pline.lastVertex(), pline[nextIndex], intersectPos);
         currSlice.pline.lastVertex() = split.updatedStart;
         internal::addOrReplaceIfSamePos(currSlice.pline, endVertex);
@@ -392,12 +388,11 @@ void ParallelOffsetIslands<Real>::createSlicesFromLoop(std::size_t loopIndex, Re
   }
 }
 
-template <typename Real>
-OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeTwoSidedOffsets(const OffsetLoopSet<Real> &input,
-                                                         Real offsetDelta) {
+OffsetLoopSet ParallelOffsetIslands::computeTwoSidedOffsets(const OffsetLoopSet &input,
+                                                         double offsetDelta) {
   m_inputSet = &input;
-  OffsetLoopSet<Real> result;
-  Real absDelta = std::abs(offsetDelta);
+  OffsetLoopSet result;
+  double absDelta = std::abs(offsetDelta);
   createOffsetLoops(input, absDelta);
   if (totalOffsetLoopsCount() == 0) {
     return result;
@@ -409,7 +404,7 @@ OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeTwoSidedOffsets(const Of
   std::vector<DissectedSlice> slices;
   std::size_t totalOffsetsCount = totalOffsetLoopsCount();
 
-  std::vector<Polyline2D<Real>> resultSlices;
+  std::vector<Polyline2D> resultSlices;
 
   for (std::size_t i = 0; i < totalOffsetsCount; ++i) {
     if (m_slicePointsLookup[i].size() == 0) {
@@ -433,16 +428,16 @@ OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeTwoSidedOffsets(const Of
     resultSlices.push_back(std::move(slice.pline));
   }
 
-  std::vector<Polyline2D<Real>> stitched =
+  std::vector<Polyline2D> stitched =
       internal::stitchOrderedSlicesIntoClosedPolylines(resultSlices);
 
   for (auto &r : stitched) {
-    Real area = getArea(r);
+    double area = getArea(r);
     if (std::abs(area) < 1e-4) {
       continue;
     }
     auto spatialIndex = createApproxSpatialIndex(r);
-    if (area < Real(0)) {
+    if (area < 0.f) {
       result.cwLoops.push_back({0, std::move(r), std::move(spatialIndex)});
     } else {
       result.ccwLoops.push_back({0, std::move(r), std::move(spatialIndex)});
@@ -452,12 +447,11 @@ OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeTwoSidedOffsets(const Of
   return result;
 }
 
-template <typename Real>
-OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeOneSidedOffsets(OffsetLoopSet<Real>& input,
-  Real offsetDelta) {
+OffsetLoopSet ParallelOffsetIslands::computeOneSidedOffsets(OffsetLoopSet& input,
+  double offsetDelta) {
   m_inputSet = &input;
-  OffsetLoopSet<Real> result;
-  Real absDelta = std::abs(offsetDelta);
+  OffsetLoopSet result;
+  double absDelta = std::abs(offsetDelta);
   createOneSidedOffsetLoops(input, absDelta);
 
   // if the offset outside boundary path is non-existent, there is no path to be made, and thus return an empty path
@@ -466,7 +460,7 @@ OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeOneSidedOffsets(OffsetLo
   }
   // if there is an offset boundary path, but not any inside paths, the offset boundary path should simply be returned
   else if (m_cwOffsetLoops.size() == 0) {
-    for (OffsetLoop<Real>& loop : m_ccwOffsetLoops)
+    for (OffsetLoop& loop : m_ccwOffsetLoops)
     {
       auto& r = loop.polyline;
       auto spatial = createApproxSpatialIndex(r);
@@ -477,19 +471,19 @@ OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeOneSidedOffsets(OffsetLo
 
   // if there are both inside and outside path(s), return the edge path of the union of all the surfaces enclosed by these input paths
   // the exception is inside paths that lay outside the boundary path
-  Polyline2D<Real> unionPath = m_ccwOffsetLoops[0].polyline;
-  for (const OffsetLoop<Real>& insideLoop : m_cwOffsetLoops)
+  Polyline2D unionPath = m_ccwOffsetLoops[0].polyline;
+  for (const OffsetLoop& insideLoop : m_cwOffsetLoops)
   {
     // to check if a loop lays entirely outside another, we check if there are any intersects between the two
     // if there are no intersects, no union is required, the output can simply be the offset of the boundary path
-    internal::ProcessForCombineResult<Real> combineInfo = internal::processForCombine(m_ccwOffsetLoops[0].polyline, insideLoop.polyline, m_ccwOffsetLoops[0].spatialIndex);
+    internal::ProcessForCombineResult combineInfo = internal::processForCombine(m_ccwOffsetLoops[0].polyline, insideLoop.polyline, m_ccwOffsetLoops[0].spatialIndex);
     if (combineInfo.anyIntersects()) {
-      CombineResult<Real> combineResult = combinePolylines(unionPath, insideLoop.polyline, PlineCombineMode::Union);
+      CombineResult combineResult = combinePolylines(unionPath, insideLoop.polyline, PlineCombineMode::Union);
       unionPath = combineResult.remaining[0];
     }
     else {
       // if the offsetpath is fully contained in any of the inside paths, return an empty path
-      Vector2<Real> pointOnBoundary{ m_ccwOffsetLoops[0].polyline.lastVertex().x(), m_ccwOffsetLoops[0].polyline.lastVertex().y() };
+      Vector2d pointOnBoundary{ m_ccwOffsetLoops[0].polyline.lastVertex().x(), m_ccwOffsetLoops[0].polyline.lastVertex().y() };
       if (getWindingNumber(insideLoop.polyline, pointOnBoundary) != 0)
         return result;
     }
@@ -502,13 +496,12 @@ OffsetLoopSet<Real> ParallelOffsetIslands<Real>::computeOneSidedOffsets(OffsetLo
   return result;
 }
 
-template <typename Real>
-std::vector<core::Polyline2D<Real>> ParallelOffsetIslands<Real>::computeTwoSidedOffsets(std::vector<core::Polyline2D<Real>> innerBounds, std::vector<core::Polyline2D<Real>> outerBounds, Real offset) {
+std::vector<core::Polyline2D> ParallelOffsetIslands::computeTwoSidedOffsets(std::vector<core::Polyline2D> innerBounds, std::vector<core::Polyline2D> outerBounds, double offset) {
   
-  std::vector<core::Polyline2D<Real>> result;
-  OffsetLoopSet<Real> loopSet;
+  std::vector<core::Polyline2D> result;
+  OffsetLoopSet loopSet;
 
-  for (core::Polyline2D<Real>& innerBound : innerBounds) {
+  for (core::Polyline2D& innerBound : innerBounds) {
     // ensure that for inner bounds the path direction is clockwise, so that a positive offset will make an outwards offset
     if (!isPathClockwise(innerBound))
       innerBound.invertDirection();
@@ -516,7 +509,7 @@ std::vector<core::Polyline2D<Real>> ParallelOffsetIslands<Real>::computeTwoSided
     loopSet.cwLoops.push_back({ 0, innerBound, createApproxSpatialIndex(innerBound) });
   }
 
-  for (core::Polyline2D<Real>& outerBound : outerBounds) {
+  for (core::Polyline2D& outerBound : outerBounds) {
     // ensure that for outer bounds the path direction is counter-clockwise, so that a positive offset will make an inwards offset
     if (isPathClockwise(outerBound))
       outerBound.invertDirection();
@@ -525,7 +518,7 @@ std::vector<core::Polyline2D<Real>> ParallelOffsetIslands<Real>::computeTwoSided
   }
 
   // calculate the offset paths
-  OffsetLoopSet<Real> resultingOffsets;
+  OffsetLoopSet resultingOffsets;
   float scale = 1.f;
   bool allLoopsAreClosed = false;
 
@@ -574,14 +567,12 @@ std::vector<core::Polyline2D<Real>> ParallelOffsetIslands<Real>::computeTwoSided
   return result;
 }
 
+std::vector<core::Polyline2D> ParallelOffsetIslands::computeOneSidedOffsets(std::vector<core::Polyline2D> innerBounds, core::Polyline2D outerBound, double offset) {
 
-template <typename Real>
-std::vector<core::Polyline2D<Real>> ParallelOffsetIslands<Real>::computeOneSidedOffsets(std::vector<core::Polyline2D<Real>> innerBounds, core::Polyline2D<Real> outerBound, Real offset) {
+  std::vector<core::Polyline2D> result;
+  OffsetLoopSet loopSet;
 
-  std::vector<core::Polyline2D<Real>> result;
-  OffsetLoopSet<Real> loopSet;
-
-  for (core::Polyline2D<Real>& innerBound : innerBounds) {
+  for (core::Polyline2D& innerBound : innerBounds) {
     // ensure that for inner bounds the path direction is clockwise, so that a positive offset will make an outwards offset
     if (!isPathClockwise(innerBound))
       innerBound.invertDirection();
@@ -596,7 +587,7 @@ std::vector<core::Polyline2D<Real>> ParallelOffsetIslands<Real>::computeOneSided
   loopSet.ccwLoops.push_back({ 0, outerBound, createApproxSpatialIndex(outerBound) });
 
   // calculate the offset paths
-  OffsetLoopSet<Real> resultingOffsets;
+  OffsetLoopSet resultingOffsets;
   float scale = 1.f;
   bool allLoopsAreClosed = false;
 

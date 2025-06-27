@@ -99,7 +99,7 @@ private:
                     facePassInfo.slicingPlane = planeObj->getPlane();
                     facePassInfo.stock = stockObj->getObjectShape();
 
-                    core::Polyline2_5D<double> result = generateFacePass2_5D(facePassInfo);
+                    core::Polyline2_5D result = generateFacePass2_5D(facePassInfo);
                     
                     if (!result.isEmpty())
                         renderer.createLine(result);
@@ -207,7 +207,7 @@ private:
                     surfacePassInfo.endPlane = endPlaneObj->getPlane();
                     surfacePassInfo.shape = shapeObj->getObjectShape();
 
-                    core::Polyline2_5D<double> result = generateSurfacePass2_5D(surfacePassInfo);
+                    core::Polyline2_5D result = generateSurfacePass2_5D(surfacePassInfo);
                     
                     if (!result.isEmpty())
                         renderer.createLine(result);
@@ -341,7 +341,7 @@ private:
                     clearingPassInfo.shape = shapeObj->getObjectShape();
                     clearingPassInfo.stock = stockObj->getObjectShape();
 
-                    core::Polyline2_5D<double> result = generateClearingPass2_5D(clearingPassInfo);
+                    core::Polyline2_5D result = generateClearingPass2_5D(clearingPassInfo);
                     
                     if (!result.isEmpty())
                         renderer.createLine(result);

@@ -3,7 +3,6 @@
 
 #include "../mathUtils.hpp"
 #include "../polyline.hpp"
-#include "../vector2.hpp"
 
 #include <unordered_set>
 #include <vector>
@@ -13,54 +12,52 @@
 
 namespace core {
 /// Represents a non-coincident polyline intersect.
-template <typename Real> struct PlineIntersect {
+struct PlineIntersect {
   /// Index of the start vertex of the first segment
   std::size_t sIndex1;
   /// Index of the start vertex of the second segment
   std::size_t sIndex2;
   /// Point of intersection
-  Vector2<Real> pos;
+  Vector2d pos;
   // type of intersect
   PlineIntersect() = default;
-  PlineIntersect(std::size_t si1, std::size_t si2, Vector2<Real> p)
+  PlineIntersect(std::size_t si1, std::size_t si2, Vector2d p)
       : sIndex1(si1), sIndex2(si2), pos(p) {}
 };
 
 /// Represents a coincident polyline intersect (stretch).
-template <typename Real> struct PlineCoincidentIntersect {
+struct PlineCoincidentIntersect {
   /// Index of the start vertex of the first segment
   std::size_t sIndex1;
   /// Index of the start vertex of the second segment
   std::size_t sIndex2;
   /// One end point of the coincident slice
-  Vector2<Real> point1;
+  Vector2d point1;
   /// Other end point of the coincident slice
-  Vector2<Real> point2;
+  Vector2dpoint2;
   PlineCoincidentIntersect() = default;
-  PlineCoincidentIntersect(std::size_t si1, std::size_t si2, Vector2<Real> const &point1,
-                           Vector2<Real> const &point2)
+  PlineCoincidentIntersect(std::size_t si1, std::size_t si2, Vector2d const &point1,
+                           Vector2d const &point2)
       : sIndex1(si1), sIndex2(si2), point1(point1), point2(point2) {}
 };
 
 /// Holds a collection of intersects found
-template <typename Real> struct PlineIntersectsResult {
-  std::vector<PlineIntersect<Real>> intersects;
-  std::vector<PlineCoincidentIntersect<Real>> coincidentIntersects;
+struct PlineIntersectsResult {
+  std::vector<PlineIntersect> intersects;
+  std::vector<PlineCoincidentIntersect> coincidentIntersects;
   bool hasIntersects() { return intersects.size() != 0 || coincidentIntersects.size() != 0; }
 };
 
-template <typename Real> struct CoincidentSlicesResult {
-  std::vector<Polyline2D<Real>> coincidentSlices;
-  std::vector<PlineIntersect<Real>> sliceStartPoints;
-  std::vector<PlineIntersect<Real>> sliceEndPoints;
+struct CoincidentSlicesResult {
+  std::vector<Polyline2D> coincidentSlices;
+  std::vector<PlineIntersect> sliceStartPoints;
+  std::vector<PlineIntersect> sliceEndPoints;
   std::vector<bool> coincidentIsOpposingDirection;
 };
 
-template <typename Real>
-CoincidentSlicesResult<Real>
-sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect<Real>> &coincidentIntrs,
-                            Polyline2D<Real> const &pline1, Polyline2D<Real> const &pline2) {
-  CoincidentSlicesResult<Real> result;
+CoincidentSlicesResult sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect> &coincidentIntrs,
+                            Polyline2D const &pline1, Polyline2D const &pline2) {
+  CoincidentSlicesResult result;
 
   if (coincidentIntrs.size() == 0) {
     return result;
@@ -68,8 +65,8 @@ sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect<Real>> &coincid
 
   for (auto &intr : coincidentIntrs) {
     auto const &sp = pline1[intr.sIndex1].pos();
-    Real dist1 = distSquared(sp, intr.point1);
-    Real dist2 = distSquared(sp, intr.point2);
+    double dist1 = distSquared(sp, intr.point1);
+    double dist2 = distSquared(sp, intr.point2);
     if (dist1 > dist2) {
       using namespace std;
       swap(intr.point1, intr.point2);
@@ -83,8 +80,8 @@ sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect<Real>> &coincid
               }
               // equal index so sort distance from start
               auto const &sp = pline1[intr1.sIndex1].pos();
-              Real dist1 = distSquared(sp, intr1.point1);
-              Real dist2 = distSquared(sp, intr2.point1);
+              double dist1 = distSquared(sp, intr1.point1);
+              double dist2 = distSquared(sp, intr2.point1);
               return dist1 < dist2;
             });
 
@@ -93,7 +90,7 @@ sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect<Real>> &coincid
   auto &coincidentSlices = result.coincidentSlices;
   auto &coincidentIsOpposingDirection = result.coincidentIsOpposingDirection;
 
-  Polyline2D<Real> currCoincidentSlice;
+  Polyline2D currCoincidentSlice;
 
   auto startCoincidentSliceAt = [&](std::size_t intrIndex) {
     const auto &intr = coincidentIntrs[intrIndex];
@@ -106,7 +103,7 @@ sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect<Real>> &coincid
     // tangent vectors are either going same direction or opposite direction, just test dot product
     // sign to determine if going same direction
     auto dotP = dot(t1, t2);
-    bool sameDirection = dotP > Real(0);
+    bool sameDirection = dotP > 0.f;
     coincidentIsOpposingDirection.push_back(!sameDirection);
 
     auto split1 = splitAtPoint(v1, v2, intr.point1);
@@ -114,17 +111,17 @@ sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect<Real>> &coincid
     auto split2 = splitAtPoint(v1, v2, intr.point2);
     currCoincidentSlice.addVertex(split2.splitVertex);
 
-    PlineIntersect<Real> sliceStart;
+    PlineIntersect sliceStart;
     sliceStart.pos = split1.splitVertex.pos();
 
-    if (fuzzyEqual(v1.pos(), intr.point1, utils::realPrecision<Real>())) {
+    if (fuzzyEqual(v1.pos(), intr.point1, utils::realPrecision<double>())) {
       // coincidence starts at beginning of segment, report as starting at end of previous index
       sliceStart.sIndex1 = utils::prevWrappingIndex(intr.sIndex1, pline1);
     } else {
       sliceStart.sIndex1 = intr.sIndex1;
     }
 
-    if (fuzzyEqual(u1.pos(), sliceStart.pos, utils::realPrecision<Real>())) {
+    if (fuzzyEqual(u1.pos(), sliceStart.pos, utils::realPrecision<double>())) {
       sliceStart.sIndex2 = utils::prevWrappingIndex(intr.sIndex2, pline2);
     } else {
       sliceStart.sIndex2 = intr.sIndex2;
@@ -140,10 +137,10 @@ sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect<Real>> &coincid
     coincidentSlices.emplace_back();
     using namespace std;
     swap(coincidentSlices.back(), currCoincidentSlice);
-    PlineIntersect<Real> sliceEnd;
+    PlineIntersect sliceEnd;
     sliceEnd.pos = intr.point2;
     sliceEnd.sIndex1 = intr.sIndex1;
-    if (fuzzyEqual(u1.pos(), sliceEnd.pos, utils::realPrecision<Real>())) {
+    if (fuzzyEqual(u1.pos(), sliceEnd.pos, utils::realPrecision<double>())) {
       sliceEnd.sIndex2 = utils::prevWrappingIndex(intr.sIndex2, pline2);
     } else {
       sliceEnd.sIndex2 = intr.sIndex2;
@@ -159,7 +156,7 @@ sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect<Real>> &coincid
     const auto &v2 = pline1[utils::nextWrappingIndex(intr.sIndex1, pline1)];
 
     if (fuzzyEqual(intr.point1, currCoincidentSlice.lastVertex().pos(),
-                   utils::realPrecision<Real>())) {
+                   utils::realPrecision<double>())) {
       // continue coincident slice
       currCoincidentSlice.vertexes().pop_back();
       auto split1 = splitAtPoint(v1, v2, intr.point1);
@@ -181,7 +178,7 @@ sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect<Real>> &coincid
     // check if last coincident slice connects with first
     const auto &lastSliceEnd = coincidentSlices.back().lastVertex().pos();
     const auto &firstSliceBegin = coincidentSlices[0][0].pos();
-    if (fuzzyEqual(lastSliceEnd, firstSliceBegin, utils::realPrecision<Real>())) {
+    if (fuzzyEqual(lastSliceEnd, firstSliceBegin, utils::realPrecision<double>())) {
       // they do connect, join them together
       auto &lastSlice = coincidentSlices.back();
       lastSlice.vertexes().pop_back();
@@ -204,8 +201,7 @@ sortAndjoinCoincidentSlices(std::vector<PlineCoincidentIntersect<Real>> &coincid
 /// Finds all local self intersects of the polyline, local self intersects are defined as between
 /// two polyline segments that share a vertex. NOTES:
 /// - Singularities (repeating vertexes) are returned as coincident intersects
-template <typename Real>
-void localSelfIntersects(Polyline2D<Real> const &pline, std::vector<PlineIntersect<Real>> &output) {
+void localSelfIntersects(Polyline2D const &pline, std::vector<PlineIntersect> &output) {
   if (pline.size() < 2) {
     return;
   }
@@ -223,31 +219,31 @@ void localSelfIntersects(Polyline2D<Real> const &pline, std::vector<PlineInterse
   }
 
   auto testAndAddIntersect = [&](std::size_t i, std::size_t j, std::size_t k) {
-    const PlineVertex2D<Real> &v1 = pline[i];
-    const PlineVertex2D<Real> &v2 = pline[j];
-    const PlineVertex2D<Real> &v3 = pline[k];
+    const PlineVertex2D &v1 = pline[i];
+    const PlineVertex2D &v2 = pline[j];
+    const PlineVertex2D &v3 = pline[k];
     // testing intersection between v1->v2 and v2->v3 segments
 
-    if (fuzzyEqual(v1.pos(), v2.pos(), utils::realPrecision<Real>())) {
+    if (fuzzyEqual(v1.pos(), v2.pos(), utils::realPrecision<double>())) {
       // singularity
       // coincident
       output.emplace_back(i, j, v1.pos());
     } else {
-      IntrPlineSegsResult<Real> intrResult = intrPlineSegs(v1, v2, v2, v3);
+      IntrPlineSegsResult intrResult = intrPlineSegs(v1, v2, v2, v3);
       switch (intrResult.intrType) {
       case PlineSegIntrType::NoIntersect:
         break;
       case PlineSegIntrType::TangentIntersect:
       case PlineSegIntrType::OneIntersect:
-        if (!fuzzyEqual(intrResult.point1, v2.pos(), utils::realPrecision<Real>())) {
+        if (!fuzzyEqual(intrResult.point1, v2.pos(), utils::realPrecision<double>())) {
           output.emplace_back(i, j, intrResult.point1);
         }
         break;
       case PlineSegIntrType::TwoIntersects:
-        if (!fuzzyEqual(intrResult.point1, v2.pos(), utils::realPrecision<Real>())) {
+        if (!fuzzyEqual(intrResult.point1, v2.pos(), utils::realPrecision<double>())) {
           output.emplace_back(i, j, intrResult.point1);
         }
-        if (!fuzzyEqual(intrResult.point2, v2.pos(), utils::realPrecision<Real>())) {
+        if (!fuzzyEqual(intrResult.point2, v2.pos(), utils::realPrecision<double>())) {
           output.emplace_back(i, j, intrResult.point2);
         }
         break;
@@ -280,9 +276,9 @@ void localSelfIntersects(Polyline2D<Real> const &pline, std::vector<PlineInterse
 /// NOTES:
 /// - We never include intersects at a segment's start point, the matching intersect from the
 /// previous segment's end point is included (no sense in including both)
-template <typename Real, std::size_t N>
-void globalSelfIntersects(Polyline2D<Real> const &pline, std::vector<PlineIntersect<Real>> &output,
-                          StaticSpatialIndex<Real, N> const &spatialIndex) {
+template <std::size_t N>
+void globalSelfIntersects(Polyline2D const &pline, std::vector<PlineIntersect> &output,
+                          StaticSpatialIndex<N> const &spatialIndex) {
   if (pline.size() < 3) {
     return;
   }
@@ -294,12 +290,12 @@ void globalSelfIntersects(Polyline2D<Real> const &pline, std::vector<PlineInters
   std::vector<std::size_t> queryStack;
   queryStack.reserve(8);
 
-  auto visitor = [&](std::size_t i, Real minX, Real minY, Real maxX, Real maxY) {
+  auto visitor = [&](std::size_t i, double minX, double minY, double maxX, double maxY) {
     std::size_t j = utils::nextWrappingIndex(i, pline);
-    const PlineVertex2D<Real> &v1 = pline[i];
-    const PlineVertex2D<Real> &v2 = pline[j];
-    AABB<Real> envelope{minX, minY, maxX, maxY};
-    envelope.expand(utils::realThreshold<Real>());
+    const PlineVertex2D &v1 = pline[i];
+    const PlineVertex2D &v2 = pline[j];
+    AABB envelope{minX, minY, maxX, maxY};
+    envelope.expand(utils::realThreshold<double>());
     auto indexVisitor = [&](std::size_t hitIndexStart) {
       std::size_t hitIndexEnd = utils::nextWrappingIndex(hitIndexStart, pline);
       // skip/filter already visited intersects
@@ -315,14 +311,14 @@ void globalSelfIntersects(Polyline2D<Real> const &pline, std::vector<PlineInters
       // add the segment pair we're visiting now
       visitedSegmentPairs.emplace(i, hitIndexStart);
 
-      const PlineVertex2D<Real> &u1 = pline[hitIndexStart];
-      const PlineVertex2D<Real> &u2 = pline[hitIndexEnd];
+      const PlineVertex2D &u1 = pline[hitIndexStart];
+      const PlineVertex2D &u2 = pline[hitIndexEnd];
 
-      auto intrAtStartPt = [&](Vector2<Real> const &intr) {
+      auto intrAtStartPt = [&](Vector2d const &intr) {
         return fuzzyEqual(v1.pos(), intr) || fuzzyEqual(u1.pos(), intr);
       };
 
-      IntrPlineSegsResult<Real> intrResult = intrPlineSegs(v1, v2, u1, u2);
+      IntrPlineSegsResult intrResult = intrPlineSegs(v1, v2, u1, u2);
       switch (intrResult.intrType) {
       case PlineSegIntrType::NoIntersect:
         break;
@@ -367,18 +363,18 @@ void globalSelfIntersects(Polyline2D<Real> const &pline, std::vector<PlineInters
 
 /// Finds all self intersects of the polyline (equivalent to calling localSelfIntersects and
 /// globalSelfIntersects).
-template <typename Real, std::size_t N>
-void allSelfIntersects(Polyline2D<Real> const &pline, std::vector<PlineIntersect<Real>> &output,
-                       StaticSpatialIndex<Real, N> const &spatialIndex) {
+template <std::size_t N>
+void allSelfIntersects(Polyline2D const &pline, std::vector<PlineIntersect> &output,
+                       StaticSpatialIndex<N> const &spatialIndex) {
   localSelfIntersects(pline, output);
   globalSelfIntersects(pline, output, spatialIndex);
 }
 
 /// Finds all intersects between pline1 and pline2.
-template <typename Real, std::size_t N>
-void findIntersects(Polyline2D<Real> const &pline1, Polyline2D<Real> const &pline2,
-                    StaticSpatialIndex<Real, N> const &pline1SpatialIndex,
-                    PlineIntersectsResult<Real> &output) {
+template <std::size_t N>
+void findIntersects(Polyline2D const &pline1, Polyline2D const &pline2,
+                    StaticSpatialIndex<N> const &pline1SpatialIndex,
+                    PlineIntersectsResult &output) {
   std::vector<std::size_t> queryResults;
   std::vector<std::size_t> queryStack;
   queryStack.reserve(8);
@@ -389,23 +385,23 @@ void findIntersects(Polyline2D<Real> const &pline1, Polyline2D<Real> const &plin
   auto &coincidentIntrs = output.coincidentIntersects;
 
   auto pline2SegVisitor = [&](std::size_t i2, std::size_t j2) {
-    PlineVertex2D<Real> const &p2v1 = pline2[i2];
-    PlineVertex2D<Real> const &p2v2 = pline2[j2];
+    PlineVertex2D const &p2v1 = pline2[i2];
+    PlineVertex2D const &p2v2 = pline2[j2];
 
     queryResults.clear();
 
-    AABB<Real> bb = createFastApproxBoundingBox(p2v1, p2v2);
+    AABB bb = createFastApproxBoundingBox(p2v1, p2v2);
     // expand bounding box by threshold amount to ensure finding intersects at segment end points
-    Real fuzz = core::utils::realPrecision<Real>();
+    double fuzz = core::utils::realPrecision<double>();
     pline1SpatialIndex.query(bb.xMin - fuzz, bb.yMin - fuzz, bb.xMax + fuzz, bb.yMax + fuzz,
                              queryResults, queryStack);
 
     for (std::size_t i1 : queryResults) {
       std::size_t j1 = utils::nextWrappingIndex(i1, pline1);
-      PlineVertex2D<Real> const &p1v1 = pline1[i1];
-      PlineVertex2D<Real> const &p1v2 = pline1[j1];
+      PlineVertex2D const &p1v1 = pline1[i1];
+      PlineVertex2D const &p1v2 = pline1[j1];
 
-      auto intrAtStartPt = [&](Vector2<Real> const &intr) {
+      auto intrAtStartPt = [&](Vector2d const &intr) {
         return fuzzyEqual(p1v1.pos(), intr) || fuzzyEqual(p2v1.pos(), intr);
       };
 

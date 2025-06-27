@@ -13,63 +13,62 @@
 namespace core {
 namespace internal {
 /// Represents a raw polyline offset segment.
-template <typename Real> struct PlineOffsetSegment {
-  PlineVertex2D<Real> v1;
-  PlineVertex2D<Real> v2;
-  Vector2<Real> origV2Pos;
+struct PlineOffsetSegment {
+  PlineVertex2D v1;
+  PlineVertex2D v2;
+  Vector2d origV2Pos;
   bool collapsedArc;
 };
 
 /// Creates all the raw polyline offset segments.
-template <typename Real>
-std::vector<PlineOffsetSegment<Real>> createUntrimmedOffsetSegments(Polyline2D<Real> const &pline,
-                                                                    Real offset) {
+std::vector<PlineOffsetSegment> createUntrimmedOffsetSegments(Polyline2D const &pline,
+                                                                    double offset) {
   std::size_t segmentCount = pline.isClosed() ? pline.size() : pline.size() - 1;
 
-  std::vector<PlineOffsetSegment<Real>> result;
+  std::vector<PlineOffsetSegment> result;
   result.reserve(segmentCount);
 
-  auto lineVisitor = [&](PlineVertex2D<Real> const &v1, PlineVertex2D<Real> const &v2) {
+  auto lineVisitor = [&](PlineVertex2D const &v1, PlineVertex2D const &v2) {
     result.emplace_back();
-    PlineOffsetSegment<Real> &seg = result.back();
+    PlineOffsetSegment &seg = result.back();
     seg.collapsedArc = false;
     seg.origV2Pos = v2.pos();
-    Vector2<Real> edge = v2.pos() - v1.pos();
-    Vector2<Real> offsetV = offset * unitPerp(edge);
+    Vector2d edge = v2.pos() - v1.pos();
+    Vector2d offsetV = offset * unitPerp(edge);
     seg.v1.pos() = v1.pos() + offsetV;
     seg.v1.bulge() = v1.bulge();
     seg.v2.pos() = v2.pos() + offsetV;
     seg.v2.bulge() = v2.bulge();
   };
 
-  auto arcVisitor = [&](PlineVertex2D<Real> const &v1, PlineVertex2D<Real> const &v2) {
+  auto arcVisitor = [&](PlineVertex2D const &v1, PlineVertex2D const &v2) {
     auto arc = arcRadiusAndCenter(v1, v2);
-    Real offs = v1.bulgeIsNeg() ? offset : -offset;
-    Real radiusAfterOffset = arc.radius + offs;
-    Vector2<Real> v1ToCenter = v1.pos() - arc.center;
-    normalize(v1ToCenter);
-    Vector2<Real> v2ToCenter = v2.pos() - arc.center;
-    normalize(v2ToCenter);
+    double offs = v1.bulgeIsNeg() ? offset : -offset;
+    double radiusAfterOffset = arc.radius + offs;
+    Vector2d v1ToCenter = v1.pos() - arc.center;
+    v1ToCenter.normalize();
+    Vector2d v2ToCenter = v2.pos() - arc.center;
+    v2ToCenter.normalize();
 
     result.emplace_back();
-    PlineOffsetSegment<Real> &seg = result.back();
+    PlineOffsetSegment &seg = result.back();
     seg.origV2Pos = v2.pos();
     seg.v1.pos() = offs * v1ToCenter + v1.pos();
     seg.v2.pos() = offs * v2ToCenter + v2.pos();
     seg.v2.bulge() = v2.bulge();
 
-    if (radiusAfterOffset < utils::realThreshold<Real>()) {
+    if (radiusAfterOffset < utils::realThreshold<double>()) {
       // collapsed arc, offset arc start and end points towards arc center and turn into line
       // handles case where offset vertexes are equal and simplifies path for clipping algorithm
       seg.collapsedArc = true;
-      seg.v1.bulge() = Real(0);
+      seg.v1.bulge() = 0.f;
     } else {
       seg.collapsedArc = false;
       seg.v1.bulge() = v1.bulge();
     }
   };
 
-  auto offsetVisitor = [&](PlineVertex2D<Real> const &v1, PlineVertex2D<Real> const &v2) {
+  auto offsetVisitor = [&](PlineVertex2D const &v1, PlineVertex2D const &v2) {
     if (v1.bulgeIsZero()) {
       lineVisitor(v1, v2);
     } else {
@@ -88,17 +87,16 @@ std::vector<PlineOffsetSegment<Real>> createUntrimmedOffsetSegments(Polyline2D<R
   return result;
 }
 
-template <typename Real> bool falseIntersect(Real t) { return t < 0.0 || t > 1.0; }
+bool falseIntersect(double t) { return t < 0.0 || t > 1.0; }
 
 // Gets the bulge to describe the arc going from start point to end point with the given arc center
 // and curve orientation, if orientation is negative then bulge is negative otherwise it is positive
-template <typename Real>
-Real bulgeForConnection(Vector2<Real> const &arcCenter, Vector2<Real> const &sp,
-                        Vector2<Real> const &ep, bool isCCW) {
-  Real a1 = angle(arcCenter, sp);
-  Real a2 = angle(arcCenter, ep);
-  Real absSweepAngle = std::abs(utils::deltaAngle(a1, a2));
-  Real absBulge = std::tan(absSweepAngle / Real(4));
+double bulgeForConnection(Vector2d const &arcCenter, Vector2d const &sp,
+                        Vector2d const &ep, bool isCCW) {
+  double a1 = angle(arcCenter, sp);
+  double a2 = angle(arcCenter, ep);
+  double absSweepAngle = std::abs(utils::deltaAngle(a1, a2));
+  double absBulge = std::tan(absSweepAngle / 4.f);
   if (isCCW) {
     return absBulge;
   }
@@ -106,9 +104,8 @@ Real bulgeForConnection(Vector2<Real> const &arcCenter, Vector2<Real> const &sp,
   return -absBulge;
 }
 
-template <typename Real>
-void lineToLineJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> const &s2,
-                    bool connectionArcsAreCCW, Polyline2D<Real> &result) {
+void lineToLineJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
+                    bool connectionArcsAreCCW, Polyline2D &result) {
   const auto &v1 = s1.v1;
   const auto &v2 = s1.v2;
   const auto &u1 = s2.v1;
@@ -119,9 +116,9 @@ void lineToLineJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real>
     auto const &arcCenter = s1.origV2Pos;
     auto const &sp = v2.pos();
     auto const &ep = u1.pos();
-    Real bulge = bulgeForConnection(arcCenter, sp, ep, connectionArcsAreCCW);
-    addOrReplaceIfSamePos(result, PlineVertex2D<Real>(sp, bulge));
-    addOrReplaceIfSamePos(result, PlineVertex2D<Real>(ep, Real(0)));
+    double bulge = bulgeForConnection(arcCenter, sp, ep, connectionArcsAreCCW);
+    addOrReplaceIfSamePos(result, PlineVertex2D(sp, bulge));
+    addOrReplaceIfSamePos(result, PlineVertex2D(ep, 0.f));
   };
 
   if (s1.collapsedArc || s2.collapsedArc) {
@@ -133,21 +130,21 @@ void lineToLineJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real>
     switch (intrResult.intrType) {
     case LineSeg2LineSeg2IntrType::None:
       // just join with straight line
-      addOrReplaceIfSamePos(result, PlineVertex2D<Real>(v2.pos(), Real(0)));
+      addOrReplaceIfSamePos(result, PlineVertex2D(v2.pos(), 0.f));
       addOrReplaceIfSamePos(result, u1);
       break;
     case LineSeg2LineSeg2IntrType::True:
-      addOrReplaceIfSamePos(result, PlineVertex2D<Real>(intrResult.point, Real(0)));
+      addOrReplaceIfSamePos(result, PlineVertex2D(intrResult.point, 0.f));
       break;
     case LineSeg2LineSeg2IntrType::Coincident:
-      addOrReplaceIfSamePos(result, PlineVertex2D<Real>(v2.pos(), Real(0)));
+      addOrReplaceIfSamePos(result, PlineVertex2D(v2.pos(), 0.f));
       break;
     case LineSeg2LineSeg2IntrType::False:
-      if (intrResult.t0 > Real(1) && falseIntersect(intrResult.t1)) {
+      if (intrResult.t0 > 1.f && falseIntersect(intrResult.t1)) {
         // extend and join the lines together using an arc
         connectUsingArc();
       } else {
-        addOrReplaceIfSamePos(result, PlineVertex2D<Real>(v2.pos(), Real(0)));
+        addOrReplaceIfSamePos(result, PlineVertex2D(v2.pos(), 0.f));
         addOrReplaceIfSamePos(result, u1);
       }
       break;
@@ -155,9 +152,8 @@ void lineToLineJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real>
   }
 }
 
-template <typename Real>
-void lineToArcJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> const &s2,
-                   bool connectionArcsAreCCW, Polyline2D<Real> &result) {
+void lineToArcJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
+                   bool connectionArcsAreCCW, Polyline2D &result) {
 
   const auto &v1 = s1.v1;
   const auto &v2 = s1.v2;
@@ -170,37 +166,37 @@ void lineToArcJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> 
     auto const &arcCenter = s1.origV2Pos;
     auto const &sp = v2.pos();
     auto const &ep = u1.pos();
-    Real bulge = bulgeForConnection(arcCenter, sp, ep, connectionArcsAreCCW);
-    addOrReplaceIfSamePos(result, PlineVertex2D<Real>(sp, bulge));
+    double bulge = bulgeForConnection(arcCenter, sp, ep, connectionArcsAreCCW);
+    addOrReplaceIfSamePos(result, PlineVertex2D(sp, bulge));
     addOrReplaceIfSamePos(result, u1);
   };
 
   const auto arc = arcRadiusAndCenter(u1, u2);
 
-  auto processIntersect = [&](Real t, Vector2<Real> const &intersect) {
+  auto processIntersect = [&](double t, Vector2d const &intersect) {
     const bool trueSegIntersect = !falseIntersect(t);
     const bool trueArcIntersect =
         pointWithinArcSweepAngle(arc.center, u1.pos(), u2.pos(), u1.bulge(), intersect);
     if (trueSegIntersect && trueArcIntersect) {
       // trim at intersect
-      Real a = angle(arc.center, intersect);
-      Real arcEndAngle = angle(arc.center, u2.pos());
-      Real theta = utils::deltaAngle(a, arcEndAngle);
+      double a = angle(arc.center, intersect);
+      double arcEndAngle = angle(arc.center, u2.pos());
+      double theta = utils::deltaAngle(a, arcEndAngle);
       // ensure the sign matches (may get flipped if intersect is at the very end of the arc, in
       // which case we do not want to update the bulge)
-      if ((theta > Real(0)) == u1.bulgeIsPos()) {
-        addOrReplaceIfSamePos(result, PlineVertex2D<Real>(intersect, std::tan(theta / Real(4))));
+      if ((theta > 0.f) == u1.bulgeIsPos()) {
+        addOrReplaceIfSamePos(result, PlineVertex2D(intersect, std::tan(theta / 4.f)));
       } else {
-        addOrReplaceIfSamePos(result, PlineVertex2D<Real>(intersect, u1.bulge()));
+        addOrReplaceIfSamePos(result, PlineVertex2D(intersect, u1.bulge()));
       }
-    } else if (t > Real(1) && !trueArcIntersect) {
+    } else if (t > 1.f && !trueArcIntersect) {
       connectUsingArc();
     } else if (s1.collapsedArc) {
       // collapsed arc connecting to arc, connect using arc
       connectUsingArc();
     } else {
       // connect using line
-      addOrReplaceIfSamePos(result, PlineVertex2D<Real>(v2.pos(), Real(0)));
+      addOrReplaceIfSamePos(result, PlineVertex2D(v2.pos(), 0.f));
       addOrReplaceIfSamePos(result, u1);
     }
   };
@@ -213,10 +209,10 @@ void lineToArcJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> 
   } else {
     CORE_ASSERT(intrResult.numIntersects == 2, "should have 2 intersects here");
     // always use intersect closest to original point
-    Vector2<Real> i1 = pointFromParametric(v1.pos(), v2.pos(), intrResult.t0);
-    Real dist1 = distSquared(i1, s1.origV2Pos);
-    Vector2<Real> i2 = pointFromParametric(v1.pos(), v2.pos(), intrResult.t1);
-    Real dist2 = distSquared(i2, s1.origV2Pos);
+    Vector2d i1 = pointFromParametric(v1.pos(), v2.pos(), intrResult.t0);
+    double dist1 = distSquared(i1, s1.origV2Pos);
+    Vector2d i2 = pointFromParametric(v1.pos(), v2.pos(), intrResult.t1);
+    double dist2 = distSquared(i2, s1.origV2Pos);
 
     if (dist1 < dist2) {
       processIntersect(intrResult.t0, i1);
@@ -226,9 +222,8 @@ void lineToArcJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> 
   }
 }
 
-template <typename Real>
-void arcToLineJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> const &s2,
-                   bool connectionArcsAreCCW, Polyline2D<Real> &result) {
+void arcToLineJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
+                   bool connectionArcsAreCCW, Polyline2D &result) {
 
   const auto &v1 = s1.v1;
   const auto &v2 = s1.v2;
@@ -241,35 +236,35 @@ void arcToLineJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> 
     auto const &arcCenter = s1.origV2Pos;
     auto const &sp = v2.pos();
     auto const &ep = u1.pos();
-    Real bulge = bulgeForConnection(arcCenter, sp, ep, connectionArcsAreCCW);
-    addOrReplaceIfSamePos(result, PlineVertex2D<Real>(sp, bulge));
+    double bulge = bulgeForConnection(arcCenter, sp, ep, connectionArcsAreCCW);
+    addOrReplaceIfSamePos(result, PlineVertex2D(sp, bulge));
     addOrReplaceIfSamePos(result, u1);
   };
 
   const auto arc = arcRadiusAndCenter(v1, v2);
 
-  auto processIntersect = [&](Real t, Vector2<Real> const &intersect) {
+  auto processIntersect = [&](double t, Vector2d const &intersect) {
     const bool trueSegIntersect = !falseIntersect(t);
     const bool trueArcIntersect =
         pointWithinArcSweepAngle(arc.center, v1.pos(), v2.pos(), v1.bulge(), intersect);
     if (trueSegIntersect && trueArcIntersect) {
-      PlineVertex2D<Real> &prevVertex = result.lastVertex();
+      PlineVertex2D &prevVertex = result.lastVertex();
 
       if (!prevVertex.bulgeIsZero() && !fuzzyEqual(prevVertex.pos(), v2.pos())) {
         // modify previous bulge and trim at intersect
-        Real a = angle(arc.center, intersect);
+        double a = angle(arc.center, intersect);
         auto prevArc = arcRadiusAndCenter(prevVertex, v2);
-        Real prevArcStartAngle = angle(prevArc.center, prevVertex.pos());
-        Real updatedPrevTheta = utils::deltaAngle(prevArcStartAngle, a);
+        double prevArcStartAngle = angle(prevArc.center, prevVertex.pos());
+        double updatedPrevTheta = utils::deltaAngle(prevArcStartAngle, a);
 
         // ensure the sign matches (may get flipped if intersect is at the very end of the arc, in
         // which case we do not want to update the bulge)
-        if ((updatedPrevTheta > Real(0)) == prevVertex.bulgeIsPos()) {
-          result.lastVertex().bulge() = std::tan(updatedPrevTheta / Real(4));
+        if ((updatedPrevTheta > 0.f) == prevVertex.bulgeIsPos()) {
+          result.lastVertex().bulge() = std::tan(updatedPrevTheta / 4.f);
         }
       }
 
-      addOrReplaceIfSamePos(result, PlineVertex2D<Real>(intersect, Real(0)));
+      addOrReplaceIfSamePos(result, PlineVertex2D>(intersect,0.f));
 
     } else {
       connectUsingArc();
@@ -284,10 +279,10 @@ void arcToLineJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> 
   } else {
     CORE_ASSERT(intrResult.numIntersects == 2, "should have 2 intersects here");
     const auto &origPoint = s2.collapsedArc ? u1.pos() : s1.origV2Pos;
-    Vector2<Real> i1 = pointFromParametric(u1.pos(), u2.pos(), intrResult.t0);
-    Real dist1 = distSquared(i1, origPoint);
-    Vector2<Real> i2 = pointFromParametric(u1.pos(), u2.pos(), intrResult.t1);
-    Real dist2 = distSquared(i2, origPoint);
+    Vector2d i1 = pointFromParametric(u1.pos(), u2.pos(), intrResult.t0);
+    double dist1 = distSquared(i1, origPoint);
+    Vector2d i2 = pointFromParametric(u1.pos(), u2.pos(), intrResult.t1);
+    double dist2 = distSquared(i2, origPoint);
 
     if (dist1 < dist2) {
       processIntersect(intrResult.t0, i1);
@@ -297,9 +292,8 @@ void arcToLineJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> 
   }
 }
 
-template <typename Real>
-void arcToArcJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> const &s2,
-                  bool connectionArcsAreCCW, Polyline2D<Real> &result) {
+void arcToArcJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
+                  bool connectionArcsAreCCW, Polyline2D &result) {
 
   const auto &v1 = s1.v1;
   const auto &v2 = s1.v2;
@@ -314,44 +308,44 @@ void arcToArcJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> c
     auto const &arcCenter = s1.origV2Pos;
     auto const &sp = v2.pos();
     auto const &ep = u1.pos();
-    Real bulge = bulgeForConnection(arcCenter, sp, ep, connectionArcsAreCCW);
-    addOrReplaceIfSamePos(result, PlineVertex2D<Real>(sp, bulge));
+    double bulge = bulgeForConnection(arcCenter, sp, ep, connectionArcsAreCCW);
+    addOrReplaceIfSamePos(result, PlineVertex2D(sp, bulge));
     addOrReplaceIfSamePos(result, u1);
   };
 
-  auto processIntersect = [&](Vector2<Real> const &intersect) {
+  auto processIntersect = [&](Vector2d const &intersect) {
     const bool trueArcIntersect1 =
         pointWithinArcSweepAngle(arc1.center, v1.pos(), v2.pos(), v1.bulge(), intersect);
     const bool trueArcIntersect2 =
         pointWithinArcSweepAngle(arc2.center, u1.pos(), u2.pos(), u1.bulge(), intersect);
 
     if (trueArcIntersect1 && trueArcIntersect2) {
-      PlineVertex2D<Real> &prevVertex = result.lastVertex();
+      PlineVertex2D &prevVertex = result.lastVertex();
       if (!prevVertex.bulgeIsZero() && !fuzzyEqual(prevVertex.pos(), v2.pos())) {
         // modify previous bulge and trim at intersect
-        Real a1 = angle(arc1.center, intersect);
+        double a1 = angle(arc1.center, intersect);
         auto prevArc = arcRadiusAndCenter(prevVertex, v2);
-        Real prevArcStartAngle = angle(prevArc.center, prevVertex.pos());
-        Real updatedPrevTheta = utils::deltaAngle(prevArcStartAngle, a1);
+        double prevArcStartAngle = angle(prevArc.center, prevVertex.pos());
+        double updatedPrevTheta = utils::deltaAngle(prevArcStartAngle, a1);
 
         // ensure the sign matches (may get flipped if intersect is at the very end of the arc, in
         // which case we do not want to update the bulge)
-        if ((updatedPrevTheta > Real(0)) == prevVertex.bulgeIsPos()) {
-          result.lastVertex().bulge() = std::tan(updatedPrevTheta / Real(4));
+        if ((updatedPrevTheta > 0.f) == prevVertex.bulgeIsPos()) {
+          result.lastVertex().bulge() = std::tan(updatedPrevTheta / 4.f);
         }
       }
 
       // add the vertex at our current trim/join point
-      Real a2 = angle(arc2.center, intersect);
-      Real endAngle = angle(arc2.center, u2.pos());
-      Real theta = utils::deltaAngle(a2, endAngle);
+      double a2 = angle(arc2.center, intersect);
+      double endAngle = angle(arc2.center, u2.pos());
+      double theta = utils::deltaAngle(a2, endAngle);
 
       // ensure the sign matches (may get flipped if intersect is at the very end of the arc, in
       // which case we do not want to update the bulge)
-      if ((theta > Real(0)) == u1.bulgeIsPos()) {
-        addOrReplaceIfSamePos(result, PlineVertex2D<Real>(intersect, std::tan(theta / Real(4))));
+      if ((theta > 0.f) == u1.bulgeIsPos()) {
+        addOrReplaceIfSamePos(result, PlineVertex2D(intersect, std::tan(theta / 4.f)));
       } else {
-        addOrReplaceIfSamePos(result, PlineVertex2D<Real>(intersect, u1.bulge()));
+        addOrReplaceIfSamePos(result, PlineVertex2D(intersect, u1.bulge()));
       }
 
     } else {
@@ -368,8 +362,8 @@ void arcToArcJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> c
     processIntersect(intrResult.point1);
     break;
   case Circle2Circle2IntrType::TwoIntersects: {
-    Real dist1 = distSquared(intrResult.point1, s1.origV2Pos);
-    Real dist2 = distSquared(intrResult.point2, s1.origV2Pos);
+    double dist1 = distSquared(intrResult.point1, s1.origV2Pos);
+    double dist2 = distSquared(intrResult.point2, s1.origV2Pos);
     if (dist1 < dist2) {
       processIntersect(intrResult.point1);
     } else {
@@ -383,13 +377,12 @@ void arcToArcJoin(PlineOffsetSegment<Real> const &s1, PlineOffsetSegment<Real> c
   }
 }
 
-template <typename Real>
-void offsetCircleIntersectsWithPline(Polyline2D<Real> const &pline, Real offset,
-                                     Vector2<Real> const &circleCenter,
-                                     StaticSpatialIndex<Real> const &spatialIndex,
-                                     std::vector<std::pair<std::size_t, Vector2<Real>>> &output) {
+void offsetCircleIntersectsWithPline(Polyline2D const &pline, double offset,
+                                     Vector2d const &circleCenter,
+                                     StaticSpatialIndex const &spatialIndex,
+                                     std::vector<std::pair<std::size_t, Vector2d>> &output) {
 
-  const Real circleRadius = std::abs(offset);
+  const double circleRadius = std::abs(offset);
 
   std::vector<std::size_t> queryResults;
 
@@ -397,22 +390,22 @@ void offsetCircleIntersectsWithPline(Polyline2D<Real> const &pline, Real offset,
                      circleCenter.x() + circleRadius, circleCenter.y() + circleRadius,
                      queryResults);
 
-  auto validLineSegIntersect = [](Real t) {
-    return !falseIntersect(t) && std::abs(t) > utils::realPrecision<Real>();
+  auto validLineSegIntersect = [](double t) {
+    return !falseIntersect(t) && std::abs(t) > utils::realPrecision<double>();
   };
 
-  auto validArcSegIntersect = [](Vector2<Real> const &arcCenter, Vector2<Real> const &arcStart,
-                                 Vector2<Real> const &arcEnd, Real bulge,
-                                 Vector2<Real> const &intrPoint) {
-    return !fuzzyEqual(arcStart, intrPoint, utils::realPrecision<Real>()) &&
+  auto validArcSegIntersect = [](Vector2d const &arcCenter, Vector2d const &arcStart,
+                                 Vector2d const &arcEnd, double bulge,
+                                 Vector2d const &intrPoint) {
+    return !fuzzyEqual(arcStart, intrPoint, utils::realPrecision<double>()) &&
            pointWithinArcSweepAngle(arcCenter, arcStart, arcEnd, bulge, intrPoint);
   };
 
   for (std::size_t sIndex : queryResults) {
-    PlineVertex2D<Real> const &v1 = pline[sIndex];
-    PlineVertex2D<Real> const &v2 = pline[sIndex + 1];
+    PlineVertex2D const &v1 = pline[sIndex];
+    PlineVertex2D const &v2 = pline[sIndex + 1];
     if (v1.bulgeIsZero()) {
-      IntrLineSeg2Circle2Result<Real> intrResult =
+      IntrLineSeg2Circle2Result intrResult =
           intrLineSeg2Circle2(v1.pos(), v2.pos(), circleRadius, circleCenter);
       if (intrResult.numIntersects == 0) {
         continue;
@@ -431,7 +424,7 @@ void offsetCircleIntersectsWithPline(Polyline2D<Real> const &pline, Real offset,
       }
     } else {
       auto arc = arcRadiusAndCenter(v1, v2);
-      IntrCircle2Circle2Result<Real> intrResult =
+      IntrCircle2Circle2Result intrResult =
           intrCircle2Circle2(arc.radius, arc.center, circleRadius, circleCenter);
       switch (intrResult.intrType) {
       case Circle2Circle2IntrType::NoIntersect:
@@ -457,20 +450,20 @@ void offsetCircleIntersectsWithPline(Polyline2D<Real> const &pline, Real offset,
 }
 
 /// Function to test if a point is a valid distance from the original polyline.
-template <typename Real, std::size_t N>
-bool pointValidForOffset(Polyline2D<Real> const &pline, Real offset,
-                         StaticSpatialIndex<Real, N> const &spatialIndex,
-                         Vector2<Real> const &point, std::vector<std::size_t> &queryStack,
-                         Real offsetTol = utils::offsetThreshold<Real>()) {
-  const Real absOffset = std::abs(offset) - offsetTol;
-  const Real minDist = absOffset * absOffset;
+template <std::size_t N>
+bool pointValidForOffset(Polyline2D const &pline, double offset,
+                         StaticSpatialIndex<N> const &spatialIndex,
+                         Vector2d const &point, std::vector<std::size_t> &queryStack,
+                         double offsetTol = utils::offsetThreshold<double>()) {
+  const double absOffset = std::abs(offset) - offsetTol;
+  const double minDist = absOffset * absOffset;
 
   bool pointValid = true;
 
   auto visitor = [&](std::size_t i) {
     std::size_t j = utils::nextWrappingIndex(i, pline.vertexes());
     auto closestPoint = closestPointOnSeg(pline[i], pline[j], point);
-    Real dist = distSquared(closestPoint, point);
+    double dist = distSquared(closestPoint, point);
     pointValid = dist > minDist;
     return pointValid;
   };
@@ -481,15 +474,14 @@ bool pointValidForOffset(Polyline2D<Real> const &pline, Real offset,
 }
 
 /// Creates the raw offset polyline.
-template <typename Real>
-Polyline2D<Real> createRawOffsetPline(Polyline2D<Real> const &pline, Real offset) {
+Polyline2D createRawOffsetPline(Polyline2D const &pline, double offset) {
 
-  Polyline2D<Real> result;
+  Polyline2D result;
   if (pline.size() < 2) {
     return result;
   }
 
-  std::vector<PlineOffsetSegment<Real>> rawOffsets = createUntrimmedOffsetSegments(pline, offset);
+  std::vector<PlineOffsetSegment> rawOffsets = createUntrimmedOffsetSegments(pline, offset);
   if (rawOffsets.size() == 0) {
     return result;
   }
@@ -503,11 +495,11 @@ Polyline2D<Real> createRawOffsetPline(Polyline2D<Real> const &pline, Real offset
   result.vertexes().reserve(pline.size());
   result.isClosed() = pline.isClosed();
 
-  const bool connectionArcsAreCCW = offset < Real(0);
+  const bool connectionArcsAreCCW = offset < 0.f;
 
-  auto joinResultVisitor = [connectionArcsAreCCW](PlineOffsetSegment<Real> const &s1,
-                                                  PlineOffsetSegment<Real> const &s2,
-                                                  Polyline2D<Real> &result) {
+  auto joinResultVisitor = [connectionArcsAreCCW](PlineOffsetSegment const &s1,
+                                                  PlineOffsetSegment const &s2,
+                                                  Polyline2D &result) {
     const bool s1IsLine = s1.v1.bulgeIsZero();
     const bool s2IsLine = s2.v1.bulgeIsZero();
     if (s1IsLine && s2IsLine) {
@@ -545,7 +537,7 @@ Polyline2D<Real> createRawOffsetPline(Polyline2D<Real> const &pline, Real offset
     const auto &s2 = rawOffsets[0];
 
     // temp polyline to capture results of joining (to avoid mutating result)
-    Polyline2D<Real> closingPartResult;
+    Polyline2D closingPartResult;
     closingPartResult.addVertex(result.lastVertex());
     joinResultVisitor(s1, s2, closingPartResult);
 
@@ -558,24 +550,24 @@ Polyline2D<Real> createRawOffsetPline(Polyline2D<Real> const &pline, Real offset
 
     // update first vertex (only if it has not already been updated/replaced)
     if (!firstVertexReplaced) {
-      const Vector2<Real> &updatedFirstPos = closingPartResult.lastVertex().pos();
+      const Vector2d &updatedFirstPos = closingPartResult.lastVertex().pos();
       if (result[0].bulgeIsZero()) {
         // just update position
         result[0].pos() = updatedFirstPos;
       } else if (result.size() > 1) {
         // update position and bulge
         const auto arc = arcRadiusAndCenter(result[0], result[1]);
-        const Real a1 = angle(arc.center, updatedFirstPos);
-        const Real a2 = angle(arc.center, result[1].pos());
-        const Real updatedTheta = utils::deltaAngle(a1, a2);
-        if ((updatedTheta < Real(0) && result[0].bulgeIsPos()) ||
-            (updatedTheta > Real(0) && result[0].bulgeIsNeg())) {
+        const double a1 = angle(arc.center, updatedFirstPos);
+        const double a2 = angle(arc.center, result[1].pos());
+        const double updatedTheta = utils::deltaAngle(a1, a2);
+        if ((updatedTheta < 0.f && result[0].bulgeIsPos()) ||
+            (updatedTheta > 0.f && result[0].bulgeIsNeg())) {
           // first vertex not valid, just update its position to be removed later
           result[0].pos() = updatedFirstPos;
         } else {
           // update position and bulge
           result[0].pos() = updatedFirstPos;
-          result[0].bulge() = std::tan(updatedTheta / Real(4));
+          result[0].bulge() = std::tan(updatedTheta / 4.f);
         }
       }
     }
@@ -583,7 +575,7 @@ Polyline2D<Real> createRawOffsetPline(Polyline2D<Real> const &pline, Real offset
     // must do final singularity prune between first and second vertex after joining curves (n, 0)
     // and (0, 1)
     if (result.size() > 1) {
-      if (fuzzyEqual(result[0].pos(), result[1].pos(), utils::realPrecision<Real>())) {
+      if (fuzzyEqual(result[0].pos(), result[1].pos(), utils::realPrecision<double>())) {
         result.vertexes().erase(result.vertexes().begin());
       }
     }
@@ -601,30 +593,29 @@ Polyline2D<Real> createRawOffsetPline(Polyline2D<Real> const &pline, Real offset
 }
 
 /// Represents an open polyline slice of the raw offset polyline.
-template <typename Real> struct OpenPolylineSlice {
+struct OpenPolylineSlice {
   std::size_t intrStartIndex;
-  Polyline2D<Real> pline;
+  Polyline2D pline;
   OpenPolylineSlice() = default;
-  OpenPolylineSlice(std::size_t sIndex, Polyline2D<Real> slice)
+  OpenPolylineSlice(std::size_t sIndex, Polyline2D slice)
       : intrStartIndex(sIndex), pline(std::move(slice)) {}
 };
 
 /// Slices a raw offset polyline at all of its self intersects.
-template <typename Real>
-std::vector<OpenPolylineSlice<Real>> slicesFromRawOffset(Polyline2D<Real> const &originalPline,
-                                                         Polyline2D<Real> const &rawOffsetPline,
-                                                         Real offset) {
+std::vector<OpenPolylineSlice> slicesFromRawOffset(Polyline2D const &originalPline,
+                                                         Polyline2D const &rawOffsetPline,
+                                                         double offset) {
   CORE_ASSERT(originalPline.isClosed(), "use dual slice at intersects for open polylines");
 
-  std::vector<OpenPolylineSlice<Real>> result;
+  std::vector<OpenPolylineSlice> result;
   if (rawOffsetPline.size() < 2) {
     return result;
   }
 
-  StaticSpatialIndex<Real> origPlineSpatialIndex = createApproxSpatialIndex(originalPline);
-  StaticSpatialIndex<Real> rawOffsetPlineSpatialIndex = createApproxSpatialIndex(rawOffsetPline);
+  StaticSpatialIndex origPlineSpatialIndex = createApproxSpatialIndex(originalPline);
+  StaticSpatialIndex rawOffsetPlineSpatialIndex = createApproxSpatialIndex(rawOffsetPline);
 
-  std::vector<PlineIntersect<Real>> selfIntersects;
+  std::vector<PlineIntersect> selfIntersects;
   allSelfIntersects(rawOffsetPline, selfIntersects, rawOffsetPlineSpatialIndex);
 
   std::vector<std::size_t> queryStack;
@@ -638,7 +629,7 @@ std::vector<OpenPolylineSlice<Real>> slicesFromRawOffset(Polyline2D<Real> const 
     result.emplace_back(std::numeric_limits<std::size_t>::max(), rawOffsetPline);
     result.back().pline.isClosed() = false;
     result.back().pline.addVertex(rawOffsetPline[0]);
-    result.back().pline.lastVertex().bulge() = Real(0);
+    result.back().pline.lastVertex().bulge() = 0.f;
     return result;
   }
 
@@ -646,30 +637,30 @@ std::vector<OpenPolylineSlice<Real>> slicesFromRawOffset(Polyline2D<Real> const 
   // dualSliceAtIntersectsForOffset) since all slices will stitch together to form closed
   // loops/polylines so later when slices are stitched together the order that slices are visited
   // does not matter
-  std::unordered_map<std::size_t, std::vector<Vector2<Real>>> intersectsLookup;
+  std::unordered_map<std::size_t, std::vector<Vector2d>> intersectsLookup;
   intersectsLookup.reserve(2 * selfIntersects.size());
 
-  for (PlineIntersect<Real> const &si : selfIntersects) {
+  for (PlineIntersect const &si : selfIntersects) {
     intersectsLookup[si.sIndex1].push_back(si.pos);
     intersectsLookup[si.sIndex2].push_back(si.pos);
   }
 
   // sort intersects by distance from start vertex
   for (auto &kvp : intersectsLookup) {
-    Vector2<Real> startPos = rawOffsetPline[kvp.first].pos();
-    auto cmp = [&](Vector2<Real> const &si1, Vector2<Real> const &si2) {
+    Vector2d startPos = rawOffsetPline[kvp.first].pos();
+    auto cmp = [&](Vector2d const &si1, Vector2d const &si2) {
       return distSquared(si1, startPos) < distSquared(si2, startPos);
     };
     std::sort(kvp.second.begin(), kvp.second.end(), cmp);
   }
 
-  auto intersectsOrigPline = [&](PlineVertex2D<Real> const &v1, PlineVertex2D<Real> const &v2) {
-    AABB<Real> approxBB = createFastApproxBoundingBox(v1, v2);
+  auto intersectsOrigPline = [&](PlineVertex2D const &v1, PlineVertex2D const &v2) {
+    AABB approxBB = createFastApproxBoundingBox(v1, v2);
     bool hasIntersect = false;
     auto visitor = [&](std::size_t i) {
       using namespace internal;
       std::size_t j = utils::nextWrappingIndex(i, originalPline);
-      IntrPlineSegsResult<Real> intrResult =
+      IntrPlineSegsResult intrResult =
           intrPlineSegs(v1, v2, originalPline[i], originalPline[j]);
       hasIntersect = intrResult.intrType != PlineSegIntrType::NoIntersect;
       return !hasIntersect;
@@ -685,7 +676,7 @@ std::vector<OpenPolylineSlice<Real>> slicesFromRawOffset(Polyline2D<Real> const 
     // start index for the slice we're about to build
     std::size_t sIndex = kvp.first;
     // self intersect list for this start index
-    std::vector<Vector2<Real>> const &siList = kvp.second;
+    std::vector<Vector2d> const &siList = kvp.second;
 
     const auto &startVertex = rawOffsetPline[sIndex];
     std::size_t nextIndex = utils::nextWrappingIndex(sIndex, rawOffsetPline);
@@ -694,15 +685,15 @@ std::vector<OpenPolylineSlice<Real>> slicesFromRawOffset(Polyline2D<Real> const 
     if (siList.size() != 1) {
       // build all the segments between the N intersects in siList (N > 1), skipping the first
       // segment (to be processed at the end)
-      SplitResult<Real> firstSplit = splitAtPoint(startVertex, endVertex, siList[0]);
+      SplitResult firstSplit = splitAtPoint(startVertex, endVertex, siList[0]);
       auto prevVertex = firstSplit.splitVertex;
       for (std::size_t i = 1; i < siList.size(); ++i) {
-        SplitResult<Real> split = splitAtPoint(prevVertex, endVertex, siList[i]);
+        SplitResult split = splitAtPoint(prevVertex, endVertex, siList[i]);
         // update prevVertex for next loop iteration
         prevVertex = split.splitVertex;
         // skip if they're ontop of each other
         if (fuzzyEqual(split.updatedStart.pos(), split.splitVertex.pos(),
-                       utils::realPrecision<Real>())) {
+                       utils::realPrecision<double>())) {
           continue;
         }
 
@@ -745,8 +736,8 @@ std::vector<OpenPolylineSlice<Real>> slicesFromRawOffset(Polyline2D<Real> const 
       continue;
     }
 
-    SplitResult<Real> split = splitAtPoint(startVertex, endVertex, siList.back());
-    Polyline2D<Real> currSlice;
+    SplitResult split = splitAtPoint(startVertex, endVertex, siList.back());
+    Polyline2D currSlice;
     currSlice.addVertex(split.splitVertex);
 
     std::size_t index = nextIndex;
@@ -781,7 +772,7 @@ std::vector<OpenPolylineSlice<Real>> slicesFromRawOffset(Polyline2D<Real> const 
         // there is an intersect, slice is done, check if final segment is valid
 
         // check intersect pos is valid (which will also be end vertex position)
-        Vector2<Real> const &intersectPos = nextIntr->second[0];
+        Vector2d const &intersectPos = nextIntr->second[0];
         if (!internal::pointValidForOffset(originalPline, offset, origPlineSpatialIndex,
                                            intersectPos, queryStack)) {
           isValidPline = false;
@@ -789,12 +780,12 @@ std::vector<OpenPolylineSlice<Real>> slicesFromRawOffset(Polyline2D<Real> const 
         }
 
         std::size_t nextIndex = utils::nextWrappingIndex(index, rawOffsetPline);
-        SplitResult<Real> split =
+        SplitResult split =
             splitAtPoint(currSlice.lastVertex(), rawOffsetPline[nextIndex], intersectPos);
 
-        PlineVertex2D<Real> sliceEndVertex = PlineVertex2D<Real>(intersectPos, Real(0));
+        PlineVertex2D sliceEndVertex = PlineVertex2D(intersectPos, 0.f);
         // check mid point is valid
-        Vector2<Real> mp = segMidpoint(split.updatedStart, sliceEndVertex);
+        Vector2d mp = segMidpoint(split.updatedStart, sliceEndVertex);
         if (!internal::pointValidForOffset(originalPline, offset, origPlineSpatialIndex, mp,
                                            queryStack)) {
           isValidPline = false;
@@ -816,7 +807,7 @@ std::vector<OpenPolylineSlice<Real>> slicesFromRawOffset(Polyline2D<Real> const 
     if (isValidPline && fuzzyEqual(currSlice[0].pos(), currSlice.lastVertex().pos())) {
       // discard very short slice loops (invalid loops may arise due to valid offset distance
       // thresholding)
-      isValidPline = getPathLength(currSlice) > Real(1e-2);
+      isValidPline = getPathLength(currSlice) > 0.01f;
     }
 
     if (isValidPline) {
@@ -828,35 +819,34 @@ std::vector<OpenPolylineSlice<Real>> slicesFromRawOffset(Polyline2D<Real> const 
 }
 
 /// Slices a raw offset polyline at all of its self intersects and intersects with its dual.
-template <typename Real>
-std::vector<OpenPolylineSlice<Real>>
-dualSliceAtIntersectsForOffset(Polyline2D<Real> const &originalPline,
-                               Polyline2D<Real> const &rawOffsetPline,
-                               Polyline2D<Real> const &dualRawOffsetPline, Real offset) {
-  std::vector<OpenPolylineSlice<Real>> result;
+std::vector<OpenPolylineSlice>
+dualSliceAtIntersectsForOffset(Polyline2D const &originalPline,
+                               Polyline2D const &rawOffsetPline,
+                               Polyline2D const &dualRawOffsetPline, double offset) {
+  std::vector<OpenPolylineSlice> result;
   if (rawOffsetPline.size() < 2) {
     return result;
   }
 
-  StaticSpatialIndex<Real> origPlineSpatialIndex = createApproxSpatialIndex(originalPline);
-  StaticSpatialIndex<Real> rawOffsetPlineSpatialIndex = createApproxSpatialIndex(rawOffsetPline);
+  StaticSpatialIndex origPlineSpatialIndex = createApproxSpatialIndex(originalPline);
+  StaticSpatialIndex rawOffsetPlineSpatialIndex = createApproxSpatialIndex(rawOffsetPline);
 
-  std::vector<PlineIntersect<Real>> selfIntersects;
+  std::vector<PlineIntersect> selfIntersects;
   allSelfIntersects(rawOffsetPline, selfIntersects, rawOffsetPlineSpatialIndex);
 
-  PlineIntersectsResult<Real> dualIntersects;
+  PlineIntersectsResult dualIntersects;
   findIntersects(rawOffsetPline, dualRawOffsetPline, rawOffsetPlineSpatialIndex, dualIntersects);
 
   // using map rather than unordered map since we want to construct the slices in vertex index order
   // and we do so by looping through all intersects (required later when slices are stitched
   // together, because slices may not all form closed loops/polylines so must go in order of
   // indexes to ensure longest sitched results are formed)
-  std::map<std::size_t, std::vector<Vector2<Real>>> intersectsLookup;
+  std::map<std::size_t, std::vector<Vector2d>> intersectsLookup;
 
   if (!originalPline.isClosed()) {
     // find intersects between circles generated at original open polyline end points and raw offset
     // polyline
-    std::vector<std::pair<std::size_t, Vector2<Real>>> intersects;
+    std::vector<std::pair<std::size_t, Vector2d>> intersects;
     internal::offsetCircleIntersectsWithPline(rawOffsetPline, offset, originalPline[0].pos(),
                                               rawOffsetPlineSpatialIndex, intersects);
     internal::offsetCircleIntersectsWithPline(rawOffsetPline, offset,
@@ -867,16 +857,16 @@ dualSliceAtIntersectsForOffset(Polyline2D<Real> const &originalPline,
     }
   }
 
-  for (PlineIntersect<Real> const &si : selfIntersects) {
+  for (PlineIntersect const &si : selfIntersects) {
     intersectsLookup[si.sIndex1].push_back(si.pos);
     intersectsLookup[si.sIndex2].push_back(si.pos);
   }
 
-  for (PlineIntersect<Real> const &intr : dualIntersects.intersects) {
+  for (PlineIntersect const &intr : dualIntersects.intersects) {
     intersectsLookup[intr.sIndex1].push_back(intr.pos);
   }
 
-  for (PlineCoincidentIntersect<Real> const &intr : dualIntersects.coincidentIntersects) {
+  for (PlineCoincidentIntersect const &intr : dualIntersects.coincidentIntersects) {
     intersectsLookup[intr.sIndex1].push_back(intr.point1);
     intersectsLookup[intr.sIndex1].push_back(intr.point2);
   }
@@ -893,27 +883,27 @@ dualSliceAtIntersectsForOffset(Polyline2D<Real> const &originalPline,
     result.back().pline.isClosed() = false;
     if (originalPline.isClosed()) {
       result.back().pline.addVertex(rawOffsetPline[0]);
-      result.back().pline.lastVertex().bulge() = Real(0);
+      result.back().pline.lastVertex().bulge() = 0.f;
     }
     return result;
   }
 
   // sort intersects by distance from start vertex
   for (auto &kvp : intersectsLookup) {
-    Vector2<Real> startPos = rawOffsetPline[kvp.first].pos();
-    auto cmp = [&](Vector2<Real> const &si1, Vector2<Real> const &si2) {
+    Vector2d startPos = rawOffsetPline[kvp.first].pos();
+    auto cmp = [&](Vector2d const &si1, Vector2d const &si2) {
       return distSquared(si1, startPos) < distSquared(si2, startPos);
     };
     std::sort(kvp.second.begin(), kvp.second.end(), cmp);
   }
 
-  auto intersectsOrigPline = [&](PlineVertex2D<Real> const &v1, PlineVertex2D<Real> const &v2) {
-    AABB<Real> approxBB = createFastApproxBoundingBox(v1, v2);
+  auto intersectsOrigPline = [&](PlineVertex2D const &v1, PlineVertex2D const &v2) {
+    AABB approxBB = createFastApproxBoundingBox(v1, v2);
     bool intersects = false;
     auto visitor = [&](std::size_t i) {
       using namespace internal;
       std::size_t j = utils::nextWrappingIndex(i, originalPline);
-      IntrPlineSegsResult<Real> intrResult =
+      IntrPlineSegsResult intrResult =
           intrPlineSegs(v1, v2, originalPline[i], originalPline[j]);
       intersects = intrResult.intrType != PlineSegIntrType::NoIntersect;
       return !intersects;
@@ -928,7 +918,7 @@ dualSliceAtIntersectsForOffset(Polyline2D<Real> const &originalPline,
   if (!originalPline.isClosed()) {
     // build first open polyline that ends at the first intersect since we will not wrap back to
     // capture it as in the case of a closed polyline
-    Polyline2D<Real> firstSlice;
+    Polyline2D firstSlice;
     std::size_t index = 0;
     std::size_t loopCount = 0;
     const std::size_t maxLoopCount = rawOffsetPline.size();
@@ -954,16 +944,16 @@ dualSliceAtIntersectsForOffset(Polyline2D<Real> const &originalPline,
         internal::addOrReplaceIfSamePos(firstSlice, rawOffsetPline[index]);
       } else {
         // intersect found, test segment will be valid before finishing first open polyline
-        Vector2<Real> const &intersectPos = iter->second[0];
+        Vector2d const &intersectPos = iter->second[0];
         if (!internal::pointValidForOffset(originalPline, offset, origPlineSpatialIndex,
                                            intersectPos, queryStack)) {
           break;
         }
 
-        SplitResult<Real> split =
+        SplitResult split =
             splitAtPoint(rawOffsetPline[index], rawOffsetPline[index + 1], intersectPos);
 
-        PlineVertex2D<Real> sliceEndVertex = PlineVertex2D<Real>(intersectPos, Real(0));
+        PlineVertex2D sliceEndVertex = PlineVertex2D(intersectPos, 0.f);
         auto midpoint = segMidpoint(split.updatedStart, sliceEndVertex);
         if (!internal::pointValidForOffset(originalPline, offset, origPlineSpatialIndex, midpoint,
                                            queryStack)) {
@@ -988,7 +978,7 @@ dualSliceAtIntersectsForOffset(Polyline2D<Real> const &originalPline,
     // start index for the slice we're about to build
     std::size_t sIndex = kvp.first;
     // self intersect list for this start index
-    std::vector<Vector2<Real>> const &siList = kvp.second;
+    std::vector<Vector2d> const &siList = kvp.second;
 
     const auto &startVertex = rawOffsetPline[sIndex];
     std::size_t nextIndex = utils::nextWrappingIndex(sIndex, rawOffsetPline);
@@ -997,15 +987,15 @@ dualSliceAtIntersectsForOffset(Polyline2D<Real> const &originalPline,
     if (siList.size() != 1) {
       // build all the segments between the N intersects in siList (N > 1), skipping the first
       // segment (to be processed at the end)
-      SplitResult<Real> firstSplit = splitAtPoint(startVertex, endVertex, siList[0]);
+      SplitResult firstSplit = splitAtPoint(startVertex, endVertex, siList[0]);
       auto prevVertex = firstSplit.splitVertex;
       for (std::size_t i = 1; i < siList.size(); ++i) {
-        SplitResult<Real> split = splitAtPoint(prevVertex, endVertex, siList[i]);
+        SplitResult split = splitAtPoint(prevVertex, endVertex, siList[i]);
         // update prevVertex for next loop iteration
         prevVertex = split.splitVertex;
         // skip if they're ontop of each other
         if (fuzzyEqual(split.updatedStart.pos(), split.splitVertex.pos(),
-                       utils::realPrecision<Real>())) {
+                       utils::realPrecision<double>())) {
           continue;
         }
 
@@ -1048,8 +1038,8 @@ dualSliceAtIntersectsForOffset(Polyline2D<Real> const &originalPline,
       continue;
     }
 
-    SplitResult<Real> split = splitAtPoint(startVertex, endVertex, siList.back());
-    Polyline2D<Real> currSlice;
+    SplitResult split = splitAtPoint(startVertex, endVertex, siList.back());
+    Polyline2D currSlice;
     currSlice.addVertex(split.splitVertex);
 
     std::size_t index = nextIndex;
@@ -1084,7 +1074,7 @@ dualSliceAtIntersectsForOffset(Polyline2D<Real> const &originalPline,
         // there is an intersect, slice is done, check if final segment is valid
 
         // check intersect pos is valid (which will also be end vertex position)
-        Vector2<Real> const &intersectPos = nextIntr->second[0];
+        Vector2d const &intersectPos = nextIntr->second[0];
         if (!internal::pointValidForOffset(originalPline, offset, origPlineSpatialIndex,
                                            intersectPos, queryStack)) {
           isValidPline = false;
@@ -1092,12 +1082,12 @@ dualSliceAtIntersectsForOffset(Polyline2D<Real> const &originalPline,
         }
 
         std::size_t nextIndex = utils::nextWrappingIndex(index, rawOffsetPline);
-        SplitResult<Real> split =
+        SplitResult split =
             splitAtPoint(currSlice.lastVertex(), rawOffsetPline[nextIndex], intersectPos);
 
-        PlineVertex2D<Real> sliceEndVertex = PlineVertex2D<Real>(intersectPos, Real(0));
+        PlineVertex2D sliceEndVertex = PlineVertex2D(intersectPos, 0.f);
         // check mid point is valid
-        Vector2<Real> mp = segMidpoint(split.updatedStart, sliceEndVertex);
+        Vector2d mp = segMidpoint(split.updatedStart, sliceEndVertex);
         if (!internal::pointValidForOffset(originalPline, offset, origPlineSpatialIndex, mp,
                                            queryStack)) {
           isValidPline = false;
@@ -1133,12 +1123,11 @@ dualSliceAtIntersectsForOffset(Polyline2D<Real> const &originalPline,
 }
 
 /// Stitches raw offset polyline slices together, discarding any that are not valid.
-template <typename Real>
-std::vector<Polyline2D<Real>>
-stitchOffsetSlicesTogether(std::vector<OpenPolylineSlice<Real>> const &slices, bool closedPolyline,
+std::vector<Polyline2D>
+stitchOffsetSlicesTogether(std::vector<OpenPolylineSlice> const &slices, bool closedPolyline,
                            std::size_t origMaxIndex,
-                           Real joinThreshold = utils::sliceJoinThreshold<Real>()) {
-  std::vector<Polyline2D<Real>> result;
+                           double joinThreshold = utils::sliceJoinThreshold<double>()) {
+  std::vector<Polyline2D> result;
   if (slices.size() == 0) {
     return result;
   }
@@ -1155,7 +1144,7 @@ stitchOffsetSlicesTogether(std::vector<OpenPolylineSlice<Real>> const &slices, b
   }
 
   // load spatial index with all start points
-  StaticSpatialIndex<Real> spatialIndex(slices.size());
+  StaticSpatialIndex spatialIndex(slices.size());
 
   for (const auto &slice : slices) {
     auto const &point = slice.pline[0].pos();
@@ -1176,7 +1165,7 @@ stitchOffsetSlicesTogether(std::vector<OpenPolylineSlice<Real>> const &slices, b
 
     visitedIndexes[i] = true;
 
-    Polyline2D<Real> currPline;
+    Polyline2D currPline;
     std::size_t currIndex = i;
     auto const &initialStartPoint = slices[i].pline[0].pos();
     std::size_t loopCount = 0;
@@ -1212,7 +1201,7 @@ stitchOffsetSlicesTogether(std::vector<OpenPolylineSlice<Real>> const &slices, b
         }
 
         bool equalToInitial = fuzzyEqual(slice.pline.lastVertex().pos(), initialStartPoint,
-                                         utils::realPrecision<Real>());
+                                         utils::realPrecision<double>());
 
         return std::make_pair(indexDist, equalToInitial);
       };
@@ -1234,7 +1223,7 @@ stitchOffsetSlicesTogether(std::vector<OpenPolylineSlice<Real>> const &slices, b
         // we're done
         if (currPline.size() > 1) {
           if (closedPolyline && fuzzyEqual(currPline[0].pos(), currPline.lastVertex().pos(),
-                                           utils::realPrecision<Real>())) {
+                                           utils::realPrecision<double>())) {
             currPline.vertexes().pop_back();
             currPline.isClosed() = true;
           }
@@ -1255,12 +1244,11 @@ stitchOffsetSlicesTogether(std::vector<OpenPolylineSlice<Real>> const &slices, b
 } // namespace internal
 
 /// Creates the paralell offset polylines to the polyline given.
-template <typename Real>
-std::vector<Polyline2D<Real>> parallelOffset(Polyline2D<Real> const &pline, Real offset,
+std::vector<Polyline2D> parallelOffset(Polyline2D const &pline, double offset,
                                            bool hasSelfIntersects = false) {
   using namespace internal;
   if (pline.size() < 2) {
-    return std::vector<Polyline2D<Real>>();
+    return std::vector<Polyline2D>();
   }
   auto rawOffset = createRawOffsetPline(pline, offset);
   if (pline.isClosed() && !hasSelfIntersects) {
@@ -1274,26 +1262,24 @@ std::vector<Polyline2D<Real>> parallelOffset(Polyline2D<Real> const &pline, Real
   return stitchOffsetSlicesTogether(slices, pline.isClosed(), rawOffset.size() - 1);
 }
 
-template <typename Real>
-std::vector<Polyline2D<Real>> parallelOffset(std::vector<Polyline2D<Real>> const& plines, Real offset,
+std::vector<Polyline2D> parallelOffset(std::vector<Polyline2D> const& plines, double offset,
   bool hasSelfIntersects = false) {
-  std::vector<Polyline2D<Real>> result;
+  std::vector<Polyline2D> result;
 
   //TODO replace this with the smarter system in polylineoffsetIslands, where if the offset from multiple given plines intersect, they are merged together
   for (size_t i = 0; i < plines.size(); i++)
   {
-    std::vector<Polyline2D<Real>> newOffsets = parallelOffset(plines[i], offset, hasSelfIntersects);
+    std::vector<Polyline2D> newOffsets = parallelOffset(plines[i], offset, hasSelfIntersects);
     result.insert(result.end(), newOffsets.begin(), newOffsets.end());
   }
   return result;
 }
 
-template <typename Real>
-std::vector<Polyline2D<Real>> parallelOffsetToClosedLoop(Polyline2D<Real>& pline, Real offset,
+std::vector<Polyline2D> parallelOffsetToClosedLoop(Polyline2D& pline, double offset,
   bool hasSelfIntersects = false) {
   using namespace internal;
   
-  std::vector<Polyline2D<Real>> finalResult;
+  std::vector<Polyline2D> finalResult;
   float scale = 1.f;
   bool allLoopsAreClosed = false;
 
@@ -1322,15 +1308,14 @@ std::vector<Polyline2D<Real>> parallelOffsetToClosedLoop(Polyline2D<Real>& pline
   return finalResult;
 }
 
-template <typename Real>
-std::vector<Polyline2D<Real>> parallelOffsetToClosedLoops(std::vector<Polyline2D<Real>>& plines, Real offset,
+std::vector<Polyline2D> parallelOffsetToClosedLoops(std::vector<Polyline2D>& plines, double offset,
   bool hasSelfIntersects = false) {
-  std::vector<Polyline2D<Real>> result;
+  std::vector<Polyline2D> result;
 
   //TODO replace this with the smarter system in polylineoffsetIslands, where if the offset from multiple given plines intersect, they are merged together
   for (size_t i = 0; i < plines.size(); i++)
   {
-    std::vector<Polyline2D<Real>> newOffsets = parallelOffsetToClosedLoop(plines[i], offset, hasSelfIntersects);
+    std::vector<Polyline2D> newOffsets = parallelOffsetToClosedLoop(plines[i], offset, hasSelfIntersects);
     result.insert(result.end(), newOffsets.begin(), newOffsets.end());
   }
   return result;

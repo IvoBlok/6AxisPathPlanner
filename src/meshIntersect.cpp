@@ -1,13 +1,13 @@
 #include "meshIntersect.hpp"
 
 namespace meshIntersect {
-double signedDistanceOfVertexToPlane(const core::Vector3<double>& vertex, const core::Plane<double>& plane) {
+double signedDistanceOfVertexToPlane(const Vector3d& vertex, const core::Plane& plane) {
     // the dot product of the plane normal and the vector from the vertex to the plane gives you the square of the shortest distance between the point and the plane
     // this result is signed, where the sign signifies on which side of the plane it lies
     return dot(plane.normal, vertex - plane.origin);
 }
 
-const std::vector<double> signedDistancesToPlane(const std::vector<core::Vector3<double>>& vertices, const core::Plane<double>& plane) {
+const std::vector<double> signedDistancesToPlane(const std::vector<Vector3d>& vertices, const core::Plane& plane) {
     // to optimize for speed, the vector is signaled the final size it needs to be
     std::vector<double> distances;
     distances.reserve(vertices.size());
@@ -110,7 +110,7 @@ std::vector<EdgePath> getEdgePaths(const std::vector<Face>& faces, const std::ve
 	return edgePaths;
 }
 
-bool getStartingItem(const std::vector<core::Polyline2D<double>>& items, std::vector<bool>& usedItems, core::Polyline2D<double>& startItem) {
+bool getStartingItem(const std::vector<core::Polyline2D>& items, std::vector<bool>& usedItems, core::Polyline2D& startItem) {
 	for (size_t i = 0; i < items.size(); ++i) {
 		if (!usedItems[i]) {
 			startItem = items[i];
@@ -121,7 +121,7 @@ bool getStartingItem(const std::vector<core::Polyline2D<double>>& items, std::ve
 	return false;
 }
 
-bool insertConnectingEdgePath(const std::vector<core::Polyline2D<double>>& paths, std::vector<bool>& usedPaths, core::Polyline2D<double>& currentChain) {
+bool insertConnectingEdgePath(const std::vector<core::Polyline2D>& paths, std::vector<bool>& usedPaths, core::Polyline2D& currentChain) {
 	int iPath = -1;
 	for (auto& path : paths) {
 		++iPath;
@@ -149,14 +149,14 @@ bool insertConnectingEdgePath(const std::vector<core::Polyline2D<double>>& paths
 	return false;
 }
 
-void chainEdgePaths(std::vector<core::Polyline2D<double>>& paths) {
+void chainEdgePaths(std::vector<core::Polyline2D>& paths) {
 	if (paths.size() == 0) {
 		return;
 	}
 
 	std::vector<bool> usedPaths(paths.size());
-	std::vector<core::Polyline2D<double>> chainedPaths;
-	core::Polyline2D<double> chain;
+	std::vector<core::Polyline2D> chainedPaths;
+	core::Polyline2D chain;
 
 	while (getStartingItem(paths, usedPaths, chain)) {
 		while(insertConnectingEdgePath(paths, usedPaths, chain)) {}
@@ -166,12 +166,12 @@ void chainEdgePaths(std::vector<core::Polyline2D<double>>& paths) {
 	paths = chainedPaths;
 }
 
-std::vector<core::Polyline2D<double>> constructGeometricPaths(const core::Plane<double>& plane, const std::vector<core::Vector3<double>>& vertices, const std::vector<core::Vector3<double>>& normals, const std::vector<EdgePath>& edgePaths, const std::vector<double>& vertexDistances) {
-	std::vector<core::Polyline2D<double>> paths;
+std::vector<core::Polyline2D> constructGeometricPaths(const core::Plane& plane, const std::vector<Vector3d>& vertices, const std::vector<Vector3d>& normals, const std::vector<EdgePath>& edgePaths, const std::vector<double>& vertexDistances) {
+	std::vector<core::Polyline2D> paths;
 	
-	// for every edgePath, construct a new core::Polyline2D<double> that actually lies in the plane
+	// for every edgePath, construct a new core::Polyline2D that actually lies in the plane
 	for (const auto& edgePath : edgePaths) {
-		core::Polyline2D<double> path;
+		core::Polyline2D path;
 		// if the first and last edges are identical, the loop is closed
 		bool skipThisPoint = path.isClosed() = edgePath.front() == edgePath.back();
 
@@ -183,7 +183,7 @@ std::vector<core::Polyline2D<double>> constructGeometricPaths(const core::Plane<
 			// no clue why this check exists, this case should never happen anyway right???
 			else if (edge.first == edge.second) {
 				// make the point local
-				path.vertexes().push_back(core::PlineVertex2D<double>{ plane.getLocalCoords(vertices[edge.first]), 0.f });
+				path.vertexes().push_back(core::PlineVertex2D{ plane.getLocalCoords(vertices[edge.first]), 0.f });
 			}
 			else {
 				// calculate the point on the line between the two vertices that actually lies on the plane with some basic linear interpolation
@@ -197,11 +197,11 @@ std::vector<core::Polyline2D<double>> constructGeometricPaths(const core::Plane<
 				const auto& normalStart(normals[edge.first]);
 				const auto& normalEnd(normals[edge.second]);
 
-				core::Vector3<double> newPoint = edgeStart + (edgeEnd - edgeStart) * factor;
-				core::Vector3<double> newNormal = normalStart + (normalEnd - normalStart) * factor;
+				Vector3d newPoint = edgeStart + (edgeEnd - edgeStart) * factor;
+				Vector3d newNormal = normalStart + (normalEnd - normalStart) * factor;
 				if(!core::fuzzyZero(newNormal))
-					newNormal = core::normalize(newNormal);
-				path.vertexes().push_back(core::PlineVertex2D<double>{ plane.getLocalCoords(newPoint), 0.f });
+					newNormal.normalize();
+				path.vertexes().push_back(core::PlineVertex2D{ plane.getLocalCoords(newPoint), 0.f });
 				path.vertexes().back().normal() = newNormal;
 			}
 		}
@@ -222,7 +222,7 @@ std::vector<Face> constructFaces(const std::vector<uint32_t> indices) {
 	return faces;
 }
 
-std::vector<core::Polyline2D<double>> getMeshPlaneIntersection(core::Plane<double>& plane, core::ObjectShape& desiredShape) {
+std::vector<core::Polyline2D> getMeshPlaneIntersection(core::Plane& plane, core::ObjectShape& desiredShape) {
 	
 	// retrieve the squared signed distances from the vertices to the plane
 	const auto vertexDistances = signedDistancesToPlane(desiredShape.vertices, plane);
@@ -235,7 +235,7 @@ std::vector<core::Polyline2D<double>> getMeshPlaneIntersection(core::Plane<doubl
 	auto edgePaths = getEdgePaths(faces, vertexDistances);
 
 	// form the actual polyline from the edgepaths
-	std::vector<core::Polyline2D<double>> newPaths = constructGeometricPaths(plane, desiredShape.vertices, desiredShape.normals, edgePaths, vertexDistances);
+	std::vector<core::Polyline2D> newPaths = constructGeometricPaths(plane, desiredShape.vertices, desiredShape.normals, edgePaths, vertexDistances);
 
 	// due to some reason the getEdgePaths isn't reliable in actually forming the full loops, so a full scan is done one more time based on the real distance between the ends of the lines to form the final loops
 	chainEdgePaths(newPaths);

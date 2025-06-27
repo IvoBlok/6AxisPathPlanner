@@ -21,7 +21,7 @@ struct PlineOffsetSegment {
 };
 
 /// Creates all the raw polyline offset segments.
-std::vector<PlineOffsetSegment> createUntrimmedOffsetSegments(Polyline2D const &pline,
+inline std::vector<PlineOffsetSegment> createUntrimmedOffsetSegments(Polyline2D const &pline,
                                                                     double offset) {
   std::size_t segmentCount = pline.isClosed() ? pline.size() : pline.size() - 1;
 
@@ -87,11 +87,11 @@ std::vector<PlineOffsetSegment> createUntrimmedOffsetSegments(Polyline2D const &
   return result;
 }
 
-bool falseIntersect(double t) { return t < 0.0 || t > 1.0; }
+inline bool falseIntersect(double t) { return t < 0.0 || t > 1.0; }
 
 // Gets the bulge to describe the arc going from start point to end point with the given arc center
 // and curve orientation, if orientation is negative then bulge is negative otherwise it is positive
-double bulgeForConnection(Vector2d const &arcCenter, Vector2d const &sp,
+inline double bulgeForConnection(Vector2d const &arcCenter, Vector2d const &sp,
                         Vector2d const &ep, bool isCCW) {
   double a1 = angle(arcCenter, sp);
   double a2 = angle(arcCenter, ep);
@@ -104,7 +104,7 @@ double bulgeForConnection(Vector2d const &arcCenter, Vector2d const &sp,
   return -absBulge;
 }
 
-void lineToLineJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
+inline void lineToLineJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
                     bool connectionArcsAreCCW, Polyline2D &result) {
   const auto &v1 = s1.v1;
   const auto &v2 = s1.v2;
@@ -152,7 +152,7 @@ void lineToLineJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
   }
 }
 
-void lineToArcJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
+inline void lineToArcJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
                    bool connectionArcsAreCCW, Polyline2D &result) {
 
   const auto &v1 = s1.v1;
@@ -222,7 +222,7 @@ void lineToArcJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
   }
 }
 
-void arcToLineJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
+inline void arcToLineJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
                    bool connectionArcsAreCCW, Polyline2D &result) {
 
   const auto &v1 = s1.v1;
@@ -292,7 +292,7 @@ void arcToLineJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
   }
 }
 
-void arcToArcJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
+inline void arcToArcJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
                   bool connectionArcsAreCCW, Polyline2D &result) {
 
   const auto &v1 = s1.v1;
@@ -377,7 +377,7 @@ void arcToArcJoin(PlineOffsetSegment const &s1, PlineOffsetSegment const &s2,
   }
 }
 
-void offsetCircleIntersectsWithPline(Polyline2D const &pline, double offset,
+inline void offsetCircleIntersectsWithPline(Polyline2D const &pline, double offset,
                                      Vector2d const &circleCenter,
                                      StaticSpatialIndex const &spatialIndex,
                                      std::vector<std::pair<std::size_t, Vector2d>> &output) {
@@ -450,7 +450,7 @@ void offsetCircleIntersectsWithPline(Polyline2D const &pline, double offset,
 }
 
 /// Function to test if a point is a valid distance from the original polyline.
-bool pointValidForOffset(Polyline2D const &pline, double offset,
+inline bool pointValidForOffset(Polyline2D const &pline, double offset,
                          StaticSpatialIndex const &spatialIndex,
                          Vector2d const &point, std::vector<std::size_t> &queryStack,
                          double offsetTol = utils::offsetThreshold<double>()) {
@@ -473,7 +473,7 @@ bool pointValidForOffset(Polyline2D const &pline, double offset,
 }
 
 /// Creates the raw offset polyline.
-Polyline2D createRawOffsetPline(Polyline2D const &pline, double offset) {
+inline Polyline2D createRawOffsetPline(Polyline2D const &pline, double offset) {
 
   Polyline2D result;
   if (pline.size() < 2) {
@@ -601,7 +601,7 @@ struct OpenPolylineSlice {
 };
 
 /// Slices a raw offset polyline at all of its self intersects.
-std::vector<OpenPolylineSlice> slicesFromRawOffset(Polyline2D const &originalPline,
+inline std::vector<OpenPolylineSlice> slicesFromRawOffset(Polyline2D const &originalPline,
                                                          Polyline2D const &rawOffsetPline,
                                                          double offset) {
   CORE_ASSERT(originalPline.isClosed(), "use dual slice at intersects for open polylines");
@@ -818,7 +818,7 @@ std::vector<OpenPolylineSlice> slicesFromRawOffset(Polyline2D const &originalPli
 }
 
 /// Slices a raw offset polyline at all of its self intersects and intersects with its dual.
-std::vector<OpenPolylineSlice>
+inline std::vector<OpenPolylineSlice>
 dualSliceAtIntersectsForOffset(Polyline2D const &originalPline,
                                Polyline2D const &rawOffsetPline,
                                Polyline2D const &dualRawOffsetPline, double offset) {
@@ -1122,7 +1122,7 @@ dualSliceAtIntersectsForOffset(Polyline2D const &originalPline,
 }
 
 /// Stitches raw offset polyline slices together, discarding any that are not valid.
-std::vector<Polyline2D>
+inline std::vector<Polyline2D>
 stitchOffsetSlicesTogether(std::vector<OpenPolylineSlice> const &slices, bool closedPolyline,
                            std::size_t origMaxIndex,
                            double joinThreshold = utils::sliceJoinThreshold<double>()) {
@@ -1243,7 +1243,7 @@ stitchOffsetSlicesTogether(std::vector<OpenPolylineSlice> const &slices, bool cl
 } // namespace internal
 
 /// Creates the paralell offset polylines to the polyline given.
-std::vector<Polyline2D> parallelOffset(Polyline2D const &pline, double offset,
+inline std::vector<Polyline2D> parallelOffset(Polyline2D const &pline, double offset,
                                            bool hasSelfIntersects = false) {
   using namespace internal;
   if (pline.size() < 2) {
@@ -1261,7 +1261,7 @@ std::vector<Polyline2D> parallelOffset(Polyline2D const &pline, double offset,
   return stitchOffsetSlicesTogether(slices, pline.isClosed(), rawOffset.size() - 1);
 }
 
-std::vector<Polyline2D> parallelOffset(std::vector<Polyline2D> const& plines, double offset,
+inline std::vector<Polyline2D> parallelOffset(std::vector<Polyline2D> const& plines, double offset,
   bool hasSelfIntersects = false) {
   std::vector<Polyline2D> result;
 
@@ -1274,7 +1274,7 @@ std::vector<Polyline2D> parallelOffset(std::vector<Polyline2D> const& plines, do
   return result;
 }
 
-std::vector<Polyline2D> parallelOffsetToClosedLoop(Polyline2D& pline, double offset,
+inline std::vector<Polyline2D> parallelOffsetToClosedLoop(Polyline2D& pline, double offset,
   bool hasSelfIntersects = false) {
   using namespace internal;
   
@@ -1307,7 +1307,7 @@ std::vector<Polyline2D> parallelOffsetToClosedLoop(Polyline2D& pline, double off
   return finalResult;
 }
 
-std::vector<Polyline2D> parallelOffsetToClosedLoops(std::vector<Polyline2D>& plines, double offset,
+inline std::vector<Polyline2D> parallelOffsetToClosedLoops(std::vector<Polyline2D>& plines, double offset,
   bool hasSelfIntersects = false) {
   std::vector<Polyline2D> result;
 

@@ -107,7 +107,7 @@ private:
   std::unordered_map<std::size_t, std::vector<DissectionPoint>> m_loopDissectionPoints;
 };
 
-void ParallelOffsetIslands::createOffsetLoops(const OffsetLoopSet &input,
+inline void ParallelOffsetIslands::createOffsetLoops(const OffsetLoopSet &input,
                                                     double absDelta) {
   // create counter clockwise offset loops
   m_ccwOffsetLoops.clear();
@@ -141,7 +141,7 @@ void ParallelOffsetIslands::createOffsetLoops(const OffsetLoopSet &input,
   }
 }
 
-void ParallelOffsetIslands::createOneSidedOffsetLoops(OffsetLoopSet& input,
+inline void ParallelOffsetIslands::createOneSidedOffsetLoops(OffsetLoopSet& input,
   double absDelta) {
   // create counter clockwise offset loops
   m_ccwOffsetLoops.clear();
@@ -169,7 +169,7 @@ void ParallelOffsetIslands::createOneSidedOffsetLoops(OffsetLoopSet& input,
   }
 }
 
-void ParallelOffsetIslands::createOffsetLoopsIndex() {
+inline void ParallelOffsetIslands::createOffsetLoopsIndex() {
   // create spatial index for all offset loop bounding boxes
   m_offsetLoopsIndex = std::make_unique<StaticSpatialIndex>(totalOffsetLoopsCount());
   for (auto const &posC : m_ccwOffsetLoops) {
@@ -184,7 +184,7 @@ void ParallelOffsetIslands::createOffsetLoopsIndex() {
   m_offsetLoopsIndex->finish();
 }
 
-void ParallelOffsetIslands::createSlicePoints() {
+inline void ParallelOffsetIslands::createSlicePoints() {
   m_visitedLoopPairs.clear();
   m_slicePointSets.clear();
   m_slicePointsLookup.clear();
@@ -244,7 +244,7 @@ void ParallelOffsetIslands::createSlicePoints() {
   }
 }
 
-bool ParallelOffsetIslands::pointOnOffsetValid(std::size_t skipIndex, const Vector2d &pt,
+inline bool ParallelOffsetIslands::pointOnOffsetValid(std::size_t skipIndex, const Vector2d &pt,
                                                      double absDelta) {
   // test distance against input polylines
   std::size_t const inputTotalCount = m_inputSet->ccwLoops.size() + m_inputSet->cwLoops.size();
@@ -262,7 +262,7 @@ bool ParallelOffsetIslands::pointOnOffsetValid(std::size_t skipIndex, const Vect
   return true;
 }
 
-void ParallelOffsetIslands::createSlicesFromLoop(std::size_t loopIndex, double absDelta,
+inline void ParallelOffsetIslands::createSlicesFromLoop(std::size_t loopIndex, double absDelta,
                                                        std::vector<DissectedSlice> &result) {
   OffsetLoop const &offsetLoop = getOffsetLoop(loopIndex);
   std::size_t const parentIndex = offsetLoop.parentLoopIndex;
@@ -388,7 +388,7 @@ void ParallelOffsetIslands::createSlicesFromLoop(std::size_t loopIndex, double a
   }
 }
 
-OffsetLoopSet ParallelOffsetIslands::computeTwoSidedOffsets(const OffsetLoopSet &input,
+inline OffsetLoopSet ParallelOffsetIslands::computeTwoSidedOffsets(const OffsetLoopSet &input,
                                                          double offsetDelta) {
   m_inputSet = &input;
   OffsetLoopSet result;
@@ -447,7 +447,7 @@ OffsetLoopSet ParallelOffsetIslands::computeTwoSidedOffsets(const OffsetLoopSet 
   return result;
 }
 
-OffsetLoopSet ParallelOffsetIslands::computeOneSidedOffsets(OffsetLoopSet& input,
+inline OffsetLoopSet ParallelOffsetIslands::computeOneSidedOffsets(OffsetLoopSet& input,
   double offsetDelta) {
   m_inputSet = &input;
   OffsetLoopSet result;
@@ -496,7 +496,7 @@ OffsetLoopSet ParallelOffsetIslands::computeOneSidedOffsets(OffsetLoopSet& input
   return result;
 }
 
-std::vector<core::Polyline2D> ParallelOffsetIslands::computeTwoSidedOffsets(std::vector<core::Polyline2D> innerBounds, std::vector<core::Polyline2D> outerBounds, double offset) {
+inline std::vector<core::Polyline2D> ParallelOffsetIslands::computeTwoSidedOffsets(std::vector<core::Polyline2D> innerBounds, std::vector<core::Polyline2D> outerBounds, double offset) {
   
   std::vector<core::Polyline2D> result;
   OffsetLoopSet loopSet;
@@ -567,7 +567,7 @@ std::vector<core::Polyline2D> ParallelOffsetIslands::computeTwoSidedOffsets(std:
   return result;
 }
 
-std::vector<core::Polyline2D> ParallelOffsetIslands::computeOneSidedOffsets(std::vector<core::Polyline2D> innerBounds, core::Polyline2D outerBound, double offset) {
+inline std::vector<core::Polyline2D> ParallelOffsetIslands::computeOneSidedOffsets(std::vector<core::Polyline2D> innerBounds, core::Polyline2D outerBound, double offset) {
 
   std::vector<core::Polyline2D> result;
   OffsetLoopSet loopSet;

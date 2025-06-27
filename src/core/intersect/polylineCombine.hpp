@@ -406,7 +406,7 @@ struct CombineResult {
 };
 
 /// Combine two closed polylines applying a particular combine mode (boolean operation).
-CombineResult combinePolylines(Polyline2D const &plineA, Polyline2D const &plineB,
+inline CombineResult combinePolylines(Polyline2D const &plineA, Polyline2D const &plineB,
                                      PlineCombineMode combineMode) {
   CORE_ASSERT(plineA.isClosed() && plineB.isClosed(), "combining only supports closed polylines");
   using namespace internal;

@@ -64,10 +64,10 @@ inline IntrLineSeg2LineSeg2Result intrLineSeg2LineSeg2(Vector2d const &u1, Vecto
     result.t0 = perpDot(v, w) / d;
     result.t1 = perpDot(u, w) / d;
     result.point = v1 + result.t1 * v;
-    if (result.t0 + utils::realThreshold<double>() < 0.f ||
-        result.t0 > 0.f + utils::realThreshold<double>() ||
-        result.t1 + utils::realThreshold<double>() < 0.f ||
-        result.t1 > 0.f + utils::realThreshold<double>()) {
+    if (result.t0 + utils::realThreshold<double>() < 0.0 ||
+        result.t0 > 1.0 + utils::realThreshold<double>() ||
+        result.t1 + utils::realThreshold<double>() < 0.0 ||
+        result.t1 > 1.0 + utils::realThreshold<double>()) {
       result.intrType = LineSeg2LineSeg2IntrType::False;
     } else {
       result.intrType = LineSeg2LineSeg2IntrType::True;

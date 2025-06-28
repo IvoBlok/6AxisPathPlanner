@@ -292,7 +292,7 @@ core::Polyline2_5D toolPath2_5D::generateFacePass2_5D(FacePass2_5DInfo& info) {
 		}
 	}
 	result.vertexes().push_back(core::PlineVertex2_5D{ 0.f, safePoint, safeTraversalPlane});
-
+	
 	return result;
 }
 

@@ -282,8 +282,7 @@ inline void globalSelfIntersects(Polyline2D const &pline, std::vector<PlineInter
     return;
   }
 
-  std::unordered_set<std::pair<std::size_t, std::size_t>, utils::IndexPairHash>
-      visitedSegmentPairs;
+  std::unordered_set<std::pair<std::size_t, std::size_t>, utils::IndexPairHash> visitedSegmentPairs;
   visitedSegmentPairs.reserve(pline.size());
 
   std::vector<std::size_t> queryStack;
@@ -293,8 +292,10 @@ inline void globalSelfIntersects(Polyline2D const &pline, std::vector<PlineInter
     std::size_t j = utils::nextWrappingIndex(i, pline);
     const PlineVertex2D &v1 = pline[i];
     const PlineVertex2D &v2 = pline[j];
+    
     AABB envelope{minX, minY, maxX, maxY};
     envelope.expand(utils::realThreshold<double>());
+
     auto indexVisitor = [&](std::size_t hitIndexStart) {
       std::size_t hitIndexEnd = utils::nextWrappingIndex(hitIndexStart, pline);
       // skip/filter already visited intersects

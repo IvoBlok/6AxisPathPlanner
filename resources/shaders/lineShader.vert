@@ -14,11 +14,18 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
 } ubo;
 
 layout(push_constant) uniform pushConstant {
+	vec3 color;
+	bool isOneColor;
 	float transparency;	
 } ps;
 
 
 void main() {
 	gl_Position = ubo.proj * ubo.view * vec4(inPosition, 1.0);
-	fragColor = vec4(inColor, ps.transparency);
+
+	if (ps.isOneColor) {
+		fragColor = vec4(ps.color, ps.transparency);
+	} else {
+		fragColor = vec4(inColor, ps.transparency);
+	}
 }

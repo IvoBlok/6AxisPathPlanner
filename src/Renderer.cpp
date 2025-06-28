@@ -675,7 +675,7 @@ void LoadedObject::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeli
 
     ObjectShaderPushConstant pushConstant{};
     pushConstant.modelMatrix = transformationMatrix;
-    pushConstant.modelTransparency = model.transparency;
+    pushConstant.transparency = model.transparency;
     pushConstant.color = color;
     pushConstant.isOneColor = isOneColor;
 
@@ -696,16 +696,19 @@ LoadedLine::LoadedLine() {
     renderLine = true;
     name = "line";
     lineWidth = 3.f;
-    defaultColor = Vector3d{ 1.f, 0.f, 0.f };
+    defaultColor = glm::vec3{ 1.f, 0.f, 0.f };
+    isOneColor = true;
 }
 
-void LoadedLine::load(core::Polyline2_5D& polylineIn, float lineTransparency, Vector3d lineColor) {
+void LoadedLine::load(core::Polyline2_5D& polylineIn, float lineTransparency, glm::vec3 lineColor) {
     defaultColor = lineColor;
+    isOneColor = true;
+
     if(polyline.vertexes().size() != 0)
         throw std::runtime_error("load() called for non-empty LoadedLine!\n");
 
     polyline.insertPolyLine2_5D(polylineIn);
-    loadPolylineIntoRendererFormat(lineColor);
+    loadPolylineIntoRendererFormat(defaultColor);
 
     createVertexBuffer();
     createIndexBuffer();
@@ -728,17 +731,26 @@ void LoadedLine::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeline
     if (!renderLine)
         return;
 
+    // set additional values to be sent to the shaders (anything that isn't the mesh itself, like push constants, ubo's etc...)
+    // =======================================
+    vkCmdSetLineWidth(commandBuffer, lineWidth);
+
+    LineShaderPushConstant pushConstant{};
+    pushConstant.color = defaultColor;
+    pushConstant.isOneColor = isOneColor;
+    pushConstant.transparency = transparency;
+
+    // bind the color vec4, and render the line
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(LineShaderPushConstant), &pushConstant);
+
+    // set the vertex and index buffers and call a draw cmd
+    // =======================================
     VkBuffer vertexBuffers[] = { vertexBuffer };
     VkDeviceSize offsets[] = { 0 };
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
     vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-    // set line width
-    vkCmdSetLineWidth(commandBuffer, lineWidth);
-
-    // bind the color vec4, and render the line
-    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float), &transparency);
     vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 }
 
@@ -806,7 +818,7 @@ void LoadedLine::createIndexBuffer() {
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-void LoadedLine::loadPolylineIntoRendererFormat(Vector3d lineColor) {
+void LoadedLine::loadPolylineIntoRendererFormat(glm::vec3 lineColor) {
 
     std::vector<core::PlineVertex2_5D>& pathVertices = polyline.vertexes();
 
@@ -822,7 +834,7 @@ void LoadedLine::loadPolylineIntoRendererFormat(Vector3d lineColor) {
                 RendererVertex vertex;
 
                 vertex.pos = glm::vec3{ pathVertices[i].point.x(), pathVertices[i].point.y(), pathVertices[i].point.z() };
-                vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
+                vertex.color = lineColor;
                 vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
 
                 vertices.push_back(vertex);
@@ -852,7 +864,7 @@ void LoadedLine::loadPolylineIntoRendererFormat(Vector3d lineColor) {
 
                 Vector3d vertexPosition = pathVertices[i].plane.getGlobalCoords(localPosition);
                 vertex.pos = glm::vec3{ vertexPosition.x(), vertexPosition.y(), vertexPosition.z() };
-                vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
+                vertex.color = lineColor;
                 vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
 
                 vertices.push_back(vertex);
@@ -863,7 +875,7 @@ void LoadedLine::loadPolylineIntoRendererFormat(Vector3d lineColor) {
             RendererVertex vertex;
 
             vertex.pos = glm::vec3{ pathVertices[i].point.x(), pathVertices[i].point.y(), pathVertices[i].point.z() };
-            vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
+            vertex.color = lineColor;
             vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
 
             vertices.push_back(vertex);
@@ -875,7 +887,7 @@ void LoadedLine::loadPolylineIntoRendererFormat(Vector3d lineColor) {
         RendererVertex vertex;
 
         vertex.pos = glm::vec3{ pathVertices[0].point.x(), pathVertices[0].point.y(), pathVertices[0].point.z() };
-        vertex.color = glm::vec3{ lineColor.x(), lineColor.y(), lineColor.z() };
+        vertex.color = lineColor;
         vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
 
         vertices.push_back(vertex);
@@ -1065,7 +1077,7 @@ LoadedObject& VulkanRenderEngine::createObject(
 LoadedLine& VulkanRenderEngine::createLine(
     core::Polyline2_5D& polyline, 
     float lineTransparency, 
-    Vector3d lineColor) 
+    glm::vec3 lineColor) 
 {
     if (loadedLines.size() >= MAX_LINES)
         throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
@@ -1080,7 +1092,7 @@ LoadedLine& VulkanRenderEngine::createLine(
     core::Polyline2D& polyline, 
     core::Plane plane,
     float lineTransparency, 
-    Vector3d lineColor) 
+    glm::vec3 lineColor) 
 {
     if (loadedLines.size() >= MAX_LINES)
         throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
@@ -1844,10 +1856,10 @@ void VulkanRenderEngine::createLineBasedPipeline() {
     // the layouts declare the uniform buffers that will be sent to the shaders
     VkDescriptorSetLayout setLayouts[] = { uniformDescriptorSetLayout };
 
-    // define the settings for the push constants used, in this case the color value of the line
+    // define the settings for the push constants used, in this case stuff like transparency, default color, etc...
     VkPushConstantRange psRange;
     psRange.offset = 0;
-    psRange.size = sizeof(float);
+    psRange.size = sizeof(LineShaderPushConstant);
     psRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
     // Declare the pipeline layout (mainly what uniforms are sent to the vertex shader)

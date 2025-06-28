@@ -84,7 +84,13 @@ struct ObjectShaderPushConstant {
 	glm::mat4 modelMatrix;
 	glm::vec3 color;
 	bool isOneColor;
-	float modelTransparency;
+	float transparency;
+};
+
+struct LineShaderPushConstant {
+	glm::vec3 color;
+	bool isOneColor;
+	float transparency;
 };
 
 struct RendererVertex {
@@ -211,8 +217,11 @@ public:
 	float transparency;
 	float lineWidth;
 	
+	glm::vec3 defaultColor;
+	bool isOneColor;
+
 	LoadedLine();
-	void load(core::Polyline2_5D& polylineIn, float lineTransparency = 1.f, Vector3d lineColor = Vector3d{ 1.f, 0.f, 0.f });
+	void load(core::Polyline2_5D& polylineIn, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
 	
 	void destroyRenderData();
 	void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
@@ -237,11 +246,10 @@ private:
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
-	Vector3d defaultColor;
 
 	void createVertexBuffer();
 	void createIndexBuffer();
-	void loadPolylineIntoRendererFormat(Vector3d lineColor = Vector3d{ 1.f, 0.f, 0.f });
+	void loadPolylineIntoRendererFormat(glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
 };
 
 class VulkanRenderEngine {
@@ -267,8 +275,8 @@ public:
     LoadedObject& createObject(const char* modelPath, const char* texturePath, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
     LoadedObject& createObject(const char* modelPath, Vector3d objectColor = { 0.f, 0.f, 0.f }, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
     
-	LoadedLine& createLine(core::Polyline2_5D& polyline, float lineTransparency = 1.f, Vector3d lineColor = Vector3d{ 1.f, 0.f, 0.f });
-	LoadedLine& createLine(core::Polyline2D& polyline, core::Plane plane, float lineTransparency = 1.f, Vector3d lineColor = Vector3d{ 1.f, 0.f, 0.f });
+	LoadedLine& createLine(core::Polyline2_5D& polyline, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
+	LoadedLine& createLine(core::Polyline2D& polyline, core::Plane plane, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
 
 	void handleUserInput();
 

@@ -708,7 +708,7 @@ void LoadedLine::load(core::Polyline2_5D& polylineIn, float lineTransparency, gl
         throw std::runtime_error("load() called for non-empty LoadedLine!\n");
 
     polyline.insertPolyLine2_5D(polylineIn);
-    loadPolylineIntoRendererFormat(defaultColor);
+    loadPolylineIntoRendererFormat();
 
     createVertexBuffer();
     createIndexBuffer();
@@ -761,7 +761,7 @@ core::Polyline2_5D& LoadedLine::getPolyline() {
 void LoadedLine::updateRendererLine() {
     destroyRenderData();
 
-    loadPolylineIntoRendererFormat(defaultColor);
+    loadPolylineIntoRendererFormat();
 
     createVertexBuffer();
     createIndexBuffer();
@@ -818,12 +818,14 @@ void LoadedLine::createIndexBuffer() {
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-void LoadedLine::loadPolylineIntoRendererFormat(glm::vec3 lineColor) {
+void LoadedLine::loadPolylineIntoRendererFormat() {
 
     std::vector<core::PlineVertex2_5D>& pathVertices = polyline.vertexes();
 
+    glm::vec3 randomPolyVertexColor;
     for (size_t i = 0; i < pathVertices.size(); i++)
     {
+        randomPolyVertexColor = core::utils::randomVec3();
         if (!pathVertices[i].bulgeIsZero()) {
 
             core::PlineVertex2_5D nextVertex;
@@ -834,7 +836,7 @@ void LoadedLine::loadPolylineIntoRendererFormat(glm::vec3 lineColor) {
                 RendererVertex vertex;
 
                 vertex.pos = glm::vec3{ pathVertices[i].point.x(), pathVertices[i].point.y(), pathVertices[i].point.z() };
-                vertex.color = lineColor;
+                vertex.color = randomPolyVertexColor;
                 vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
 
                 vertices.push_back(vertex);
@@ -853,6 +855,8 @@ void LoadedLine::loadPolylineIntoRendererFormat(glm::vec3 lineColor) {
             float endAngle = angle(arcInfo.center, localv2Coords);
 
             float deltaAngle = core::utils::deltaAngle(startAngle, endAngle);
+            
+
 
             for (size_t k = 0; k < 10; k++)
             {
@@ -864,7 +868,7 @@ void LoadedLine::loadPolylineIntoRendererFormat(glm::vec3 lineColor) {
 
                 Vector3d vertexPosition = pathVertices[i].plane.getGlobalCoords(localPosition);
                 vertex.pos = glm::vec3{ vertexPosition.x(), vertexPosition.y(), vertexPosition.z() };
-                vertex.color = lineColor;
+                vertex.color = randomPolyVertexColor;
                 vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
 
                 vertices.push_back(vertex);
@@ -875,7 +879,7 @@ void LoadedLine::loadPolylineIntoRendererFormat(glm::vec3 lineColor) {
             RendererVertex vertex;
 
             vertex.pos = glm::vec3{ pathVertices[i].point.x(), pathVertices[i].point.y(), pathVertices[i].point.z() };
-            vertex.color = lineColor;
+            vertex.color = randomPolyVertexColor;
             vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
 
             vertices.push_back(vertex);
@@ -887,7 +891,7 @@ void LoadedLine::loadPolylineIntoRendererFormat(glm::vec3 lineColor) {
         RendererVertex vertex;
 
         vertex.pos = glm::vec3{ pathVertices[0].point.x(), pathVertices[0].point.y(), pathVertices[0].point.z() };
-        vertex.color = lineColor;
+        vertex.color = core::utils::randomVec3();
         vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
 
         vertices.push_back(vertex);
@@ -2314,6 +2318,29 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
 
                 if (isOpen) {
                     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Closed: %d", line.getPolyline().vertexes().size(), line.getPolyline().isClosed());
+                    
+                    float colorArray[3] = { line.defaultColor.x, line.defaultColor.y, line.defaultColor.z };
+                    ImGui::Text("Color ");
+                    ImGui::SameLine();
+                    ImVec4 colVec4 = ImVec4(colorArray[0], colorArray[1], colorArray[2], 1.0f);
+                    if (ImGui::ColorButton("MyColor##3", colVec4, ImGuiColorEditFlags_NoTooltip)) {
+                        ImGui::OpenPopup("colorPicker");
+                    }
+                    if (ImGui::BeginPopup("colorPicker")) {
+                        if (ImGui::ColorPicker3("##picker", colorArray, 
+                            ImGuiColorEditFlags_DisplayRGB | 
+                            ImGuiColorEditFlags_NoSidePreview |
+                            ImGuiColorEditFlags_NoSmallPreview)) 
+                        {
+                            line.defaultColor.x = colorArray[0];
+                            line.defaultColor.y = colorArray[1];
+                            line.defaultColor.z = colorArray[2];
+                        }
+                        ImGui::EndPopup();
+                    }
+                    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - total_right_width);
+                    ImGui::Checkbox("##OneColorToggle", &line.isOneColor);
+                    
                     ImGui::SliderFloat("Transparency", &line.transparency, 0.0f, 1.0f);
                     ImGui::SliderFloat("Line Width", &line.lineWidth, 0.0f, 10.0f);
                     ImGui::TreePop();

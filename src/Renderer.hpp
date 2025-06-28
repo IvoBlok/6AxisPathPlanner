@@ -249,7 +249,7 @@ private:
 
 	void createVertexBuffer();
 	void createIndexBuffer();
-	void loadPolylineIntoRendererFormat(glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
+	void loadPolylineIntoRendererFormat();
 };
 
 class VulkanRenderEngine {

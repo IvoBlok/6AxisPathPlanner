@@ -10,6 +10,13 @@ This file defines some additional 'pure' mathematical operations and constants t
 #include <cassert>
 #include <functional>
 #include <utility>
+#include <random>
+
+#define GLM_FORCE_SWIZZLE
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLMF_FORCE_DEFAULT_ALIGNED_GENTYPES
+#include <glm/glm.hpp>
 
 namespace core {
 
@@ -138,6 +145,15 @@ template <typename T> std::size_t prevWrappingIndex(std::size_t index, const T &
 
   return index - 1;
 }
+
+inline glm::vec3 randomVec3(float min = 0.0f, float max = 1.0f) {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dist(min, max);
+
+    return glm::vec3(dist(gen), dist(gen), dist(gen));
+}
+
 } // namespace utils
 } // namespace core
 

@@ -7,6 +7,10 @@
 namespace meshIntersect {
 class MeshIntersectGUI {
 public:
+    MeshIntersectGUI(VulkanRenderEngine& renderer) {
+        registerWithRenderer(renderer);
+    }
+
     void drawGUI(VulkanRenderEngine& renderer) {
         if (ImGui::CollapsingHeader("Mesh Intersection##mesh_intersect_header")) 
         {

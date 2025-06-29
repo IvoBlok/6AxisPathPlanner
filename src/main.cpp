@@ -9,14 +9,9 @@ int main() {
 		VulkanRenderEngine renderer;
 		renderer.initialize();
 
-		meshIntersect::MeshIntersectGUI meshIntersectGui;
-		meshIntersectGui.registerWithRenderer(renderer);
-
-		toolPath2_5D::ToolPath2_5DGUI toolPath2_5DGui;
-		toolPath2_5DGui.registerWithRenderer(renderer);
-
-		kinematics::RobotGUI robotGui;
-		robotGui.registerWithRenderer(renderer);
+		meshIntersect::MeshIntersectGUI meshIntersectGui{renderer};
+		toolPath2_5D::ToolPath2_5DGUI toolPath2_5DGui{renderer};
+		kinematics::RobotGUI robotGui{renderer};
 
 		// form the actual rendering loop
 		while (!glfwWindowShouldClose(renderer.window)) {

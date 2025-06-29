@@ -7,6 +7,10 @@
 namespace toolPath2_5D {
 class ToolPath2_5DGUI {
 public:
+    ToolPath2_5DGUI(VulkanRenderEngine& renderer) {
+        registerWithRenderer(renderer);
+    }
+
     void drawGUI(VulkanRenderEngine& renderer) {
         if (ImGui::CollapsingHeader("2.5D Toolpaths##2_5dToolPath")) {
             drawFacePass(renderer);

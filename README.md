@@ -85,7 +85,6 @@ Start PCodeSender with the supplied PCode text file, which awaits untill the con
 - [ ] Add robot + tool visualization
 - [ ] Add inverse kinematics
 - [ ] Add movement animation
-- [ ] Fully support varying color along polylines
 - [ ] Add full 3D polylines
 - [ ] Fix transparency
 - [ ] Add non-planar pathing

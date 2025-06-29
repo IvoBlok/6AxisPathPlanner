@@ -36,7 +36,7 @@ std::vector<Matrix4d> RobotKinematics::forwardKinematics(std::vector<double>& jo
     for (auto const& joint : joints)
     {
         // check if joint state is within the defined limits
-        if (jointStates[index] < joint.negativeLimit || jointStates[index] > joint.positiveLimit) 
+        if (jointStates[index] < joint.negativeLimit - 1e-6 || jointStates[index] > joint.positiveLimit + 1e-6) 
             throw std::runtime_error("Given joint states contains an out of bounds element!\n");
 
 
@@ -47,20 +47,27 @@ std::vector<Matrix4d> RobotKinematics::forwardKinematics(std::vector<double>& jo
             matrix.col(3) += matrix.col(2) * jointStates[index];
         } 
         else if (joint.type == JointType::Rotation) {
-            Matrix4d rotation = Matrix4d::Identity();
-            rotation.block<2, 2>(0, 0) = Eigen::Rotation2Dd(jointStates[index]).toRotationMatrix();
+            // extract rotation and translation
+            Eigen::Matrix3d R = matrix.block<3,3>(0,0);
+            Eigen::Vector3d t = matrix.block<3,1>(0,3);
 
-            matrix = rotation * matrix;
+            // apply local Z-rotation
+            Eigen::Matrix3d local_z_rot = Eigen::AngleAxisd(jointStates[index], Eigen::Vector3d::UnitZ()).toRotationMatrix();
+            R = R * local_z_rot;  // Rotate around LOCAL Z
+
+            // rebuild matrix
+            matrix.block<3,3>(0,0) = R;
+            matrix.block<3,1>(0,3) = t;
         }
         
-        // results.back() refers to the matrix going from World -> Joint_(i-1)
-        // since we want World -> Joint_(i), we do: {Joint_(i-1) -> Joint_(i)} * {World -> Joint_(i-1)}
-        results.emplace_back(matrix * results.back());
+        // results.back() refers to the matrix going from World -> Joint_(i-1); i.e. the frame of joint i-1 expressed in the world frame
+        // since we want World -> Joint_(i), we do:  {World -> Joint_(i-1)} * {Joint_(i-1) -> Joint_(i)}
+        results.emplace_back(results.back() * matrix);
 
         ++index;
     }
 
-    results.emplace_back(endEffector.transformationMatrix * results.back());
+    results.emplace_back(results.back() * endEffector.transformationMatrix);
 
     return results;
 }

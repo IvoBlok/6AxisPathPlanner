@@ -7,8 +7,6 @@
 
 #include "../external/Eigen/CustomEigen.hpp"
 
-using Eigen::Matrix4d;
-
 namespace kinematics {
 
 enum class JointType {
@@ -51,7 +49,8 @@ public:
 
     RobotKinematics();
 
-    // 'forwardKinematics' calculates the transformation matrices for both the joints and the end effector, all relative to the world, 
+    // 'forwardKinematics' calculates the transformation matrices for both the joints and the end effector. These are effectively the axes and zero point of each joint, expressed in world coordinates.
+    // So right multiplying some joint matrix from this function converts a vector from joint space to world space. 
     // input 'jointStates' defines the state of the robot; each vector element corresponds to the angle/displacement for the respective joint
     std::vector<Matrix4d> forwardKinematics(std::vector<double>& jointStates);
 };

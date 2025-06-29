@@ -568,7 +568,6 @@ LoadedObject::LoadedObject() {
 
     position = glm::vec3{0.f};
     scale = glm::vec3{1.f};
-    yawPitchRoll = glm::vec3{0.f};
     rotationMatrix = glm::mat4{1.f};
 
     bool isOneColor = true;
@@ -584,7 +583,6 @@ LoadedObject::LoadedObject(std::string objectName, bool visible) {
 
     position = glm::vec3{0.f};
     scale = glm::vec3{1.f};
-    yawPitchRoll = glm::vec3{0.f};
     rotationMatrix = glm::mat4{1.f};
 
     bool isOneColor = true;
@@ -593,6 +591,20 @@ LoadedObject::LoadedObject(std::string objectName, bool visible) {
     model = LoadedModel{};
     texture = LoadedTexture{};
 }
+
+void LoadedObject::locateWithMatrix(Matrix4d matrix) {
+    position = glm::vec3{ matrix(0, 3), matrix(1, 3), matrix(2, 3) };
+
+    rotationMatrix = glm::mat4{1.f};
+
+    for (int col = 0; col < 3; ++col) {
+        for (int row = 0; row < 3; ++row) {
+            rotationMatrix[col][row] = static_cast<float>(matrix(row, col)); 
+            // Eigen: (row,col) | GLM: [col][row]
+        }
+    }
+}
+
 
 core::ObjectShape LoadedObject::getObjectShape() {
     glm::mat4 transformationMatrix = getTransformationMatrix();
@@ -619,10 +631,6 @@ core::ObjectShape LoadedObject::getObjectShape() {
 }
 
 core::Plane LoadedObject::getPlane() {
-    rotationMatrix = glm::yawPitchRoll(glm::radians(yawPitchRoll.x), 
-                                    glm::radians(yawPitchRoll.y), 
-                                    glm::radians(yawPitchRoll.z));
-
     glm::vec4 normal{0.f, 0.f, 1.f, 0.f};
     normal = rotationMatrix * normal;
 
@@ -658,9 +666,6 @@ void LoadedObject::destroy() {
 glm::mat4 LoadedObject::getTransformationMatrix() {
     glm::mat4 transformationMatrix = glm::mat4{1.0f};
     transformationMatrix = glm::translate(transformationMatrix, position);  // 1. Translate first
-    rotationMatrix = glm::yawPitchRoll(glm::radians(yawPitchRoll.x), 
-                                    glm::radians(yawPitchRoll.y), 
-                                    glm::radians(yawPitchRoll.z));
     transformationMatrix = transformationMatrix * rotationMatrix;  // 2. Then rotate
     transformationMatrix = glm::scale(transformationMatrix, scale);  // 3. Scale last
     return transformationMatrix;
@@ -2242,12 +2247,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                         object.scale.z = scaleArray[2];
                     }
 
-                    float rotationArray[3] = {object.yawPitchRoll.x, object.yawPitchRoll.y, object.yawPitchRoll.z};
-                    if (ImGui::InputFloat3("Rotation", rotationArray)) {
-                        object.yawPitchRoll.x = rotationArray[0];
-                        object.yawPitchRoll.y = rotationArray[1];
-                        object.yawPitchRoll.z = rotationArray[2];
-                    }
+                    // TODO add some way of controlling the rotation matrix
 
                     float colorArray[3] = { object.color.x, object.color.y, object.color.z };
                     ImGui::Text("Color ");

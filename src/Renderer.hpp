@@ -181,17 +181,18 @@ public:
 
     glm::vec3 position;
     glm::vec3 scale;
-	glm::vec3 yawPitchRoll;
+    glm::mat4 rotationMatrix;
 
     bool isOneColor;
     glm::vec3 color;
 
 	LoadedModel model;
     LoadedTexture texture;
-    glm::mat4 rotationMatrix;
 
 	LoadedObject();
 	LoadedObject(std::string objectName, bool visible = true);
+
+	void locateWithMatrix(Matrix4d matrix);
 
 	// getObjectShape converts the object geometry from vertex data in one format and the position,scale, rotation data together into a new vertex data format, where the transformations have been applied.
 	core::ObjectShape getObjectShape();

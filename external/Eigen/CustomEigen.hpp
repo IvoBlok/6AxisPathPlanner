@@ -4,10 +4,13 @@
 #include "Eigen"
 #include "Geometry"
 #include "Core"
+#include "Dense"
 
 using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::Vector4d;
+
+using Eigen::Matrix4d;
 
 #include <cmath>
 #include <type_traits>
@@ -34,21 +37,6 @@ bool fuzzyZero(const Eigen::MatrixBase<Derived>& v, double epsilon = DOUBLE_THRE
         }
     }
     return true;
-}
-
-inline Eigen::Vector3d matrixToEulerAngles(const Eigen::Matrix3d& R) {
-    double yaw, pitch, roll;
-    
-    // Yaw (Z-axis rotation)
-    yaw = std::atan2(R(1, 0), R(0, 0));
-    
-    // Pitch (Y-axis rotation)
-    pitch = std::asin(-R(2, 0));
-    
-    // Roll (X-axis rotation)
-    roll = std::atan2(R(2, 1), R(2, 2));
-    
-    return Eigen::Vector3d(yaw, pitch, roll);
 }
 
 /**

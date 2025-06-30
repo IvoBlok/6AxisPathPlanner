@@ -41,7 +41,7 @@ public:
             for(auto& joint : robotKinematics.joints) {
                 char label[32];
                 snprintf(label, sizeof(label), "Joint %d", index + 1);
-                ImGui::SliderFloat(label, &jointStatesFloat(index), joint.negativeLimit, joint.positiveLimit);
+                ImGui::SliderFloat(label, &jointStatesFloat(index), joint.lowerLimit, joint.upperLimit);
 
                 jointStates(index) = (double)jointStatesFloat(index);
                 ++index;

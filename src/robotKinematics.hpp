@@ -23,8 +23,8 @@ enum class JointType {
 // Lastly it lists joint limits in both directions. Future additions might add stuff like allowed velocities, accelerations, etc...
 struct Joint {
     Matrix4d transformationMatrix; // this matrix defines the coordinate system of this joint relative to the previous joint. It also, with its translation components, defines the zero point (again relative to the previous joint)
-    double negativeLimit;
-    double positiveLimit;
+    double lowerLimit;
+    double upperLimit;
 
     JointType type;
 
@@ -62,8 +62,18 @@ public:
     Matrix4d fastForwardKinematics(VectorXd& jointStates);
 
     // 'inverseKinematics' calculates the required joint states so that the end effector matrix lines up with the given goal matrix. 
-    std::vector<double> inverseKinematics(Matrix4d goal, int maxIterations = 100, double tolerance = 1e-3);
+    VectorXd inverseKinematics(Matrix4d& goal, int maxIterations = 100, double tolerance = 1e-3);
+    
 private:
+    // 'costFunction' defines when a given endEffector orientation is good or not
+    // TODO: allow for setting only certain d.o.f's of the goal as relevant; i.e. if you only care about accuracy in position, and 2 axes of rotation, allowing the software to freely choose the optimal 3'rd rotation
+    double costFunction(Matrix4d& input, Matrix4d& goal);
+
+    // 'jointConstraints' transforms the individual joint boundaries into a set of inequalities of the form $h_i(\textbf{x}_k) \ge 0$. It then calculates these function values for the given joint states.
+    VectorXd jointConstraints(VectorXd& jointStates);
+
+    // 'jointConstraintsGradient' calculates $\grad h_i(\textbf{x}_k)$, for all $i$, where $h_i(\textbf{x}_k)$ is defined by the 'jointConstraints' function.
+    std::vector<VectorXd> jointConstraintsGradients(VectorXd& jointStates);
 };
 
 

@@ -69,6 +69,24 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nfd)
 
+# qpOASES
+FetchContent_Declare(
+    qpOASES
+    GIT_REPOSITORY https://github.com/coin-or/qpOASES.git
+    GIT_TAG releases/3.2.1
+)
+set(QPOASES_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(qpOASES)
+
+set(qpOASES_INCLUDE_DIRS 
+    ${qpOASES_SOURCE_DIR}/include
+    ${qpOASES_BINARY_DIR}/include
+)
+
+if(WIN32)
+    target_compile_definitions(qpOASES PUBLIC __WIN32__)
+endif()
+
 # Executable
 # ============================================
 
@@ -126,6 +144,7 @@ target_include_directories(robotPathPlanner PRIVATE
     ${stb_SOURCE_DIR}
     ${tinyobjloader_SOURCE_DIR}
     ${nfd_SOURCE_DIR}/src/include
+    ${qpOASES_INCLUDE_DIRS}
 )
 
 # Link Libraries
@@ -133,6 +152,7 @@ target_include_directories(robotPathPlanner PRIVATE
 target_link_libraries(robotPathPlanner PRIVATE 
     glfw
     ${Vulkan_LIBRARIES}
+    qpOASES
 )
 
 # Add Imgui Sources

@@ -82,7 +82,7 @@ Start PCodeSender with the supplied PCode text file, which awaits untill the con
 <!-- TO DO -->
 ## To Do
 
-- [ ] Add robot + tool visualization
+- [ ] Expand on robot + tool visualization
 - [ ] Add inverse kinematics
 - [ ] Add movement animation
 - [ ] Add full 3D polylines
@@ -90,6 +90,7 @@ Start PCodeSender with the supplied PCode text file, which awaits untill the con
 - [ ] Add non-planar pathing
 - [ ] Add collision control for path validation
 - [ ] Update CMakeFile to create a release executable with proper Eigen optimization
+- [ ] Split off computational code into separate threads
 
 <!-- IDEAS -->
 ## Ideas

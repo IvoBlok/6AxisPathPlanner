@@ -1,6 +1,9 @@
 #include "robotKinematics.hpp"
 #include "../Eigen/Dense"
 
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+
 namespace kinematics {
 
 Joint::Joint() {
@@ -22,7 +25,7 @@ Joint::Joint(Matrix4d inputMatrix, JointType inputType, double inputNegLimit, do
 }
 
 
-
+// public:
 RobotKinematics::RobotKinematics() {
     transformationMatrix = Matrix4d::Identity();
 }
@@ -95,5 +98,24 @@ Matrix4d RobotKinematics::fastForwardKinematics(std::vector<double>& jointStates
     result *= endEffector.transformationMatrix;
     return result;
 }
+
+std::vector<double> RobotKinematics::inverseKinematics(Matrix4d goal, int maxIterations, double tolerance) {
+    /* This IK algorithm attemps to solve the following problem:
+        $\text{min}_x \;f(\textbf{x}) $
+        $\text{subject to} \; h_i(\textbf{x}) \ge 0, \; i \in (0,1,2...m)$
+        where $\textbf{x}$ is a vector containing the joint states.
+        A basic SQP approach is used here. This approach works by linearizing the problem into:
+        $\text{min}_p \; f(\textbf{x}_k) + (\grad f(\textbf{x}_k))^T p + \frac{1}{2}p^T\grad_{xx}^2\mathcal{L}_k p$
+        $\text{subject to} \; (\grad h_i(\textbf{x}_k))^T p + h_i(\textbf{x}_k) \ge 0, \; i \in (0,1,2...m)$
+        where $\textbf{x}_k$ is the $k$'th guess of the optimal joint state, and $\mathcal{L}_k = \mathcal{L}(\textbf{x}_k, \textbf{l}_k)= f(\textbf{x}_k) - \textbf{l}_k^T\textbf{h}(\textbf{x}_k)$
+    */
+    
+    int n = joints.size();              // n: number of joints
+    int m = n * 2;                      // m: number of inequality constraints (for now we use 2 for each joint; 1 for the positive joint limit, 1 for the negative limit)
+
+    std::vector<double> x (n, 0.0);     // x: the current joint state guess. initial joints guess is set as a zero vector
+    std::vector<double> l (m, 0.0);     // l: the lagrange multiplier for inequalities. Initially set as a zero vector
+}
+// private:
 
 }

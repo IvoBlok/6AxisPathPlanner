@@ -124,7 +124,10 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
     VectorXd l = VectorXd::Zero(m);         // l: the lagrange multiplier for inequalities. Initially set as a zero vector
     MatrixXd H = MatrixXd::Identity(n, n);  // H: approximation of the hessian  using BFGS 
 
+    VectorXd lastCostGradient;
+
     for (int k = 0; k < maxIterations; k++) {
+        // ------------- Calculate Problem Terms --------------------
         // calculate cost $f(\textbf{x}_k)$ algebraically
         Matrix4d effector = fastForwardKinematics(x);
         double cost = costFunction(effector, goal);
@@ -146,18 +149,78 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         VectorXd constraints = jointConstraints(x);
 
         // calculate $\grad h_i(\textbf{x}_k)$ algebraically
-        std::vector<VectorXd> constraintsGradients = jointConstraintsGradients(x);
+        MatrixXd constraintsGradientsTranspose = jointConstraintsGradients(x);
+        constraintsGradientsTranspose.transposeInPlace();
 
-        // solve the IQP problem (using OSQP or qpOASES?)
+        // ------------- Solve IQP Problem --------------------------
+        qpOASES::QProblem qp(n, m);
+        qpOASES::real_t* qp_H = new qpOASES::real_t[n*n];
+        qpOASES::real_t* qp_costGradient = new qpOASES::real_t[n];
+        qpOASES::real_t* qp_constraintsGradientsTranspose = new qpOASES::real_t[m*n];
+        qpOASES::real_t* qp_constraintsMinus = new qpOASES::real_t[m];
 
-        // perform a line search for the optimal step size in the direction found by the IQP
+        // copy into new format
+        for (int i = 0; i < n; i++) qp_costGradient[i] = costGradient(i);
 
+        for (int i = 0; i < n*n; i++) qp_H[i] = H.data()[i];
+
+        for (int i = 0; i < m; i++) qp_constraintsMinus[i] = -constraints(i);
+
+
+        for (int i = 0; i < m*n; i++) qp_constraintsGradientsTranspose[i] = constraintsGradientsTranspose.data()[i];
+
+        // Solve IQP
+        qpOASES::int_t nWSR = 100;
+        qp.init(qp_H, qp_costGradient, qp_constraintsGradientsTranspose, nullptr, nullptr, qp_constraintsMinus, nullptr, nWSR);
+        
+        // get primal (p) and dual (l) solutions
+        qpOASES::real_t* qp_p = new qpOASES::real_t[n];
+        qpOASES::real_t* qp_l = new qpOASES::real_t[n];
+        qp.getPrimalSolution(qp_p);
+        qp.getDualSolution(qp_l);
+
+        // ------------- Line Search --------------------------------
+        // since for simplification the problem was linearized for each IQP call, the solution isn't necessarily a solution to the non-linearized problem. 
+        // Hence we nudge around the linearized solution so that the non-linearized constraints tell us it is a valid solution.
+        // TODO do actual Line Search
+        double alpha = 1.0;
+        //VectorXd xNew = x + alpha * VectorXd::Map(qp_p, n);
+
+
+        // ------------- Update Variables ---------------------------
         // set $\textbf{x}_{k+1}$ and $\textbf{l}_{k+1}$
+        x += alpha * VectorXd::Map(qp_p, n);
+        l = VectorXd::Map(qp_l, m);
 
+        // ------------- Check Convergence --------------------------
         // check, using the KKT conditions, if our tolerance has been achieved
 
-        // update $\grad_{xx}^2\mathcal{L}_k$, (H) approximation
 
+        // ------------- Update Hessian -----------------------------
+        // update $\grad_{xx}^2\mathcal{L}_k$, (H) approximation
+        // BFGS Hessian approximation update goes like: $H_{k+1}=H_k - \frac{H_k s_ks_k^TH_k^T}{s_k^tH_ks_k}+\frac{y_ky_k^T}{y_k^Ts_k}$
+        // TODO: add damping?
+        VectorXd y = costGradient - lastCostGradient;
+        VectorXd s = alpha * VectorXd::Map(qp_p, n);
+        
+        const double ys = y.dot(s);
+        const VectorXd Hs = H * s;
+        const double sTHs = s.dot(Hs);
+
+        const double dampingThreshold = 0.2;
+        double theta = 1.0;
+
+        if (ys < dampingThreshold * sTHs) {
+            theta = (0.8 * sTHs) / (sTHs - ys); // Powell
+            y = theta * y + (1.0 - theta) * Hs;
+        }
+        
+        // BFGS with modified y
+        const double rho = 1.0 / y.dot(s);
+        H -= (Hs * Hs.transpose()) / sTHs;
+        H += rho * y * y.transpose();
+
+        lastCostGradient = costGradient;
     }
 
     return VectorXd::Zero(n);
@@ -185,18 +248,15 @@ VectorXd RobotKinematics::jointConstraints(VectorXd& jointStates) {
     return result;
 }
 
-std::vector<VectorXd> RobotKinematics::jointConstraintsGradients(VectorXd& jointStates) {
+MatrixXd RobotKinematics::jointConstraintsGradients(VectorXd& jointStates) {
     int numberOfJoints = joints.size();
 
-    std::vector<VectorXd> results;
-    results.reserve(numberOfJoints * 2);
+    MatrixXd results = MatrixXd::Zero(numberOfJoints, numberOfJoints * 2);
 
     for (int i = 0; i < numberOfJoints; i++) {
         // the gradient for the constraints for joint limits are simply +1.0 and -1.0, depending on the corresponding bound being lower or upper
-        results.emplace_back(VectorXd::Zero(numberOfJoints));
-        results.back()(i) = 1.0;
-        results.emplace_back(VectorXd::Zero(numberOfJoints));
-        results.back()(i) = -1.0;
+        results(2*i, i) = 1.0;
+        results(2*i + 1, i) = -1.0;
     }
 
     return results;

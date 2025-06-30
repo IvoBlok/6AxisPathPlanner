@@ -72,8 +72,8 @@ private:
     // 'jointConstraints' transforms the individual joint boundaries into a set of inequalities of the form $h_i(\textbf{x}_k) \ge 0$. It then calculates these function values for the given joint states.
     VectorXd jointConstraints(VectorXd& jointStates);
 
-    // 'jointConstraintsGradient' calculates $\grad h_i(\textbf{x}_k)$, for all $i$, where $h_i(\textbf{x}_k)$ is defined by the 'jointConstraints' function.
-    std::vector<VectorXd> jointConstraintsGradients(VectorXd& jointStates);
+    // 'jointConstraintsGradient' calculates $\grad h_i(\textbf{x}_k)$, for all $i$, where $h_i(\textbf{x}_k)$ is defined by the 'jointConstraints' function. Each column refers to the gradient of a single $i$.
+    MatrixXd jointConstraintsGradients(VectorXd& jointStates);
 };
 
 

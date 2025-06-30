@@ -53,6 +53,9 @@ public:
     // So right multiplying some joint matrix from this function converts a vector from joint space to world space. 
     // input 'jointStates' defines the state of the robot; each vector element corresponds to the angle/displacement for the respective joint
     std::vector<Matrix4d> forwardKinematics(std::vector<double>& jointStates);
+
+    // 'fastForwardKinematics' does the same thing as 'forwardKinematics', but only calculates the matrix for the end effector, cutting down on computational costs.
+    Matrix4d fastForwardKinematics(std::vector<double>& jointStates);
 };
 
 

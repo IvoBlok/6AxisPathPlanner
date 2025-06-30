@@ -6,6 +6,9 @@
 #include "core/mathUtils.hpp"
 #include <iostream>
 
+using Eigen::VectorXd;
+using Eigen::VectorXf;
+
 namespace kinematics {
 class RobotGUI {
 public:
@@ -15,8 +18,8 @@ public:
     LoadedObject* base;
     LoadedObject* effector;
     
-    std::vector<double> jointStates;
-    std::vector<float> jointStatesFloat;
+    VectorXd jointStates;
+    VectorXf jointStatesFloat;
 
     RobotGUI(VulkanRenderEngine& renderer) {
         registerWithRenderer(renderer);
@@ -38,9 +41,9 @@ public:
             for(auto& joint : robotKinematics.joints) {
                 char label[32];
                 snprintf(label, sizeof(label), "Joint %d", index + 1);
-                ImGui::SliderFloat(label, &jointStatesFloat[index], joint.negativeLimit, joint.positiveLimit);
+                ImGui::SliderFloat(label, &jointStatesFloat(index), joint.negativeLimit, joint.positiveLimit);
 
-                jointStates[index] = (double)jointStatesFloat[index];
+                jointStates(index) = (double)jointStatesFloat(index);
                 ++index;
             }
 
@@ -89,11 +92,8 @@ private:
                                                         {0.0, 1.0, 0.0, 0.0},
                                                         {0.0, 0.0, 1.0, 0.0},
                                                         {0.0, 0.0, 0.0, 1.0}};
-        
+
         // Axis 1 in terms of the World
-        jointStates.emplace_back(0.0);
-        jointStatesFloat.emplace_back(0.f);
-        
         robotKinematics.joints.emplace_back(Joint{Matrix4d{{0.0, 0.0, 1.0, 0.0},
                                                             {1.0, 0.0, 0.0, 0.0},
                                                             {0.0, 1.0, 0.0, 0.1},
@@ -103,9 +103,6 @@ private:
                                             1.3});
 
         // Axis 2 in terms of Axis 1
-        jointStates.emplace_back(0.0);
-        jointStatesFloat.emplace_back(0.f);
-        
         robotKinematics.joints.emplace_back(Joint{Matrix4d{{0.0, 1.0, 0.0, 0.0},
                                                             {0.0, 0.0, 1.0, 0.1},
                                                             {1.0, 0.0, 0.0, 0.0},
@@ -115,9 +112,6 @@ private:
                                             3.14});
 
         // Axis 3 in terms of Axis 2
-        jointStates.emplace_back(0.0);
-        jointStatesFloat.emplace_back(0.f);
-        
         robotKinematics.joints.emplace_back(Joint{Matrix4d{{0.0, 1.0, 0.0, 0.0},
                                                             {0.0, 0.0, 1.0, 0.0},
                                                             {1.0, 0.0, 0.0, 0.1},
@@ -128,9 +122,6 @@ private:
 
 
         // Axis 4 in terms of Axis 3
-        jointStates.emplace_back(0.0);
-        jointStatesFloat.emplace_back(0.f);
-        
         robotKinematics.joints.emplace_back(Joint{Matrix4d{{1.0, 0.0, 0.0, 0.4},
                                                             {0.0, 1.0, 0.0, 0.0},
                                                             {0.0, 0.0, 1.0, 0.0},
@@ -140,9 +131,6 @@ private:
                                             2.0});
 
         // Axis 5 in terms of Axis 4
-        jointStates.emplace_back(0.0);
-        jointStatesFloat.emplace_back(0.f);
-        
         robotKinematics.joints.emplace_back(Joint{Matrix4d{{0.0, 0.0, 1.0, 0.2},
                                                             {1.0, 0.0, 0.0, 0.0},
                                                             {0.0, 1.0, 0.0, 0.0},
@@ -152,9 +140,6 @@ private:
                                             3.14});
 
         // Axis 6 in terms of Axis 5
-        jointStates.emplace_back(0.0);
-        jointStatesFloat.emplace_back(0.f);
-        
         robotKinematics.joints.emplace_back(Joint{Matrix4d{{0.0, 1.0, 0.0, 0.0},
                                                             {0.0, 0.0, 1.0, 0.0},
                                                             {1.0, 0.0, 0.0, 0.2},
@@ -164,9 +149,6 @@ private:
                                             1.7});
 
         // Axis 7 in terms of Axis 6
-        jointStates.emplace_back(0.0);
-        jointStatesFloat.emplace_back(0.f);
-        
         robotKinematics.joints.emplace_back(Joint{Matrix4d{{0.0, 0.0, 1.0, 0.1},
                                                             {1.0, 0.0, 0.0, 0.0},
                                                             {0.0, 1.0, 0.0, 0.0},
@@ -204,7 +186,7 @@ private:
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 0";
+        joints.back()->name = "joint 1";
         
         joints.emplace_back(&renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
@@ -212,7 +194,7 @@ private:
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 1";
+        joints.back()->name = "joint 2";
         
         joints.emplace_back(&renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
@@ -220,7 +202,7 @@ private:
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 2";
+        joints.back()->name = "joint 3";
         
         joints.emplace_back(&renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
@@ -228,7 +210,7 @@ private:
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 3";
+        joints.back()->name = "joint 4";
         
         joints.emplace_back(&renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
@@ -236,7 +218,7 @@ private:
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 4";
+        joints.back()->name = "joint 5";
         
         joints.emplace_back(&renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
@@ -244,7 +226,7 @@ private:
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 5";
+        joints.back()->name = "joint 6";
         
         joints.emplace_back(&renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
@@ -252,7 +234,11 @@ private:
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 6";     
+        joints.back()->name = "joint 7";    
+        
+
+        jointStates = VectorXd::Zero(robotKinematics.joints.size());
+        jointStatesFloat = VectorXf::Zero(robotKinematics.joints.size());
     }
 
     void ShowMatrix4dGrid(const Eigen::Matrix4d& matrix) {

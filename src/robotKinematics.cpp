@@ -1,9 +1,6 @@
 #include "robotKinematics.hpp"
 #include "../Eigen/Dense"
 
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-
 namespace kinematics {
 
 Joint::Joint() {
@@ -30,7 +27,9 @@ RobotKinematics::RobotKinematics() {
     transformationMatrix = Matrix4d::Identity();
 }
 
-std::vector<Matrix4d> RobotKinematics::forwardKinematics(std::vector<double>& jointStates) {
+std::vector<Matrix4d> RobotKinematics::forwardKinematics(VectorXd& jointStates) {
+    if (jointStates.rows() != joints.size()) 
+        throw std::runtime_error("Given joint state has an unexpected size!\n");
 
     std::vector<Matrix4d> results;
     results.emplace_back(transformationMatrix);
@@ -38,19 +37,20 @@ std::vector<Matrix4d> RobotKinematics::forwardKinematics(std::vector<double>& jo
     size_t index = 0;
     for (const auto& joint : joints)
     {
-        // check if joint state is within the defined limits
-        if (jointStates[index] < joint.negativeLimit - 1e-6 || jointStates[index] > joint.positiveLimit + 1e-6) 
-            throw std::runtime_error("Given joint states contains an out of bounds element!\n");
+        const double& state = jointStates(index);
 
+        // check if joint state is within the defined limits
+        if (state < joint.negativeLimit - 1e-6 || state > joint.positiveLimit + 1e-6) 
+            throw std::runtime_error("Given joint states contains an out of bounds element!\n");
 
         Matrix4d matrix = joint.transformationMatrix;
 
         // apply the joint angle/translation to i
         if (joint.type == JointType::Linear) {
-            matrix.col(3) += matrix.col(2) * jointStates[index];
+            matrix.col(3) += matrix.col(2) * state;
         } 
         else if (joint.type == JointType::Rotation) {
-            matrix.topLeftCorner<3,3>() *= Eigen::AngleAxisd(jointStates[index], Eigen::Vector3d::UnitZ()).toRotationMatrix();;
+            matrix.topLeftCorner<3,3>() *= Eigen::AngleAxisd(state, Eigen::Vector3d::UnitZ()).toRotationMatrix();;
         }
         
         // results.back() refers to the matrix going from World -> Joint_(i-1); i.e. the frame of joint i-1 expressed in the world frame
@@ -65,7 +65,10 @@ std::vector<Matrix4d> RobotKinematics::forwardKinematics(std::vector<double>& jo
     return results;
 }
 
-Matrix4d RobotKinematics::fastForwardKinematics(std::vector<double>& jointStates) {
+Matrix4d RobotKinematics::fastForwardKinematics(VectorXd& jointStates) {
+    if (jointStates.rows() != joints.size()) 
+        throw std::runtime_error("Given joint state has an unexpected size!\n");
+
     Matrix4d result = transformationMatrix;
     Matrix4d tempMatrix;
     const double tol = 1e-6;
@@ -73,7 +76,7 @@ Matrix4d RobotKinematics::fastForwardKinematics(std::vector<double>& jointStates
     size_t index = 0;
     for (const auto& joint : joints)
     {
-        const double& state = jointStates[index];
+        const double& state = jointStates(index);
 
         // check if joint state is within the defined limits
         if (state < (joint.negativeLimit - tol) || state > (joint.positiveLimit + tol)) 
@@ -83,10 +86,10 @@ Matrix4d RobotKinematics::fastForwardKinematics(std::vector<double>& jointStates
 
         // apply the joint angle/translation to i
         if (joint.type == JointType::Linear) {
-            tempMatrix.col(3) += tempMatrix.col(2) * jointStates[index];
+            tempMatrix.col(3) += tempMatrix.col(2) * state;
         } 
         else if (joint.type == JointType::Rotation) {
-            tempMatrix.topLeftCorner<3,3>() *= Eigen::AngleAxisd(jointStates[index], Eigen::Vector3d::UnitZ()).toRotationMatrix();;
+            tempMatrix.topLeftCorner<3,3>() *= Eigen::AngleAxisd(state, Eigen::Vector3d::UnitZ()).toRotationMatrix();;
         }
         
         // results.back() refers to the matrix going from World -> Joint_(i-1); i.e. the frame of joint i-1 expressed in the world frame
@@ -113,8 +116,10 @@ std::vector<double> RobotKinematics::inverseKinematics(Matrix4d goal, int maxIte
     int n = joints.size();              // n: number of joints
     int m = n * 2;                      // m: number of inequality constraints (for now we use 2 for each joint; 1 for the positive joint limit, 1 for the negative limit)
 
-    std::vector<double> x (n, 0.0);     // x: the current joint state guess. initial joints guess is set as a zero vector
-    std::vector<double> l (m, 0.0);     // l: the lagrange multiplier for inequalities. Initially set as a zero vector
+    VectorXd x = VectorXd::Zero(n);     // x: the current joint state guess. initial joints guess is set as a zero vector
+    VectorXd l = VectorXd::Zero(m);     // l: the lagrange multiplier for inequalities. Initially set as a zero vector
+
+    return std::vector<double>{};
 }
 // private:
 

@@ -7,6 +7,9 @@
 
 #include "../external/Eigen/CustomEigen.hpp"
 
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+
 namespace kinematics {
 
 enum class JointType {
@@ -52,11 +55,11 @@ public:
     // 'forwardKinematics' calculates the transformation matrices for both the joints and the end effector. These are effectively the axes and zero point of each joint, expressed in world coordinates.
     // So right multiplying some joint matrix from this function converts a vector from joint space to world space. 
     // input 'jointStates' defines the state of the robot; each vector element corresponds to the angle/displacement for the respective joint
-    std::vector<Matrix4d> forwardKinematics(std::vector<double>& jointStates);
+    std::vector<Matrix4d> forwardKinematics(VectorXd& jointStates);
 
     // 'fastForwardKinematics' does the same thing as 'forwardKinematics', but only calculates the matrix for the end effector, cutting down on computational costs.
     // returns the endEffector matrix in terms of the world axes; its translation vector is equal to the effector location in world space.
-    Matrix4d fastForwardKinematics(std::vector<double>& jointStates);
+    Matrix4d fastForwardKinematics(VectorXd& jointStates);
 
     // 'inverseKinematics' calculates the required joint states so that the end effector matrix lines up with the given goal matrix. 
     std::vector<double> inverseKinematics(Matrix4d goal, int maxIterations = 100, double tolerance = 1e-3);

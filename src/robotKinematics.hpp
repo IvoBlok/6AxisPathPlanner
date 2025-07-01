@@ -67,16 +67,16 @@ public:
 private:
     // 'costFunction' defines when a given endEffector orientation is good or not
     // TODO: allow for setting only certain d.o.f's of the goal as relevant; i.e. if you only care about accuracy in position, and 2 axes of rotation, allowing the software to freely choose the optimal 3'rd rotation
-    double costFunction(Matrix4d& input, Matrix4d& goal);
+    double costFunction(const Matrix4d& input, const Matrix4d& goal);
 
     // 'jointConstraints' transforms the individual joint boundaries into a set of inequalities of the form $h_i(\textbf{x}_k) \ge 0$. It then calculates these function values for the given joint states.
-    VectorXd jointConstraints(VectorXd& jointStates);
+    VectorXd jointConstraints(const VectorXd& jointStates);
 
     // 'jointConstraintsGradient' calculates $\grad h_i(\textbf{x}_k)$, for all $i$, where $h_i(\textbf{x}_k)$ is defined by the 'jointConstraints' function. Each column refers to the gradient of a single $i$.
-    MatrixXd jointConstraintsGradients(VectorXd& jointStates);
+    MatrixXd jointConstraintsGradients(const VectorXd& jointStates);
 
     // 'isValidState' checks if all given state elements fall within the defined joint boundaries
-    bool isValidState(VectorXd& jointStates);
+    bool isValidState(const VectorXd& jointStates);
 };
 
 

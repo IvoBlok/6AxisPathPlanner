@@ -8,6 +8,7 @@
 
 using Eigen::VectorXd;
 using Eigen::VectorXf;
+using Eigen::Vector3f;
 
 namespace kinematics {
 class RobotGUI {
@@ -21,12 +22,16 @@ public:
     VectorXd jointStates;
     VectorXf jointStatesFloat;
 
+    Vector3f endPoint;
+
     RobotGUI(VulkanRenderEngine& renderer) {
         registerWithRenderer(renderer);
 
         robotDefined = false;
         base = nullptr;
         effector = nullptr;
+
+        endPoint = Vector3f::Zero();
     }
 
     void drawGUI(VulkanRenderEngine& renderer) {
@@ -41,10 +46,27 @@ public:
             for(auto& joint : robotKinematics.joints) {
                 char label[32];
                 snprintf(label, sizeof(label), "Joint %d", index + 1);
+            
+                // because ImGui doesn't have slider for doubles, we need to do this weird double copy to ensure that jointStates and jointStatesFloat remain the same, independent of which is changed
+                jointStatesFloat(index) = jointStates(index);
                 ImGui::SliderFloat(label, &jointStatesFloat(index), joint.lowerLimit, joint.upperLimit);
-
                 jointStates(index) = (double)jointStatesFloat(index);
+
                 ++index;
+            }
+
+            ImGui::SeparatorText("Desired endpoint");
+            ImGui::SliderFloat("x", &endPoint(0), -1.5, 1.5);
+            ImGui::SliderFloat("y", &endPoint(1), -1.5, 1.5);
+            ImGui::SliderFloat("z", &endPoint(2), -1.5, 1.5);
+
+            // calculate the joint state based on the given desired effector orientation
+            if (ImGui::Button("do SQP IK")) {
+                // TODO
+                Matrix4d desiredOrientation = Matrix4d::Identity();
+                desiredOrientation.topRightCorner<3,1>() = endPoint.cast<double>();
+
+                jointStates = robotKinematics.inverseKinematics(desiredOrientation);
             }
 
             // perform the forward kinematics
@@ -86,14 +108,91 @@ private:
         robotKinematics = RobotKinematics{};
 
         // Linear joint with its axes aligned with the robot main axes, and its joint zero point at the robot main zero point
+        // ------------- Simple 3-axis robot arm ------------------------------------
+        // This defines a basic 3-axis (3 linear joints) cartesian robot, to test te SQP IK
+        robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
+                                                        {0.0, 1.0, 0.0, 0.0},
+                                                        {0.0, 0.0, 1.0, 0.0},
+                                                        {0.0, 0.0, 0.0, 1.0}};      
 
+        robotKinematics.joints.emplace_back(Joint{Matrix4d{{0.0, 0.0, 1.0, 0.0},
+                                                           {1.0, 0.0, 0.0, 0.0},
+                                                           {0.0, 1.0, 0.0, 0.0},
+                                                           {0.0, 0.0, 0.0, 1.0}}, 
+                                            JointType::Linear, 
+                                            -1.0, 
+                                            1.0});
+
+        robotKinematics.joints.emplace_back(Joint{Matrix4d{{0.0, 0.0, 1.0, 0.0},
+                                                           {1.0, 0.0, 0.0, 0.0},
+                                                           {0.0, 1.0, 0.0, 0.0},
+                                                           {0.0, 0.0, 0.0, 1.0}}, 
+                                            JointType::Linear, 
+                                            -1.0, 
+                                            1.0});
+
+        robotKinematics.joints.emplace_back(Joint{Matrix4d{{0.0, 0.0, 1.0, 0.0},
+                                                           {1.0, 0.0, 0.0, 0.0},
+                                                           {0.0, 1.0, 0.0, 0.0},
+                                                           {0.0, 0.0, 0.0, 1.0}}, 
+                                            JointType::Linear, 
+                                            -1.0, 
+                                            1.0});
+
+        robotKinematics.endEffector.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
+                                                                    {0.0, 1.0, 0.0, 0.0},
+                                                                    {0.0, 0.0, 1.0, 0.0},
+                                                                    {0.0, 0.0, 0.0, 1.0}};
+
+        base = &renderer.createObject(
+                "../../resources/assets/Gizmo.obj",
+                Vector3d{ 0.f, 0.f, 1.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
+            );
+        base->name = "base";
+
+        effector = &renderer.createObject(
+                "../../resources/assets/Gizmo.obj",
+                Vector3d{ 0.f, 1.f, 0.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
+            );
+        effector->name = "effector";
+
+        joints.emplace_back(&renderer.createObject(
+                "../../resources/assets/Gizmo.obj",
+                Vector3d{ 1.f, 0.f, 0.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
+            ));
+        joints.back()->name = "joint 1";
+        
+        joints.emplace_back(&renderer.createObject(
+                "../../resources/assets/Gizmo.obj",
+                Vector3d{ 1.f, 1.f, 0.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
+            ));
+        joints.back()->name = "joint 2";
+        
+        joints.emplace_back(&renderer.createObject(
+                "../../resources/assets/Gizmo.obj",
+                Vector3d{ 0.f, 1.f, 1.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
+            ));
+        joints.back()->name = "joint 3";
+
+        /*
+        // ------------- Big fancy 7-axis robot arm ------------------------------------
         // Robot axes are aligned with the world axes, and robot zero is located at the world zero
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
                                                         {0.0, 0.0, 1.0, 0.0},
                                                         {0.0, 0.0, 0.0, 1.0}};
 
-        // Axis 1 in terms of the World
+        // Axis 1 in terms of the robot base
         robotKinematics.joints.emplace_back(Joint{Matrix4d{{0.0, 0.0, 1.0, 0.0},
                                                             {1.0, 0.0, 0.0, 0.0},
                                                             {0.0, 1.0, 0.0, 0.1},
@@ -235,7 +334,7 @@ private:
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
         joints.back()->name = "joint 7";    
-        
+        */
 
         jointStates = VectorXd::Zero(robotKinematics.joints.size());
         jointStatesFloat = VectorXf::Zero(robotKinematics.joints.size());

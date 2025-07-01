@@ -118,14 +118,14 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         with which we update the values for the next iteration: $\textbf{x}_{k+1}=\textbf{x}_k + \text{lineSearch}(p)$ and $\textbf{l}_{k+1}=\textbf{l}_k$
     */
     
-    int n = joints.size();                  // n: number of joints
-    int m = n * 2;                          // m: number of inequality constraints (for now we use 2 for each joint; 1 for the lower joint limit, 1 for the upper limit)
+    const int n = joints.size();                  // n: number of joints
+    const int m = n * 2;                          // m: number of inequality constraints (for now we use 2 for each joint; 1 for the lower joint limit, 1 for the upper limit)
 
     VectorXd x = VectorXd::Zero(n);         // x: the current joint state guess. initial joints guess is set as a zero vector
     VectorXd l = VectorXd::Zero(m);         // l: the lagrange multiplier for inequalities. Initially set as a zero vector
     MatrixXd H = MatrixXd::Identity(n, n);  // H: approximation of the hessian  using BFGS 
 
-    VectorXd lastCostGradient;
+    VectorXd lastCostGradient = VectorXd::Zero(n);
 
     for (int k = 0; k < maxIterations; k++) {
         // ------------- Calculate Problem Terms --------------------
@@ -171,30 +171,36 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         qp.init(qp_H, qp_costGradient, qp_constraintsGradientsTranspose, nullptr, nullptr, qp_constraintsMinus, nullptr, nWSR);
         
         // get primal (p) and dual (l) solutions
-        qpOASES::real_t* qp_p = new qpOASES::real_t[n];
-        qpOASES::real_t* qp_l = new qpOASES::real_t[n];
-        qp.getPrimalSolution(qp_p);
-        qp.getDualSolution(qp_l);
+        std::vector<qpOASES::real_t> qp_p(n);
+        std::vector<qpOASES::real_t> qp_l(m);
+        qp.getPrimalSolution(qp_p.data());
+        qp.getDualSolution(qp_l.data());
 
         // ------------- Line Search --------------------------------
         // since for simplification the problem was linearized for each IQP call, the solution isn't necessarily a solution to the non-linearized problem. 
         // Hence we nudge around the linearized solution so that the non-linearized constraints tell us it is a valid solution.
         double alpha = 1.0;
+        VectorXd p = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(qp_p.data(), qp_p.size());
+
         while (alpha > 1e-4) {
-            VectorXd xNew = x + alpha * VectorXd::Map(qp_p, n);
-            if (isValidState(xNew)) break;
+            VectorXd xNew = x;
+            xNew += alpha * p;
+
+            if (isValidState(xNew)) 
+                break;
+
             alpha *= 0.75;
         }
 
         // ------------- Update Variables ---------------------------
         // set $\textbf{x}_{k+1}$ and $\textbf{l}_{k+1}$
-        x += alpha * VectorXd::Map(qp_p, n);
-        l = VectorXd::Map(qp_l, m);
+        x += alpha * p;
+        l = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(qp_l.data(), qp_l.size());
 
         // ------------- Check Convergence --------------------------
         // check, using the KKT conditions, if our tolerance has been achieved
         VectorXd stationarity = costGradient + constraintsGradientsTranspose.transpose() * l;
-        VectoXd complSlack = l.cwiseProduct(constraints);
+        VectorXd complSlack = l.cwiseProduct(constraints);
 
         // check all 4 separate conditions of KKT:
         if (stationarity.norm() <= tolerance &&                 // Stationarity: $||\grad f_k + \sum_{i} l_{i,k} \grad h_{i,k}|| \le \text{tolerance}$
@@ -209,7 +215,7 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         // update $\grad_{xx}^2\mathcal{L}_k$, (H) approximation
         // BFGS Hessian approximation update goes like: $H_{k+1}=H_k - \frac{H_k s_ks_k^TH_k^T}{s_k^tH_ks_k}+\frac{y_ky_k^T}{y_k^Ts_k}$
         VectorXd y = costGradient - lastCostGradient;
-        VectorXd s = alpha * VectorXd::Map(qp_p, n);
+        VectorXd s = alpha * p;
         
         const double ys = y.dot(s);
         const VectorXd Hs = H * s;
@@ -239,12 +245,12 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
 }
 
 // private:
-double RobotKinematics::costFunction(Matrix4d& input, Matrix4d& goal) {
+double RobotKinematics::costFunction(const Matrix4d& input, const Matrix4d& goal) {
         //TODO: actually take into account the rotations
         return (input.topRightCorner<3,1>() - goal.topRightCorner<3,1>()).squaredNorm();
 }
 
-VectorXd RobotKinematics::jointConstraints(VectorXd& jointStates) {
+VectorXd RobotKinematics::jointConstraints(const VectorXd& jointStates) {
     VectorXd result = VectorXd::Zero(joints.size() * 2);
 
     int index = 0;
@@ -260,23 +266,23 @@ VectorXd RobotKinematics::jointConstraints(VectorXd& jointStates) {
     return result;
 }
 
-MatrixXd RobotKinematics::jointConstraintsGradients(VectorXd& jointStates) {
+MatrixXd RobotKinematics::jointConstraintsGradients(const VectorXd& jointStates) {
     int numberOfJoints = joints.size();
 
     MatrixXd results = MatrixXd::Zero(numberOfJoints, numberOfJoints * 2);
 
     for (int i = 0; i < numberOfJoints; i++) {
         // the gradient for the constraints for joint limits are simply +1.0 and -1.0, depending on the corresponding bound being lower or upper
-        results(2*i, i) = 1.0;
-        results(2*i + 1, i) = -1.0;
+        results(i, 2*i) = 1.0;
+        results(i, 2*i + 1) = -1.0;
     }
 
     return results;
 }
 
-bool RobotKinematics::isValidState(VectorXd& jointStates) {
+bool RobotKinematics::isValidState(const VectorXd& jointStates) {
     int index = 0;
-    for (joint : joints) {
+    for (const auto& joint : joints) {
         if (jointStates(index) < joint.lowerLimit || jointStates(index) > joint.upperLimit)
             return false;
 

@@ -2,6 +2,7 @@
 #include "../Eigen/Dense"
 
 #include <qpOASES.hpp>
+#include <iostream>
 
 namespace kinematics {
 
@@ -159,14 +160,10 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         qpOASES::real_t* qp_constraintsGradientsTranspose = new qpOASES::real_t[m*n];
         qpOASES::real_t* qp_constraintsMinus = new qpOASES::real_t[m];
 
-        // copy into new format
+        // since qpOASES requires the data to be in its own format, and because it defines the IQP problem in a different variant, some moving around of data is required
         for (int i = 0; i < n; i++) qp_costGradient[i] = costGradient(i);
-
         for (int i = 0; i < n*n; i++) qp_H[i] = H.data()[i];
-
         for (int i = 0; i < m; i++) qp_constraintsMinus[i] = -constraints(i);
-
-
         for (int i = 0; i < m*n; i++) qp_constraintsGradientsTranspose[i] = constraintsGradientsTranspose.data()[i];
 
         // Solve IQP
@@ -182,10 +179,12 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         // ------------- Line Search --------------------------------
         // since for simplification the problem was linearized for each IQP call, the solution isn't necessarily a solution to the non-linearized problem. 
         // Hence we nudge around the linearized solution so that the non-linearized constraints tell us it is a valid solution.
-        // TODO do actual Line Search
         double alpha = 1.0;
-        //VectorXd xNew = x + alpha * VectorXd::Map(qp_p, n);
-
+        while (alpha > 1e-4) {
+            VectorXd xNew = x + alpha * VectorXd::Map(qp_p, n);
+            if (isValidState(xNew)) break;
+            alpha *= 0.75;
+        }
 
         // ------------- Update Variables ---------------------------
         // set $\textbf{x}_{k+1}$ and $\textbf{l}_{k+1}$
@@ -194,12 +193,21 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
 
         // ------------- Check Convergence --------------------------
         // check, using the KKT conditions, if our tolerance has been achieved
+        VectorXd stationarity = costGradient + constraintsGradientsTranspose.transpose() * l;
+        VectoXd complSlack = l.cwiseProduct(constraints);
 
+        // check all 4 separate conditions of KKT:
+        if (stationarity.norm() <= tolerance &&                 // Stationarity: $||\grad f_k + \sum_{i} l_{i,k} \grad h_{i,k}|| \le \text{tolerance}$
+            (constraints.array() >= -tolerance).all() &&        // Primal feasability: $h_{i,k}\ge -\text{tolerance}$
+            (l.array() >= -tolerance).all() &&                  // Dual feasability: $l_{i,k} \ge -\text{tolerance}$
+            (complSlack.cwiseAbs().maxCoeff() <= tolerance))    // Complementary slackness: $|l_{i,k}h_{i,k}| \le \text{tolerance}$
+        {
+            break;
+        }
 
         // ------------- Update Hessian -----------------------------
         // update $\grad_{xx}^2\mathcal{L}_k$, (H) approximation
         // BFGS Hessian approximation update goes like: $H_{k+1}=H_k - \frac{H_k s_ks_k^TH_k^T}{s_k^tH_ks_k}+\frac{y_ky_k^T}{y_k^Ts_k}$
-        // TODO: add damping?
         VectorXd y = costGradient - lastCostGradient;
         VectorXd s = alpha * VectorXd::Map(qp_p, n);
         
@@ -221,9 +229,13 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         H += rho * y * y.transpose();
 
         lastCostGradient = costGradient;
+
+
+        if (k == maxIterations - 1) 
+            std::cout << "max Iterations reached! Singularity?\n";
     }
 
-    return VectorXd::Zero(n);
+    return x;
 }
 
 // private:
@@ -260,6 +272,17 @@ MatrixXd RobotKinematics::jointConstraintsGradients(VectorXd& jointStates) {
     }
 
     return results;
+}
+
+bool RobotKinematics::isValidState(VectorXd& jointStates) {
+    int index = 0;
+    for (joint : joints) {
+        if (jointStates(index) < joint.lowerLimit || jointStates(index) > joint.upperLimit)
+            return false;
+
+        ++index;
+    }
+    return true;
 }
 
 }

@@ -74,6 +74,9 @@ private:
 
     // 'jointConstraintsGradient' calculates $\grad h_i(\textbf{x}_k)$, for all $i$, where $h_i(\textbf{x}_k)$ is defined by the 'jointConstraints' function. Each column refers to the gradient of a single $i$.
     MatrixXd jointConstraintsGradients(VectorXd& jointStates);
+
+    // 'isValidState' checks if all given state elements fall within the defined joint boundaries
+    bool isValidState(VectorXd& jointStates);
 };
 
 

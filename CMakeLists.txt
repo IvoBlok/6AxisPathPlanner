@@ -4,6 +4,14 @@ project(RobotPathPlanner)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Set default build type to Debug if not specified
+if(NOT CMAKE_BUILD_TYPE)
+  message(STATUS "Setting build type to 'Debug' as none was specified.")
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
+endif()
+
 # Dependencies
 # ============================================
 
@@ -90,9 +98,6 @@ endif()
 # Executable
 # ============================================
 
-# enable Debugging
-set(CMAKE_BUILD_TYPE Debug)
-
 add_executable(robotPathPlanner 
     src/main.cpp
     src/renderer.cpp
@@ -107,29 +112,26 @@ target_compile_definitions(robotPathPlanner PRIVATE
     GLM_ENABLE_EXPERIMENTAL 
 )
 
+# Set different output directories for Debug and Release builds
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_BINARY_DIR}/Debug)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_BINARY_DIR}/Release)
+
 # Copy shaders to build folder
 # ============================================
+# For single-config generators (Make, Ninja)
 
-add_custom_command(
-    TARGET robotPathPlanner PRE_BUILD
+set(SHADER_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/shaders)
+
+add_custom_command(TARGET robotPathPlanner PRE_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders
-        ${CMAKE_CURRENT_BINARY_DIR}/shaders
+        ${SHADER_OUTPUT_DIR}
     COMMENT "Copying shaders to build directory"
 )
 
-if(CMAKE_BUILD_TYPE)
-    # Single-config generators (Make, Ninja)
-    set(SHADER_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/shaders)
-else()
-    # Multi-config generators (Visual Studio)
-    set(SHADER_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/Debug/shaders)
-endif()
-
-# 2. Copy shaders to the correct output directory
 file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIR})
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/
-      DESTINATION ${SHADER_OUTPUT_DIR})
+        DESTINATION ${SHADER_OUTPUT_DIR})
 
 # Include Directories
 # ============================================
@@ -191,4 +193,36 @@ else()  # Linux/Unix
     pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
     target_include_directories(robotPathPlanner PRIVATE ${GTK3_INCLUDE_DIRS})
     target_link_libraries(robotPathPlanner PRIVATE ${GTK3_LIBRARIES})
+endif()
+
+# Set compiler flags for different build types
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_definitions(robotPathPlanner PRIVATE NDEBUG)
+    if(MSVC)
+        target_compile_options(robotPathPlanner PRIVATE 
+            /O2      # Optimize for speed
+            /Oi      # Enable intrinsic functions
+            /GL      # Whole program optimization
+            /MP      # Build with multiple processes
+            #/W4     # Warning level 4
+            /WX-     # Don't treat warnings as errors
+            /RTC0    # Disable runtime checks 
+        )
+        target_link_options(robotPathPlanner PRIVATE /LTCG)  # Link-time code generation
+    else()
+        target_compile_options(robotPathPlanner PRIVATE -O3 -DNDEBUG)
+    endif()
+else()  # Debug build
+    if(MSVC)
+        target_compile_options(robotPathPlanner PRIVATE 
+            /Zi      # Debug information
+            /Od      # Disable optimizations
+            /RTC1    # Runtime checks
+            #/W4     # Warning level 4
+            #/WX-    # Don't treat warnings as errors
+            /MDd     # Debug multithreaded DLL runtime
+        )
+    else()
+        target_compile_options(robotPathPlanner PRIVATE -g -O0)
+    endif()
 endif()

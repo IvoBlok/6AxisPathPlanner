@@ -62,7 +62,6 @@ public:
 
             // calculate the joint state based on the given desired effector orientation
             if (ImGui::Button("do SQP IK")) {
-                // TODO
                 Matrix4d desiredOrientation = Matrix4d::Identity();
                 desiredOrientation.topRightCorner<3,1>() = endPoint.cast<double>();
 

@@ -39,7 +39,6 @@ struct EndEffector {
 
 class RobotKinematics {
 public:
-
     // 'transformationMatrix' defines the translation and orientation of the whole robot relative to the world zero
     Matrix4d transformationMatrix;
 

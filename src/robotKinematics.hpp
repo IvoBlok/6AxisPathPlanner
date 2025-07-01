@@ -62,12 +62,15 @@ public:
     Matrix4d fastForwardKinematics(VectorXd& jointStates);
 
     // 'inverseKinematics' calculates the required joint states so that the end effector matrix lines up with the given goal matrix. 
-    VectorXd inverseKinematics(Matrix4d& goal, int maxIterations = 25, double tolerance = 1e-3);
+    VectorXd inverseKinematics(Matrix4d& goal, int maxIterations = 5, double tolerance = 1e-3);
     
 private:
     // 'costFunction' defines when a given endEffector orientation is good or not
     // TODO: allow for setting only certain d.o.f's of the goal as relevant; i.e. if you only care about accuracy in position, and 2 axes of rotation, allowing the software to freely choose the optimal 3'rd rotation
     double costFunction(const Matrix4d& input, const Matrix4d& goal);
+
+    // 'costGradient' estimates the gradient of 'costFunction' using a central difference approximation
+    VectorXd costGradientEstimate(const VectorXd& jointStates, const Matrix4d& goal, const double stepSize = 1e-6);
 
     // 'jointConstraints' transforms the individual joint boundaries into a set of inequalities of the form $h_i(\textbf{x}_k) \ge 0$. It then calculates these function values for the given joint states.
     VectorXd jointConstraints(const VectorXd& jointStates);

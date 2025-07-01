@@ -126,8 +126,6 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
     VectorXd l = VectorXd::Zero(m);         // l: the lagrange multiplier for inequalities. Initially set as a zero vector
     MatrixXd H = MatrixXd::Identity(n, n);  // H: approximation of the hessian  using BFGS 
 
-    VectorXd lastCostGradient = VectorXd::Zero(n);
-
     // 1. Allocate QP buffers
     std::vector<qpOASES::real_t> qp_H(n*n);
     std::vector<qpOASES::real_t> qp_g(n);
@@ -144,7 +142,6 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
     options.enableFarBounds = qpOASES::BooleanType::BT_TRUE;
     qp.setOptions(options);
 
-
     for (int k = 0; k < maxIterations; k++) {
         for(int i=0; i<n; i++) H(i,i) += 1e-10;
         // ------------- Calculate Problem Terms --------------------
@@ -153,17 +150,7 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         double cost = costFunction(effector, goal);
 
         // estimate $\grad f(\textbf{x}_k)$ using a central difference estimate for each element
-        VectorXd costGradient(n);
-        const double gradStepSize = 1e-6;
-        for (int i = 0; i < n; i++) {
-            VectorXd xPlus = x, xMin = x;
-            xPlus(i) += gradStepSize;
-            xMin(i) -= gradStepSize;
-
-            Matrix4d effectorPlus = fastForwardKinematics(xPlus);
-            Matrix4d effectorMin = fastForwardKinematics(xMin);
-            costGradient(i) = (costFunction(effectorPlus, goal) - costFunction(effectorMin, goal)) / (2.0 * gradStepSize);
-        }
+        VectorXd costGradient = costGradientEstimate(x, goal, 1e-6);
 
         // calculate $h_i(\textbf{x}_k)$ algebraically
         VectorXd constraints = jointConstraints(x);
@@ -180,14 +167,6 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         for (int i = 0; i < m*n; i++) qp_A[i] = static_cast<qpOASES::real_t>(constraintsGradientsTranspose.data()[i]);
         for (int i = 0; i < m; i++) qp_lbA[i] = static_cast<qpOASES::real_t>(-constraints[i]);
 
-        std::cout << "---- QP Problem Data ----\n";
-        std::cout << "H:\n" << H << "\n";
-        std::cout << "g: " << costGradient.transpose() << "\n";
-        std::cout << "A:\n" << constraintsGradientsTranspose << "\n";
-        std::cout << "lbA: ";
-        for(int i=0; i<m; i++) std::cout << qp_lbA[i] << " ";
-        std::cout << "\n----------------------\n";
-
         // Solve IQP
         qpOASES::int_t nWSR = 100;
         //if (qp.init(qp_H.data(), qp_g.data(), nullptr, nullptr, nullptr, nullptr, nullptr, nWSR) != qpOASES::SUCCESSFUL_RETURN) {
@@ -196,7 +175,6 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         }        
 
         // Get solutions
-        
         qp.getPrimalSolution(qp_p.data());
         qp.getDualSolution(qp_l.data());
         VectorXd p(n);
@@ -214,8 +192,20 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
 
         // ------------- Update Variables ---------------------------
         // set $\textbf{x}_{k+1}$ and $\textbf{l}_{k+1}$
-        x += alpha * p;
         for (int i = 0; i < m; ++i) l[i] = static_cast<double>(qp_l[n + i]); // the first n elements from dualSolution() are irrelevant for us
+
+        std::cout << "---- QP Problem Data ----\n";
+        std::cout << "H:\n" << H << "\n";
+        std::cout << "grad f:\n" << costGradient << "\n";
+        std::cout << "h: \n" << constraints << "\n";
+        std::cout << "grad h:\n" << constraintsGradientsTranspose.transpose() << "\n";
+
+        std::cout << "x: \n" << x << "\n";
+        std::cout << "p: \n" << p << "\n";
+        std::cout << "l: \n" << l << "\n";
+        std::cout << "\n----------------------\n";
+
+        x += alpha * p;
 
         // ------------- Check Convergence --------------------------
         // check, using the KKT conditions, if our tolerance has been achieved
@@ -228,22 +218,34 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
             (l.array() >= -tolerance).all() &&                  // Dual feasability: $l_{i,k} \ge -\text{tolerance}$
             (complSlack.cwiseAbs().maxCoeff() <= tolerance))    // Complementary slackness: $|l_{i,k}h_{i,k}| \le \text{tolerance}$
         {
+            std::cout << "Yippie! proper solution found!\n";
             break;
         }
 
         // ------------- Update Hessian -----------------------------
         // update $\grad_{xx}^2\mathcal{L}_k$, (H) approximation
+        //
+        // $\mathcal{L}_k := \nabla^2_{\textbf{xx}}f(\textbf{x}_k)-\sum_{i}l_{k,i}\nabla^2_{\textbf{xx}}h_i(\textbf{x}_k)$
+        //
+        // since $f(\textbf{x})$ is a numerical thingy, and hence we can't define an algebraic hessian for it, we need to use some approximation method for it
+        // For this I use BFGS here, though there definitely is some better variant.
+        // The second component, dependent on $h_i(\textbf{x})$, is algebraically defined (currently). 
+        // Even better, for the simple constraints here, where we simply have constraints of the form $h_i(\textbf{x})=\pm x_{j} \pm b$, we have $\nabla^2_{\textbf{xx}}h_i(\textbf{x}_k)=0$
+        // since the contribution from the constraints is 0, we can update H directly using the BFGS update rule.
+        //
         // BFGS Hessian approximation update goes like: $H_{k+1}=H_k - \frac{H_k s_ks_k^TH_k^T}{s_k^tH_ks_k}+\frac{y_ky_k^T}{y_k^Ts_k}$
-        VectorXd y = costGradient - lastCostGradient;
+        // where $\textbf{s}_k = \textbf{x}_{k+1} - \textbf{x}_k$ and $\textbf{y}_k=\nabla \textbf{f}_{k+1} - \nabla \textbf{f}_k$
+       
+        VectorXd y = costGradientEstimate(x, goal, 1e-6) - costGradient;
         VectorXd s = alpha * p;
         
-        const double ys = y.dot(s);
         const VectorXd Hs = H * s;
         const double sTHs = s.dot(Hs);
 
-        const double dampingThreshold = 0.2;
         double theta = 1.0;
+        const double dampingThreshold = 0.2;
 
+        const double ys = y.dot(s);
         if (ys < dampingThreshold * sTHs) {
             theta = (0.8 * sTHs) / (sTHs - ys); // Powell
             y = theta * y + (1.0 - theta) * Hs;
@@ -254,8 +256,6 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         H -= (Hs * Hs.transpose()) / sTHs;
         H += rho * y * y.transpose();
 
-        lastCostGradient = costGradient;
-
         if (k == maxIterations - 1) 
             std::cout << "max Iterations reached! Singularity?\n";
     }
@@ -265,8 +265,25 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
 
 // private:
 double RobotKinematics::costFunction(const Matrix4d& input, const Matrix4d& goal) {
-        //TODO: actually take into account the rotations
-        return (input.topRightCorner<3,1>() - goal.topRightCorner<3,1>()).squaredNorm();
+    //TODO: actually take into account the rotations
+    return (input.topRightCorner<3,1>() - goal.topRightCorner<3,1>()).squaredNorm();
+}
+
+VectorXd RobotKinematics::costGradientEstimate(const VectorXd& jointStates, const Matrix4d& goal, const double stepSize) {
+    int n = joints.size();
+    VectorXd result(n);
+
+    for (int i = 0; i < n; i++) {
+        VectorXd xPlus = jointStates, xMin = jointStates;
+        xPlus(i) += stepSize;
+        xMin(i) -= stepSize;
+
+        Matrix4d effectorPlus = fastForwardKinematics(xPlus);
+        Matrix4d effectorMin = fastForwardKinematics(xMin);
+        result(i) = (costFunction(effectorPlus, goal) - costFunction(effectorMin, goal)) / (2.0 * stepSize);
+    }
+
+    return result;
 }
 
 VectorXd RobotKinematics::jointConstraints(const VectorXd& jointStates) {

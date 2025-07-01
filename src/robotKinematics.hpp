@@ -62,7 +62,7 @@ public:
     Matrix4d fastForwardKinematics(VectorXd& jointStates);
 
     // 'inverseKinematics' calculates the required joint states so that the end effector matrix lines up with the given goal matrix. 
-    VectorXd inverseKinematics(Matrix4d& goal, int maxIterations = 100, double tolerance = 1e-3);
+    VectorXd inverseKinematics(Matrix4d& goal, int maxIterations = 25, double tolerance = 1e-3);
     
 private:
     // 'costFunction' defines when a given endEffector orientation is good or not

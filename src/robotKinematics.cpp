@@ -36,6 +36,7 @@ std::vector<Matrix4d> RobotKinematics::forwardKinematics(VectorXd& jointStates) 
 
     std::vector<Matrix4d> results;
     results.emplace_back(transformationMatrix);
+    const double tol = 2e-3;
 
     size_t index = 0;
     for (const auto& joint : joints)
@@ -43,7 +44,7 @@ std::vector<Matrix4d> RobotKinematics::forwardKinematics(VectorXd& jointStates) 
         const double& state = jointStates(index);
 
         // check if joint state is within the defined limits
-        if (state < joint.lowerLimit - 1e-6 || state > joint.upperLimit + 1e-6) 
+        if (state < (joint.lowerLimit - tol) || state > (joint.upperLimit + tol)) 
             throw std::runtime_error("Given joint states contains an out of bounds element!\n");
 
         Matrix4d matrix = joint.transformationMatrix;
@@ -74,7 +75,7 @@ Matrix4d RobotKinematics::fastForwardKinematics(VectorXd& jointStates) {
 
     Matrix4d result = transformationMatrix;
     Matrix4d tempMatrix;
-    const double tol = 1e-6;
+    const double tol = 2e-3;
     
     size_t index = 0;
     for (const auto& joint : joints)
@@ -127,7 +128,25 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
 
     VectorXd lastCostGradient = VectorXd::Zero(n);
 
+    // 1. Allocate QP buffers
+    std::vector<qpOASES::real_t> qp_H(n*n);
+    std::vector<qpOASES::real_t> qp_g(n);
+    std::vector<qpOASES::real_t> qp_A(m*n);
+    std::vector<qpOASES::real_t> qp_lbA(m);
+
+    std::vector<qpOASES::real_t> qp_p(n);
+    std::vector<qpOASES::real_t> qp_l(m+n);
+
+    qpOASES::QProblem qp(n, m);
+    qpOASES::Options options;
+    options.setToDefault();
+    options.printLevel = qpOASES::PrintLevel::PL_MEDIUM;
+    options.enableFarBounds = qpOASES::BooleanType::BT_TRUE;
+    qp.setOptions(options);
+
+
     for (int k = 0; k < maxIterations; k++) {
+        for(int i=0; i<n; i++) H(i,i) += 1e-10;
         // ------------- Calculate Problem Terms --------------------
         // calculate cost $f(\textbf{x}_k)$ algebraically
         Matrix4d effector = fastForwardKinematics(x);
@@ -154,48 +173,49 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         constraintsGradientsTranspose.transposeInPlace();
 
         // ------------- Solve IQP Problem --------------------------
-        qpOASES::QProblem qp(n, m);
-        qpOASES::real_t* qp_H = new qpOASES::real_t[n*n];
-        qpOASES::real_t* qp_costGradient = new qpOASES::real_t[n];
-        qpOASES::real_t* qp_constraintsGradientsTranspose = new qpOASES::real_t[m*n];
-        qpOASES::real_t* qp_constraintsMinus = new qpOASES::real_t[m];
+        // Prepare QP data (Eigen -> qpOASES)
+        // 2. Direct deep copy (no Eigen::Map)
+        for (int i = 0; i < n*n; i++) qp_H[i] = static_cast<qpOASES::real_t>(H.data()[i]);
+        for (int i = 0; i < n; i++) qp_g[i] = static_cast<qpOASES::real_t>(costGradient[i]);
+        for (int i = 0; i < m*n; i++) qp_A[i] = static_cast<qpOASES::real_t>(constraintsGradientsTranspose.data()[i]);
+        for (int i = 0; i < m; i++) qp_lbA[i] = static_cast<qpOASES::real_t>(-constraints[i]);
 
-        // since qpOASES requires the data to be in its own format, and because it defines the IQP problem in a different variant, some moving around of data is required
-        for (int i = 0; i < n; i++) qp_costGradient[i] = costGradient(i);
-        for (int i = 0; i < n*n; i++) qp_H[i] = H.data()[i];
-        for (int i = 0; i < m; i++) qp_constraintsMinus[i] = -constraints(i);
-        for (int i = 0; i < m*n; i++) qp_constraintsGradientsTranspose[i] = constraintsGradientsTranspose.data()[i];
+        std::cout << "---- QP Problem Data ----\n";
+        std::cout << "H:\n" << H << "\n";
+        std::cout << "g: " << costGradient.transpose() << "\n";
+        std::cout << "A:\n" << constraintsGradientsTranspose << "\n";
+        std::cout << "lbA: ";
+        for(int i=0; i<m; i++) std::cout << qp_lbA[i] << " ";
+        std::cout << "\n----------------------\n";
 
         // Solve IQP
         qpOASES::int_t nWSR = 100;
-        qp.init(qp_H, qp_costGradient, qp_constraintsGradientsTranspose, nullptr, nullptr, qp_constraintsMinus, nullptr, nWSR);
+        //if (qp.init(qp_H.data(), qp_g.data(), nullptr, nullptr, nullptr, nullptr, nullptr, nWSR) != qpOASES::SUCCESSFUL_RETURN) {
+        if (qp.init(qp_H.data(), qp_g.data(), qp_A.data(), 0, 0, qp_lbA.data(), 0, nWSR) != qpOASES::SUCCESSFUL_RETURN) {
+            throw std::runtime_error("QP initialization failed");
+        }        
+
+        // Get solutions
         
-        // get primal (p) and dual (l) solutions
-        std::vector<qpOASES::real_t> qp_p(n);
-        std::vector<qpOASES::real_t> qp_l(m);
         qp.getPrimalSolution(qp_p.data());
         qp.getDualSolution(qp_l.data());
+        VectorXd p(n);
+        for (int i = 0; i < n; i++) p[i] = static_cast<double>(qp_p[i]);
 
         // ------------- Line Search --------------------------------
         // since for simplification the problem was linearized for each IQP call, the solution isn't necessarily a solution to the non-linearized problem. 
         // Hence we nudge around the linearized solution so that the non-linearized constraints tell us it is a valid solution.
         double alpha = 1.0;
-        VectorXd p = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(qp_p.data(), qp_p.size());
-
         while (alpha > 1e-4) {
-            VectorXd xNew = x;
-            xNew += alpha * p;
-
-            if (isValidState(xNew)) 
-                break;
-
+            VectorXd x_new = x + alpha * p;
+            if (isValidState(x_new)) break;
             alpha *= 0.75;
         }
 
         // ------------- Update Variables ---------------------------
         // set $\textbf{x}_{k+1}$ and $\textbf{l}_{k+1}$
         x += alpha * p;
-        l = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(qp_l.data(), qp_l.size());
+        for (int i = 0; i < m; ++i) l[i] = static_cast<double>(qp_l[n + i]); // the first n elements from dualSolution() are irrelevant for us
 
         // ------------- Check Convergence --------------------------
         // check, using the KKT conditions, if our tolerance has been achieved
@@ -235,7 +255,6 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         H += rho * y * y.transpose();
 
         lastCostGradient = costGradient;
-
 
         if (k == maxIterations - 1) 
             std::cout << "max Iterations reached! Singularity?\n";

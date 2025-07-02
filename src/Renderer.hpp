@@ -222,6 +222,7 @@ public:
 	bool isOneColor;
 
 	LoadedLine();
+	LoadedLine(const LoadedLine&) = default;
 	void load(core::Polyline2_5D& polylineIn, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
 	
 	void destroyRenderData();

@@ -1,7 +1,8 @@
 #include "robotKinematics.hpp"
-#include "../Eigen/Dense"
+#include "Eigen/CustomEigen.hpp"
 
-#include <qpOASES.hpp>
+#include "proxsuite/proxqp/dense/dense.hpp"
+
 #include <iostream>
 
 namespace kinematics {
@@ -126,22 +127,6 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
     VectorXd l = VectorXd::Zero(m);                 // l: the lagrange multiplier for inequalities. Initially set as a zero vector
     MatrixXd H = MatrixXd::Identity(n, n);          // H: approximation of the hessian  using BFGS 
 
-    // 1. Allocate QP buffers
-    std::vector<qpOASES::real_t> qp_H(n*n);
-    std::vector<qpOASES::real_t> qp_g(n);
-    std::vector<qpOASES::real_t> qp_A(m*n);
-    std::vector<qpOASES::real_t> qp_lbA(m);
-
-    std::vector<qpOASES::real_t> qp_p(n);
-    std::vector<qpOASES::real_t> qp_l(m+n);
-
-    qpOASES::QProblem qp(n, m);
-    qpOASES::Options options;
-    options.setToDefault();
-    options.printLevel = qpOASES::PrintLevel::PL_MEDIUM;
-    options.enableFarBounds = qpOASES::BooleanType::BT_TRUE;
-    qp.setOptions(options);
-
     for (int k = 0; k < maxIterations; k++) {
         for(int i=0; i<n; i++) H(i,i) += 1e-6;
 
@@ -161,29 +146,13 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
         constraintsGradientsTranspose.transposeInPlace();
 
         // ------------- Solve IQP Problem --------------------------
-        // Prepare QP data (Eigen -> qpOASES)
-        // 2. Direct deep copy (no Eigen::Map)
-        for (int i = 0; i < n*n; i++) qp_H[i] = static_cast<qpOASES::real_t>(H.data()[i]);
-        for (int i = 0; i < n; i++) qp_g[i] = static_cast<qpOASES::real_t>(costGradient[i]);
-        for (int i = 0; i < m*n; i++) qp_A[i] = static_cast<qpOASES::real_t>(constraintsGradientsTranspose.data()[i]);
-        for (int i = 0; i < m; i++) qp_lbA[i] = static_cast<qpOASES::real_t>(-constraints[i]);
-
-        // Solve IQP
-        qpOASES::int_t nWSR = 100;
-        //if (qp.init(qp_H.data(), qp_g.data(), nullptr, nullptr, nullptr, nullptr, nullptr, nWSR) != qpOASES::SUCCESSFUL_RETURN) {
-        if (qp.init(qp_H.data(), qp_g.data(), qp_A.data(), 0, 0, qp_lbA.data(), 0, nWSR) != qpOASES::SUCCESSFUL_RETURN) {
-            throw std::runtime_error("QP initialization failed");
-        }        
 
         // Get solutions
-        qp.getPrimalSolution(qp_p.data());
-        qp.getDualSolution(qp_l.data());
-        VectorXd p(n);
-        for (int i = 0; i < n; i++) p[i] = static_cast<double>(qp_p[i]);
 
         // ------------- Line Search --------------------------------
         // since for simplification the problem was linearized for each IQP call, the solution isn't necessarily a solution to the non-linearized problem. 
         // Hence we nudge around the linearized solution so that the non-linearized constraints tell us it is a valid solution.
+        /*
         double alpha = 1.0;
         while (alpha > 1e-4) {
             VectorXd x_new = x + alpha * p;
@@ -193,7 +162,6 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
 
         // ------------- Update Variables ---------------------------
         // set $\textbf{x}_{k+1}$ and $\textbf{l}_{k+1}$
-        for (int i = 0; i < m; ++i) l[i] = static_cast<double>(qp_l[n + i]); // the first n elements from dualSolution() are irrelevant for us
 
         std::cout << "---- QP Problem Data ----\n";
         std::cout << "H:\n" << H << "\n";
@@ -264,6 +232,7 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
 
         if (k == maxIterations - 1) 
             std::cout << "max Iterations reached! Singularity?\n";
+        */
     }
 
     return x;

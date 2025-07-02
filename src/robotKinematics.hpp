@@ -5,7 +5,7 @@
 #include <variant>
 #include <vector>
 
-#include "../external/Eigen/CustomEigen.hpp"
+#include "Eigen/CustomEigen.hpp"
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;

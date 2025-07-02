@@ -79,7 +79,7 @@ public:
                     std::advance(obj2, selectedIdx2);
 
                     core::Plane plane = obj1->getPlane();
-                    core::ObjectShape& shape = obj2->getObjectShape();
+                    core::ObjectShape shape = obj2->getObjectShape();
 
                     std::vector<core::Polyline2D> meshPlaneIntersect = getMeshPlaneIntersection(plane, shape);
                     

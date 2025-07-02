@@ -93,7 +93,7 @@ public:
     insertPolyLine2D(polyline, plane);
   }
 
-  Polyline2_5D(Polyline2_5D& polyline) {
+  Polyline2_5D(const Polyline2_5D& polyline) {
     insertPolyLine2_5D(polyline);
   }
 
@@ -114,7 +114,7 @@ public:
     }
   }
 
-  void insertPolyLine2_5D(Polyline2_5D& polyline) {
+  void insertPolyLine2_5D(const Polyline2_5D& polyline) {
     vertices.clear();
 
     isClosedVal = polyline.isClosed();
@@ -142,7 +142,15 @@ public:
     return isClosedVal;
   }
 
+  bool const isClosed() {
+    return isClosedVal;
+  }
+
   std::vector<PlineVertex2_5D>& vertexes() {
+    return vertices;
+  }
+
+  const std::vector<PlineVertex2_5D>& const vertexes() {
     return vertices;
   }
 

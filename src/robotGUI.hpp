@@ -66,7 +66,7 @@ public:
                 Matrix4d desiredOrientation = Matrix4d::Identity();
                 desiredOrientation.topRightCorner<3,1>() = endPoint.cast<double>();
 
-                jointStates = robotKinematics.inverseKinematics(desiredOrientation, false, Vector3d::Zero(), 25, 0.001);
+                jointStates = robotKinematics.inverseKinematics(desiredOrientation, true, Vector3d::Zero(), 100, 0.001);
             }
 
             // perform the forward kinematics
@@ -112,10 +112,10 @@ private:
                 "../../resources/assets/cube.obj",
                 Vector3d{ 1.f, 0.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
-                Vector3d{ 0.05f, 0.05f, 0.05f }  // scale
+                Vector3d{ 0.015f, 0.015f, 0.015f }  // scale
             );
 
-        // ------------- Simple 3-axis Rotation robot arm --------------------------------
+        /*// ------------- Simple 3-axis Rotation robot arm --------------------------------
         // This defines a basic 3-axis (3 rotation joints) robot, to test te SQP IK
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -190,7 +190,8 @@ private:
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
         joints.back()->name = "joint 3";
-
+        */
+        
         /*// ------------- Simple 3-axis cartesian robot arm -----------------------------
         // This defines a basic 3-axis (3 linear joints) cartesian robot, to test te SQP IK
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
@@ -268,7 +269,7 @@ private:
         joints.back()->name = "joint 3";
         */
         
-        /*// ------------- Big fancy 7-axis robot arm ------------------------------------
+        // ------------- Big fancy 7-axis robot arm ------------------------------------
         // Robot axes are aligned with the world axes, and robot zero is located at the world zero
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -417,7 +418,7 @@ private:
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
         joints.back()->name = "joint 7";    
-        */
+        
 
         jointStates = VectorXd::Zero(robotKinematics.joints.size());
         jointStatesFloat = VectorXf::Zero(robotKinematics.joints.size());

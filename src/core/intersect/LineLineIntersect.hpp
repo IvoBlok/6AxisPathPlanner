@@ -1,7 +1,7 @@
 #ifndef CORE_LINE_LINE_INTERSECT_HPP
 #define CORE_LINE_LINE_INTERSECT_HPP
 
-#include "../../../external/Eigen/CustomEigen.hpp"
+#include "Eigen/CustomEigen.hpp"
 #include "../mathUtils.hpp"
 
 #include <algorithm>

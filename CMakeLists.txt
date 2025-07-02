@@ -1,22 +1,28 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.25)  # Must be at least 3.22 for ProxSuite
 project(RobotPathPlanner)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set default build type to Debug if not specified
 if(NOT CMAKE_BUILD_TYPE)
-  message(STATUS "Setting build type to 'Debug' as none was specified.")
-  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
-  # Set the possible values of build type for cmake-gui
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose build type" FORCE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
 endif()
 
+# ============================================
 # Dependencies
 # ============================================
 
 # Vulkan
 find_package(Vulkan REQUIRED)
+
+# Disable uninstall targets for all dependencies
+set(ADD_UNINSTALL_TARGET OFF CACHE BOOL "Skip uninstall targets")
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "")
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "")
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "")
+set(GLFW_INSTALL OFF CACHE BOOL "")
 
 # GLFW
 include(FetchContent)
@@ -25,7 +31,6 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/glfw/glfw.git
     GIT_TAG 3.4
 )
-FetchContent_MakeAvailable(glfw)
 
 # GLM
 FetchContent_Declare(
@@ -33,7 +38,6 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/g-truc/glm.git
     GIT_TAG 1.0.1
 )
-FetchContent_MakeAvailable(glm)
 
 # ImGui
 FetchContent_Declare(
@@ -41,7 +45,6 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
     GIT_TAG docking
 )
-FetchContent_MakeAvailable(imgui)
 
 # ImPlot
 FetchContent_Declare(
@@ -49,7 +52,6 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/epezent/implot.git
     GIT_TAG master
 )
-FetchContent_MakeAvailable(implot)
 
 set(GLM_TEST_ENABLE OFF CACHE BOOL "Disable GLM tests")
 
@@ -59,7 +61,6 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/nothings/stb.git
     GIT_TAG master  
 )
-FetchContent_MakeAvailable(stb)
 
 # tiny_obj_loader
 FetchContent_Declare(
@@ -67,7 +68,6 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git
     GIT_TAG release
 )
-FetchContent_MakeAvailable(tinyobjloader)
 
 # nfd (native file dialog)
 FetchContent_Declare(
@@ -75,25 +75,16 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/mlabbe/nativefiledialog.git
     GIT_TAG master
 )
-FetchContent_MakeAvailable(nfd)
 
-# qpOASES
-FetchContent_Declare(
-    qpOASES
-    GIT_REPOSITORY https://github.com/coin-or/qpOASES.git
-    GIT_TAG releases/3.2.1
+FetchContent_MakeAvailable(
+    glfw
+    glm
+    imgui
+    implot
+    stb
+    tinyobjloader
+    nfd
 )
-set(QPOASES_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(qpOASES)
-
-set(qpOASES_INCLUDE_DIRS 
-    ${qpOASES_SOURCE_DIR}/include
-    ${qpOASES_BINARY_DIR}/include
-)
-
-if(WIN32)
-    target_compile_definitions(qpOASES PUBLIC __WIN32__)
-endif()
 
 # Executable
 # ============================================
@@ -141,12 +132,12 @@ target_include_directories(robotPathPlanner PRIVATE
     ${glm_SOURCE_DIR}
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
-    ${implot_SOURCE_DIR}        
+    ${implot_SOURCE_DIR}      
+    external  
     external/imgui
     ${stb_SOURCE_DIR}
     ${tinyobjloader_SOURCE_DIR}
     ${nfd_SOURCE_DIR}/src/include
-    ${qpOASES_INCLUDE_DIRS}
 )
 
 # Link Libraries
@@ -154,7 +145,6 @@ target_include_directories(robotPathPlanner PRIVATE
 target_link_libraries(robotPathPlanner PRIVATE 
     glfw
     ${Vulkan_LIBRARIES}
-    qpOASES
 )
 
 # Add Imgui Sources

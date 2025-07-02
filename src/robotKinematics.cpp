@@ -54,7 +54,7 @@ std::vector<Matrix4d> RobotKinematics::forwardKinematics(VectorXd& jointStates) 
             matrix.col(3) += matrix.col(2) * state;
         } 
         else if (joint.type == JointType::Rotation) {
-            matrix.topLeftCorner<3,3>() *= Eigen::AngleAxisd(state, Eigen::Vector3d::UnitZ()).toRotationMatrix();;
+            matrix.topLeftCorner<3,3>() *= Eigen::AngleAxisd(state, Vector3d::UnitZ()).toRotationMatrix();;
         }
         
         // results.back() refers to the matrix going from World -> Joint_(i-1); i.e. the frame of joint i-1 expressed in the world frame
@@ -93,7 +93,7 @@ Matrix4d RobotKinematics::fastForwardKinematics(VectorXd& jointStates) {
             tempMatrix.col(3) += tempMatrix.col(2) * state;
         } 
         else if (joint.type == JointType::Rotation) {
-            tempMatrix.topLeftCorner<3,3>() *= Eigen::AngleAxisd(state, Eigen::Vector3d::UnitZ()).toRotationMatrix();;
+            tempMatrix.topLeftCorner<3,3>() *= Eigen::AngleAxisd(state, Vector3d::UnitZ()).toRotationMatrix();;
         }
         
         // results.back() refers to the matrix going from World -> Joint_(i-1); i.e. the frame of joint i-1 expressed in the world frame
@@ -106,7 +106,7 @@ Matrix4d RobotKinematics::fastForwardKinematics(VectorXd& jointStates) {
     return result;
 }
 
-VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, double tolerance) {
+VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotation, Vector3d rotationAxisIgnore, int maxIterations, double tolerance) {
     /* This algorithm attemps to solve (redundant) inverse kinematics by solving the following problem:
         $\text{min}_x \;f(\textbf{x}) $
         $\text{subject to} \; h_i(\textbf{x}) \ge 0, \; i \in (0,1,2...m)$
@@ -119,12 +119,12 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         with which we update the values for the next iteration: $\textbf{x}_{k+1}=\textbf{x}_k + \text{lineSearch}(p)$ and $\textbf{l}_{k+1}=\textbf{l}_k$
     */
     
-    const int n = joints.size();                  // n: number of joints
-    const int m = n * 2;                          // m: number of inequality constraints (for now we use 2 for each joint; 1 for the lower joint limit, 1 for the upper limit)
+    const int n = joints.size();                    // n: number of joints
+    const int m = n * 2;                            // m: number of inequality constraints (for now we use 2 for each joint; 1 for the lower joint limit, 1 for the upper limit)
 
-    VectorXd x = VectorXd::Zero(n);         // x: the current joint state guess. initial joints guess is set as a zero vector
-    VectorXd l = VectorXd::Zero(m);         // l: the lagrange multiplier for inequalities. Initially set as a zero vector
-    MatrixXd H = MatrixXd::Identity(n, n);  // H: approximation of the hessian  using BFGS 
+    VectorXd x = VectorXd::Zero(n);                 // x: the current joint state guess. initial joints guess is set as a zero vector
+    VectorXd l = VectorXd::Zero(m);                 // l: the lagrange multiplier for inequalities. Initially set as a zero vector
+    MatrixXd H = MatrixXd::Identity(n, n);          // H: approximation of the hessian  using BFGS 
 
     // 1. Allocate QP buffers
     std::vector<qpOASES::real_t> qp_H(n*n);
@@ -143,14 +143,15 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
     qp.setOptions(options);
 
     for (int k = 0; k < maxIterations; k++) {
-        for(int i=0; i<n; i++) H(i,i) += 1e-10;
+        for(int i=0; i<n; i++) H(i,i) += 1e-6;
+
         // ------------- Calculate Problem Terms --------------------
         // calculate cost $f(\textbf{x}_k)$ algebraically
         Matrix4d effector = fastForwardKinematics(x);
-        double cost = costFunction(effector, goal);
+        double cost = costFunction(effector, goal, useRotation, rotationAxisIgnore);
 
         // estimate $\grad f(\textbf{x}_k)$ using a central difference estimate for each element
-        VectorXd costGradient = costGradientEstimate(x, goal, 1e-6);
+        VectorXd costGradient = costGradientEstimate(x, goal, useRotation, rotationAxisIgnore, 1e-3);
 
         // calculate $h_i(\textbf{x}_k)$ algebraically
         VectorXd constraints = jointConstraints(x);
@@ -219,6 +220,11 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
             (complSlack.cwiseAbs().maxCoeff() <= tolerance))    // Complementary slackness: $|l_{i,k}h_{i,k}| \le \text{tolerance}$
         {
             std::cout << "Yippie! proper solution found!\n";
+
+            Matrix4d effectorCheck = fastForwardKinematics(x);
+            double costCheck = costFunction(effectorCheck, goal, useRotation, rotationAxisIgnore);
+            if (costCheck > tolerance)
+                std::cout << "Goal is likely outside the reachable domain! cost: " << costCheck << "\n";
             break;
         }
 
@@ -236,7 +242,7 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
         // BFGS Hessian approximation update goes like: $H_{k+1}=H_k - \frac{H_k s_ks_k^TH_k^T}{s_k^tH_ks_k}+\frac{y_ky_k^T}{y_k^Ts_k}$
         // where $\textbf{s}_k = \textbf{x}_{k+1} - \textbf{x}_k$ and $\textbf{y}_k=\nabla \textbf{f}_{k+1} - \nabla \textbf{f}_k$
        
-        VectorXd y = costGradientEstimate(x, goal, 1e-6) - costGradient;
+        VectorXd y = costGradientEstimate(x, goal, useRotation, rotationAxisIgnore, 1e-3) - costGradient;
         VectorXd s = alpha * p;
         
         const VectorXd Hs = H * s;
@@ -264,12 +270,37 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, int maxIterations, d
 }
 
 // private:
-double RobotKinematics::costFunction(const Matrix4d& input, const Matrix4d& goal) {
-    //TODO: actually take into account the rotations
-    return (input.topRightCorner<3,1>() - goal.topRightCorner<3,1>()).squaredNorm();
+double RobotKinematics::costFunction(const Matrix4d& input, const Matrix4d& goal, const bool useRotation, Vector3d rotationAxisIgnore) {
+    //TODO: modify this so that we can set certain position or rotation axes to be ignored
+    double totalCost = 0.0;
+
+    // position error cost contribution
+    totalCost += (input.topRightCorner<3,1>() - goal.topRightCorner<3,1>()).squaredNorm();
+
+    // rotation error cost contribution
+    if (useRotation) {
+        Eigen::Quaterniond qInput(input.block<3,3>(0,0)), qGoal(goal.block<3,3>(0,0));
+        qInput.normalize(); 
+        qGoal.normalize();
+        Eigen::Quaterniond qError = qGoal.conjugate() * qInput;
+        Vector3d rotationError = 2.0 * qError.vec();
+
+        if(rotationAxisIgnore.norm() > 1e-6) {
+            rotationAxisIgnore.normalize();
+            // project the total rotation error onto the direction we don't care about to get its contribution, and remove it
+            rotationError -= rotationError.dot(rotationAxisIgnore) * rotationAxisIgnore;
+        }
+
+        double rotationCost = (2.0 * qError.vec()).squaredNorm();
+        
+        // the rotation cost is weighted relative to the positionCost
+        totalCost += 0.7 * rotationCost;
+    }
+
+    return totalCost;
 }
 
-VectorXd RobotKinematics::costGradientEstimate(const VectorXd& jointStates, const Matrix4d& goal, const double stepSize) {
+VectorXd RobotKinematics::costGradientEstimate(const VectorXd& jointStates, const Matrix4d& goal, const bool useRotation, Vector3d rotationAxisIgnore, const double stepSize) {
     int n = joints.size();
     VectorXd result(n);
 
@@ -280,7 +311,11 @@ VectorXd RobotKinematics::costGradientEstimate(const VectorXd& jointStates, cons
 
         Matrix4d effectorPlus = fastForwardKinematics(xPlus);
         Matrix4d effectorMin = fastForwardKinematics(xMin);
-        result(i) = (costFunction(effectorPlus, goal) - costFunction(effectorMin, goal)) / (2.0 * stepSize);
+
+        double costPlus = costFunction(effectorPlus, goal, useRotation, rotationAxisIgnore);
+        double costMin = costFunction(effectorMin, goal, useRotation, rotationAxisIgnore);
+
+        result(i) = (costPlus - costMin) / (2.0 * stepSize);
     }
 
     return result;

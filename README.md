@@ -95,6 +95,9 @@ Start PCodeSender with the supplied PCode text file, which awaits untill the con
 <!-- IDEAS -->
 ## Ideas
 
+Regarding the inverse kinematics, currently it has a few issues. In some cases, qpOASES crashes, generally when the goal is too far outside the reachable domain. Secondly, if the initial joint state leads to a near-zero gradient, the numerical limitations make that exactly zero, and hence the program thinks it is in a (local) minimum. This could be avoided by either using a warm start, or doing SQP for (multiple) random starting joint states, then taking the one with the lowest local cost. 
+There is also the thing of redundancy. If there are more degrees of freedom for the robot then those set for the goal, there is likely a set of joint states that all achieve the optimal cost. This could be resolved by adding terms to the cost function, but that might influence things for non-redundant configurations. Something called null-space projection seems advisable, since it adds a secondary separate optimization step after a redundant optimal joint state has been found.
+
 To keep note, one 'future works' idea might be to integrate collisions into the path planning; A given path potentially has 1+ extra degrees of freedom to play with in terms of orientation for a 6/7D robotarm. By defining some theoretical function that is maximized if a collision occurs, we might be able to apply a minimization problem to get the optimal values for the free degrees of freedom to avoid collision / exceeding the joint limits.
 
 

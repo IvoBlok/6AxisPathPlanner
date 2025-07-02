@@ -23,6 +23,7 @@ public:
     VectorXf jointStatesFloat;
 
     Vector3f endPoint;
+    LoadedObject* goalObject;
 
     RobotGUI(VulkanRenderEngine& renderer) {
         registerWithRenderer(renderer);
@@ -65,7 +66,7 @@ public:
                 Matrix4d desiredOrientation = Matrix4d::Identity();
                 desiredOrientation.topRightCorner<3,1>() = endPoint.cast<double>();
 
-                jointStates = robotKinematics.inverseKinematics(desiredOrientation);
+                jointStates = robotKinematics.inverseKinematics(desiredOrientation, false, Vector3d::Zero(), 25, 0.001);
             }
 
             // perform the forward kinematics
@@ -91,6 +92,8 @@ public:
             for (int i = 1; i < robotMatrices.size() - 1; i++) {
                 joints[i - 1]->locateWithMatrix(robotMatrices[i]);
             }
+
+            goalObject->position = glm::vec3{ endPoint(0), endPoint(1), endPoint(2) };
         }
     }
 
@@ -105,9 +108,90 @@ private:
 
     void defineRobot(VulkanRenderEngine& renderer) {
         robotKinematics = RobotKinematics{};
+        goalObject = &renderer.createObject(
+                "../../resources/assets/cube.obj",
+                Vector3d{ 1.f, 0.f, 1.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 0.05f, 0.05f, 0.05f }  // scale
+            );
 
-        // Linear joint with its axes aligned with the robot main axes, and its joint zero point at the robot main zero point
-        // ------------- Simple 3-axis robot arm ------------------------------------
+        // ------------- Simple 3-axis Rotation robot arm --------------------------------
+        // This defines a basic 3-axis (3 rotation joints) robot, to test te SQP IK
+        robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
+                                                        {0.0, 1.0, 0.0, 0.0},
+                                                        {0.0, 0.0, 1.0, 0.0},
+                                                        {0.0, 0.0, 0.0, 1.0}};      
+
+        robotKinematics.joints.emplace_back(Joint{Matrix4d{{1.0, 0.0, 0.0, 0.0},
+                                                           {0.0, 1.0, 0.0, 0.0},
+                                                           {0.0, 0.0, 1.0, 0.0},
+                                                           {0.0, 0.0, 0.0, 1.0}}, 
+                                            JointType::Rotation, 
+                                            -3.14, 
+                                            3.14});
+
+        robotKinematics.joints.emplace_back(Joint{Matrix4d{{0.0, 0.0, 1.0, 0.0},
+                                                           {1.0, 0.0, 0.0, 0.0},
+                                                           {0.0, 1.0, 0.0, 0.0},
+                                                           {0.0, 0.0, 0.0, 1.0}}, 
+                                            JointType::Rotation, 
+                                            -3.14, 
+                                            3.14});
+
+        robotKinematics.joints.emplace_back(Joint{Matrix4d{{1.0, 0.0, 0.0, 0.0},
+                                                           {0.0, 1.0, 0.0, 0.5},
+                                                           {0.0, 0.0, 1.0, 0.0},
+                                                           {0.0, 0.0, 0.0, 1.0}}, 
+                                            JointType::Rotation, 
+                                            -3.14, 
+                                            3.14});
+
+        robotKinematics.endEffector.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
+                                                                    {0.0, 1.0, 0.0, 0.5},
+                                                                    {0.0, 0.0, 1.0, 0.0},
+                                                                    {0.0, 0.0, 0.0, 1.0}};
+
+        base = &renderer.createObject(
+                "../../resources/assets/Gizmo.obj",
+                Vector3d{ 0.f, 0.f, 1.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
+            );
+        base->name = "base";
+
+        effector = &renderer.createObject(
+                "../../resources/assets/Gizmo.obj",
+                Vector3d{ 0.f, 1.f, 0.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
+            );
+        effector->name = "effector";
+
+        joints.emplace_back(&renderer.createObject(
+                "../../resources/assets/Gizmo.obj",
+                Vector3d{ 1.f, 0.f, 0.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
+            ));
+        joints.back()->name = "joint 1";
+        
+        joints.emplace_back(&renderer.createObject(
+                "../../resources/assets/Gizmo.obj",
+                Vector3d{ 1.f, 1.f, 0.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
+            ));
+        joints.back()->name = "joint 2";
+        
+        joints.emplace_back(&renderer.createObject(
+                "../../resources/assets/Gizmo.obj",
+                Vector3d{ 0.f, 1.f, 1.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
+            ));
+        joints.back()->name = "joint 3";
+
+        /*// ------------- Simple 3-axis cartesian robot arm -----------------------------
         // This defines a basic 3-axis (3 linear joints) cartesian robot, to test te SQP IK
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -182,9 +266,9 @@ private:
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
         joints.back()->name = "joint 3";
-
-        /*
-        // ------------- Big fancy 7-axis robot arm ------------------------------------
+        */
+        
+        /*// ------------- Big fancy 7-axis robot arm ------------------------------------
         // Robot axes are aligned with the world axes, and robot zero is located at the world zero
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},

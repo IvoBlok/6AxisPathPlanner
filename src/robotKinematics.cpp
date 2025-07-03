@@ -127,6 +127,9 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
     VectorXd l = VectorXd::Zero(m);                 // l: the lagrange multiplier for inequalities. Initially set as a zero vector
     MatrixXd H = MatrixXd::Identity(n, n);          // H: approximation of the hessian  using BFGS 
 
+    proxsuite::proxqp::dense::QP<double> qp(n, 0, m); // n vars, 0 equality constraints, m inequality constraints
+    VectorXd upperBounds = VectorXd::Constant(m, std::numeric_limits<double>::infinity());
+
     for (int k = 0; k < maxIterations; k++) {
         for(int i=0; i<n; i++) H(i,i) += 1e-6;
 
@@ -146,21 +149,37 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
         constraintsGradientsTranspose.transposeInPlace();   // (m x n)
 
         // ------------- Solve IQP Problem --------------------------
+
+        // std::cout << "---- QP Problem Data " << k << " ----\n";
+        // std::cout << "f(x): " << cost << "\n";
+
+        // Force symmetry
+        H = 0.5 * (H + H.transpose());
+
         // $\text{subject to} \; (\grad h_i(\textbf{x}_k))^T p + h_i(\textbf{x}_k) \ge 0, \; i \in (0,1,2...m)$
         // can be rewritten into $(-h_i(\textbf{x}_k) \le \grad h_i(\textbf{x}_k))^T p \le -\infty $
         VectorXd lowerBounds = -constraints;
-        VectorXd upperBounds = VectorXd::Constant(m, std::numeric_limits<double>::infinity());
 
-        proxsuite::proxqp::dense::QP<double> qp(n, 0, m); // n vars, 0 equality constraints, m inequality constraints
-        qp.init(
-            H,                              // Hessian: MatrixXd (n x n)
-            costGradient,                   // Gradient: VectorXd (n)
-            proxsuite::nullopt,             // A = no equality constraint matrix
-            proxsuite::nullopt,             // b = no equality bounds
-            constraintsGradientsTranspose,  // C: inequality constraint matrix (m x n)
-            lowerBounds,                    // l: lower bounds (m)
-            upperBounds                     // u: upper bounds (m)
-        );
+        if (k == 0)
+            qp.init(
+                H,                              // Hessian: MatrixXd (n x n)
+                costGradient,                   // Gradient: VectorXd (n)
+                proxsuite::nullopt,             // A = no equality constraint matrix
+                proxsuite::nullopt,             // b = no equality bounds
+                constraintsGradientsTranspose,  // C: inequality constraint matrix (m x n)
+                lowerBounds,                    // l: lower bounds (m)
+                upperBounds                     // u: upper bounds (m)
+            );
+        else 
+            qp.update(
+                H,                              // Hessian: MatrixXd (n x n)
+                costGradient,                   // Gradient: VectorXd (n)
+                proxsuite::nullopt,             // A = no equality constraint matrix
+                proxsuite::nullopt,             // b = no equality bounds
+                proxsuite::nullopt,             // C: inequality constraint matrix (m x n)
+                lowerBounds,                    // l: lower bounds (m)
+                proxsuite::nullopt              // u: upper bounds (m)
+            );
 
         qp.solve();
         VectorXd p = qp.results.x;         
@@ -174,19 +193,6 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
             if (isValidState(x_new)) break;
             alpha *= 0.75;
         }
-
-        std::cout << "---- QP Problem Data " << k << " ----\n";
-        /*
-        std::cout << "H:\n" << H << "\n";
-        std::cout << "grad f:\n" << costGradient << "\n";
-        std::cout << "h: \n" << constraints << "\n";
-        std::cout << "grad h:\n" << constraintsGradientsTranspose.transpose() << "\n";
-
-        std::cout << "x: \n" << x << "\n";
-        std::cout << "p: \n" << p << "\n";
-        std::cout << "l: \n" << l << "\n";
-        */
-        std::cout << cost << "\n";
 
         // ------------- Check Convergence --------------------------
         // check, using the KKT conditions, if our tolerance has been achieved

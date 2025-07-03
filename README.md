@@ -84,6 +84,7 @@ Start PCodeSender with the supplied PCode text file, which awaits untill the con
 ## To Do
 
 - [ ] Expand on robot + tool visualization
+- [ ] Rework how the renderer stores / gives LoadedObject/LoadedLine references (so objects can be deleted in GUI files)
 - [ ] Add inverse kinematics
 - [ ] Add movement animation
 - [ ] Add full 3D polylines

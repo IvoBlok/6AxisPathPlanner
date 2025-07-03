@@ -42,7 +42,7 @@ public:
         if (ImGui::CollapsingHeader("Define Robot##robot_GUI")) {
 
             if (!robotDefined) {
-                defineRobot(renderer);
+                defineFullRobot(renderer);
                 robotDefined = true;
             }
 
@@ -104,7 +104,7 @@ private:
     bool robotDefined;
     bool continuousIK;
 
-    void defineRobot(VulkanRenderEngine& renderer) {
+    void defineFullRobot(VulkanRenderEngine& renderer) {
         robotKinematics = RobotKinematics{};
         goalObject = &renderer.createObject(
                 "../../resources/assets/cube.obj",
@@ -113,8 +113,14 @@ private:
                 Vector3d{ 0.015f, 0.015f, 0.015f }  // scale
             );
         goalObject->name = "goal";
+
+        define7DRobot();
         
-        /*// ------------- Simple 3-axis Rotation robot arm --------------------------------
+        jointStates = VectorXd::Zero(robotKinematics.joints.size());
+        jointStatesFloat = VectorXf::Zero(robotKinematics.joints.size());
+    }
+
+    void define3DRotationRobot() {
         // This defines a basic 3-axis (3 rotation joints) robot, to test te SQP IK
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -189,9 +195,9 @@ private:
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
         joints.back()->name = "joint 3";
-        */
-        
-        /*// ------------- Simple 3-axis cartesian robot arm -----------------------------
+    }
+
+    void define3DTranslationRobot() {
         // This defines a basic 3-axis (3 linear joints) cartesian robot, to test te SQP IK
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -266,9 +272,9 @@ private:
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
         joints.back()->name = "joint 3";
-        */
-        
-        // ------------- Big fancy 7-axis robot arm ------------------------------------
+    }
+
+    void define7DRobot() {
         // Robot axes are aligned with the world axes, and robot zero is located at the world zero
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -417,10 +423,6 @@ private:
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
         joints.back()->name = "joint 7";    
-        
-
-        jointStates = VectorXd::Zero(robotKinematics.joints.size());
-        jointStatesFloat = VectorXf::Zero(robotKinematics.joints.size());
     }
 
     void ShowMatrix4dGrid(const Eigen::Matrix4d& matrix) {

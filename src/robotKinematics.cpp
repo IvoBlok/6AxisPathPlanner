@@ -125,7 +125,6 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
     VectorXd x(n);                                  // x: the current joint state guess
 
     proxsuite::proxqp::dense::QP<double> qp(n, 0, 0, true); // n vars, 0 equality constraints, m inequality constraints
-    
     VectorXd lowerJointBounds = jointLowerBounds();
     VectorXd upperJointBounds = jointUpperBounds();
     VectorXd lowerBox(n);

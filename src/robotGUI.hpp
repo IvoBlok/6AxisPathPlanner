@@ -29,6 +29,7 @@ public:
         registerWithRenderer(renderer);
 
         robotDefined = false;
+        continuousIK = false;
         base = nullptr;
         effector = nullptr;
 
@@ -61,12 +62,21 @@ public:
             ImGui::SliderFloat("y", &endPoint(1), -1.5, 1.5);
             ImGui::SliderFloat("z", &endPoint(2), -1.5, 1.5);
 
-            // calculate the joint state based on the given desired effector orientation
-            if (ImGui::Button("do SQP IK")) {
+            ImGui::Checkbox("continuous IK##RenderToggle", &continuousIK);
+            
+            if (continuousIK) {
                 Matrix4d desiredOrientation = Matrix4d::Identity();
                 desiredOrientation.topRightCorner<3,1>() = endPoint.cast<double>();
 
                 jointStates = robotKinematics.inverseKinematics(desiredOrientation, false, Vector3d::Zero(), 100, 0.001);
+            } else {
+                // calculate the joint state based on the given desired effector orientation
+                if (ImGui::Button("do SQP IK")) {
+                    Matrix4d desiredOrientation = Matrix4d::Identity();
+                    desiredOrientation.topRightCorner<3,1>() = endPoint.cast<double>();
+
+                    jointStates = robotKinematics.inverseKinematics(desiredOrientation, false, Vector3d::Zero(), 100, 0.001);
+                }
             }
 
             // perform the forward kinematics
@@ -105,6 +115,7 @@ public:
 
 private:
     bool robotDefined;
+    bool continuousIK;
 
     void defineRobot(VulkanRenderEngine& renderer) {
         robotKinematics = RobotKinematics{};

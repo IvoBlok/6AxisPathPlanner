@@ -121,64 +121,64 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
     */
     
     const int n = joints.size();                    // n: number of joints
-    const int m = n * 2;                            // m: number of inequality constraints (for now we use 2 for each joint; 1 for the lower joint limit, 1 for the upper limit)
 
     VectorXd x = VectorXd::Zero(n);                 // x: the current joint state guess. initial joints guess is set as a zero vector
-    VectorXd l = VectorXd::Zero(m);                 // l: the lagrange multiplier for inequalities. Initially set as a zero vector
     MatrixXd H = MatrixXd::Identity(n, n);          // H: approximation of the hessian  using BFGS 
 
-    proxsuite::proxqp::dense::QP<double> qp(n, 0, m); // n vars, 0 equality constraints, m inequality constraints
-    VectorXd upperBounds = VectorXd::Constant(m, std::numeric_limits<double>::infinity());
+    proxsuite::proxqp::dense::QP<double> qp(n, 0, 0, true); // n vars, 0 equality constraints, m inequality constraints
+    
+    VectorXd lowerJointBounds = jointLowerBounds();
+    VectorXd upperJointBounds = jointUpperBounds();
+    VectorXd lowerBox(n);
+    VectorXd upperBox(n);
 
-    for (int k = 0; k < maxIterations; k++) {
-        for(int i=0; i<n; i++) H(i,i) += 1e-6;
+    VectorXd nextCostGradient = costGradientEstimate(x, goal, useRotation, rotationAxisIgnore, 1e-3);
 
+    int k;
+    for (k = 0; k < maxIterations; k++) {
         // ------------- Calculate Problem Terms --------------------
-        // calculate cost $f(\textbf{x}_k)$ algebraically
-        Matrix4d effector = fastForwardKinematics(x);
-        double cost = costFunction(effector, goal, useRotation, rotationAxisIgnore);
-
         // estimate $\grad f(\textbf{x}_k)$ using a central difference estimate for each element
-        VectorXd costGradient = costGradientEstimate(x, goal, useRotation, rotationAxisIgnore, 1e-3);
+        VectorXd costGradient = nextCostGradient;
 
         // calculate $h_i(\textbf{x}_k)$ algebraically
         VectorXd constraints = jointConstraints(x);
 
-        // calculate $\grad h_i(\textbf{x}_k)$ algebraically
-        MatrixXd constraintsGradientsTranspose = jointConstraintsGradients(x); // (n x m), each column being the gradient of a constraint
-        constraintsGradientsTranspose.transposeInPlace();   // (m x n)
-
-        // ------------- Solve IQP Problem --------------------------
-
-        // std::cout << "---- QP Problem Data " << k << " ----\n";
-        // std::cout << "f(x): " << cost << "\n";
-
-        // Force symmetry
+        // Nudge the hessian a bit, and ensure it is symmetric
+        for(int i=0; i<n; i++) H(i,i) += 1e-6;
         H = 0.5 * (H + H.transpose());
 
-        // $\text{subject to} \; (\grad h_i(\textbf{x}_k))^T p + h_i(\textbf{x}_k) \ge 0, \; i \in (0,1,2...m)$
-        // can be rewritten into $(-h_i(\textbf{x}_k) \le \grad h_i(\textbf{x}_k))^T p \le -\infty $
-        VectorXd lowerBounds = -constraints;
+        lowerBox = lowerJointBounds - x;
+        upperBox = upperJointBounds - x;
 
+        // ------------- Check Convergence --------------------------
+        // check, roughly, if the solution has converged
+        if (costGradient.norm() <= tolerance && (constraints.array() >= -tolerance).all())
+            break;
+
+        // ------------- Solve IQP Problem --------------------------
         if (k == 0)
             qp.init(
-                H,                              // Hessian: MatrixXd (n x n)
-                costGradient,                   // Gradient: VectorXd (n)
-                proxsuite::nullopt,             // A = no equality constraint matrix
-                proxsuite::nullopt,             // b = no equality bounds
-                constraintsGradientsTranspose,  // C: inequality constraint matrix (m x n)
-                lowerBounds,                    // l: lower bounds (m)
-                upperBounds                     // u: upper bounds (m)
+                H,
+                costGradient,
+                proxsuite::nullopt,
+                proxsuite::nullopt,
+                proxsuite::nullopt,
+                proxsuite::nullopt,
+                proxsuite::nullopt,
+                lowerBox,
+                upperBox
             );
         else 
             qp.update(
-                H,                              // Hessian: MatrixXd (n x n)
-                costGradient,                   // Gradient: VectorXd (n)
-                proxsuite::nullopt,             // A = no equality constraint matrix
-                proxsuite::nullopt,             // b = no equality bounds
-                proxsuite::nullopt,             // C: inequality constraint matrix (m x n)
-                lowerBounds,                    // l: lower bounds (m)
-                proxsuite::nullopt              // u: upper bounds (m)
+                H,
+                costGradient,
+                proxsuite::nullopt,
+                proxsuite::nullopt,
+                proxsuite::nullopt,
+                proxsuite::nullopt,
+                proxsuite::nullopt,
+                lowerBox,
+                upperBox
             );
 
         qp.solve();
@@ -194,30 +194,9 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
             alpha *= 0.75;
         }
 
-        // ------------- Check Convergence --------------------------
-        // check, using the KKT conditions, if our tolerance has been achieved
-        VectorXd stationarity = costGradient + constraintsGradientsTranspose.transpose() * l;
-        VectorXd complSlack = l.cwiseProduct(constraints);
-
-        // check all 4 separate conditions of KKT:
-        if (stationarity.norm() <= tolerance &&                 // Stationarity: $||\grad f_k + \sum_{i} l_{i,k} \grad h_{i,k}|| \le \text{tolerance}$
-            (constraints.array() >= -tolerance).all() &&        // Primal feasability: $h_{i,k}\ge -\text{tolerance}$
-            (l.array() >= -tolerance).all() &&                  // Dual feasability: $l_{i,k} \ge -\text{tolerance}$
-            (complSlack.cwiseAbs().maxCoeff() <= tolerance))    // Complementary slackness: $|l_{i,k}h_{i,k}| \le \text{tolerance}$
-        {
-            std::cout << "Yippie! proper solution found!\n";
-
-            Matrix4d effectorCheck = fastForwardKinematics(x);
-            double costCheck = costFunction(effectorCheck, goal, useRotation, rotationAxisIgnore);
-            if (costCheck > tolerance)
-                std::cout << "Goal is likely outside the reachable domain! cost: " << costCheck << "\n";
-            break;
-        }
-
         // ------------- Update Variables ---------------------------
-        // set $\textbf{x}_{k+1}$ and $\textbf{l}_{k+1}$
+        // set $\textbf{x}_{k+1}$
         x += alpha * p;
-        l = qp.results.z; 
 
         // ------------- Update Hessian -----------------------------
         // update $\grad_{xx}^2\mathcal{L}_k$, (H) approximation
@@ -232,8 +211,9 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
         //
         // BFGS Hessian approximation update goes like: $H_{k+1}=H_k - \frac{H_k s_ks_k^TH_k^T}{s_k^tH_ks_k}+\frac{y_ky_k^T}{y_k^Ts_k}$
         // where $\textbf{s}_k = \textbf{x}_{k+1} - \textbf{x}_k$ and $\textbf{y}_k=\nabla \textbf{f}_{k+1} - \nabla \textbf{f}_k$
-       
-        VectorXd y = costGradientEstimate(x, goal, useRotation, rotationAxisIgnore, 1e-3) - costGradient;
+        
+        nextCostGradient = costGradientEstimate(x, goal, useRotation, rotationAxisIgnore, 1e-3);
+        VectorXd y = nextCostGradient - costGradient;
         VectorXd s = alpha * p;
         
         const VectorXd Hs = H * s;
@@ -252,10 +232,13 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
         const double rho = 1.0 / y.dot(s);
         H -= (Hs * Hs.transpose()) / sTHs;
         H += rho * y * y.transpose();
-
-        if (k == maxIterations - 1) 
-            std::cout << "max Iterations reached! Singularity?\n";
     }
+
+    std::cout << "SQP IK done in " << k << " iterations! \n";
+    if (k == maxIterations - 1) 
+        std::cout << "max Iterations reached! Singularity?\n\n";
+    else 
+        std::cout << "solution found! (local minimum)\n\n";
 
     return x;
 }
@@ -340,6 +323,30 @@ MatrixXd RobotKinematics::jointConstraintsGradients(const VectorXd& jointStates)
     }
 
     return results;
+}
+
+VectorXd RobotKinematics::jointLowerBounds() {
+    VectorXd result(joints.size());
+
+    int index = 0;
+    for (const auto& joint : joints) {
+        result[index] = joint.lowerLimit; 
+        index++;
+    }
+
+    return result;
+}
+
+VectorXd RobotKinematics::jointUpperBounds() {
+    VectorXd result(joints.size());
+
+    int index = 0;
+    for (const auto& joint : joints) {
+        result[index] = joint.upperLimit; 
+        index++;
+    }
+
+    return result;
 }
 
 bool RobotKinematics::isValidState(const VectorXd& jointStates) {

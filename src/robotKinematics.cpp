@@ -4,6 +4,7 @@
 #include "proxsuite/proxqp/dense/dense.hpp"
 
 #include <iostream>
+#include <random>
 
 namespace kinematics {
 
@@ -107,7 +108,7 @@ Matrix4d RobotKinematics::fastForwardKinematics(VectorXd& jointStates) {
     return result;
 }
 
-VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotation, Vector3d rotationAxisIgnore, int maxIterations, double tolerance) {
+VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotation, Vector3d rotationAxisIgnore, int maxIterations, int maxAttempts, double tolerance, bool startAtLast) {
     /* This algorithm attemps to solve (redundant) inverse kinematics by solving the following problem:
         $\text{min}_x \;f(\textbf{x}) $
         $\text{subject to} \; h_i(\textbf{x}) \ge 0, \; i \in (0,1,2...m)$
@@ -121,9 +122,7 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
     */
     
     const int n = joints.size();                    // n: number of joints
-
-    VectorXd x = VectorXd::Zero(n);                 // x: the current joint state guess. initial joints guess is set as a zero vector
-    MatrixXd H = MatrixXd::Identity(n, n);          // H: approximation of the hessian  using BFGS 
+    VectorXd x(n);                                  // x: the current joint state guess
 
     proxsuite::proxqp::dense::QP<double> qp(n, 0, 0, true); // n vars, 0 equality constraints, m inequality constraints
     
@@ -132,113 +131,133 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
     VectorXd lowerBox(n);
     VectorXd upperBox(n);
 
-    VectorXd nextCostGradient = costGradientEstimate(x, goal, useRotation, rotationAxisIgnore, 1e-3);
+    double cost;
+    MatrixXd H;
+    VectorXd nextCostGradient;
 
-    int k;
-    for (k = 0; k < maxIterations; k++) {
-        // ------------- Calculate Problem Terms --------------------
-        // estimate $\grad f(\textbf{x}_k)$ using a central difference estimate for each element
-        VectorXd costGradient = nextCostGradient;
-
-        // calculate $h_i(\textbf{x}_k)$ algebraically
-        VectorXd constraints = jointConstraints(x);
-
-        // Nudge the hessian a bit, and ensure it is symmetric
-        for(int i=0; i<n; i++) H(i,i) += 1e-6;
-        H = 0.5 * (H + H.transpose());
-
-        lowerBox = lowerJointBounds - x;
-        upperBox = upperJointBounds - x;
-
-        // ------------- Check Convergence --------------------------
-        // check, roughly, if the solution has converged
-        if (costGradient.norm() <= tolerance && (constraints.array() >= -tolerance).all())
-            break;
-
-        // ------------- Solve IQP Problem --------------------------
-        if (k == 0)
-            qp.init(
-                H,
-                costGradient,
-                proxsuite::nullopt,
-                proxsuite::nullopt,
-                proxsuite::nullopt,
-                proxsuite::nullopt,
-                proxsuite::nullopt,
-                lowerBox,
-                upperBox
-            );
-        else 
-            qp.update(
-                H,
-                costGradient,
-                proxsuite::nullopt,
-                proxsuite::nullopt,
-                proxsuite::nullopt,
-                proxsuite::nullopt,
-                proxsuite::nullopt,
-                lowerBox,
-                upperBox
-            );
-
-        qp.solve();
-        VectorXd p = qp.results.x;         
-
-        // ------------- Line Search --------------------------------
-        // since for simplification the problem was linearized for each IQP call, the solution isn't necessarily a solution to the non-linearized problem. 
-        // Hence we nudge around the linearized solution so that the non-linearized constraints tell us it is a valid solution.
-        double alpha = 1.0;
-        while (alpha > 1e-4) {
-            VectorXd x_new = x + alpha * p;
-            if (isValidState(x_new)) break;
-            alpha *= 0.75;
-        }
-
-        // ------------- Update Variables ---------------------------
-        // set $\textbf{x}_{k+1}$
-        x += alpha * p;
-
-        // ------------- Update Hessian -----------------------------
-        // update $\grad_{xx}^2\mathcal{L}_k$, (H) approximation
-        //
-        // $\mathcal{L}_k := \nabla^2_{\textbf{xx}}f(\textbf{x}_k)-\sum_{i}l_{k,i}\nabla^2_{\textbf{xx}}h_i(\textbf{x}_k)$
-        //
-        // since $f(\textbf{x})$ is a numerical thingy, and hence we can't define an algebraic hessian for it, we need to use some approximation method for it
-        // For this I use BFGS here, though there definitely is some better variant.
-        // The second component, dependent on $h_i(\textbf{x})$, is algebraically defined (currently). 
-        // Even better, for the simple constraints here, where we have constraints of the form $h_i(\textbf{x})=\pm x_{j} \pm b$, we have $\nabla^2_{\textbf{xx}}h_i(\textbf{x}_k)=0$
-        // since the contribution from the constraints is 0, we can update H directly using the BFGS update rule.
-        //
-        // BFGS Hessian approximation update goes like: $H_{k+1}=H_k - \frac{H_k s_ks_k^TH_k^T}{s_k^tH_ks_k}+\frac{y_ky_k^T}{y_k^Ts_k}$
-        // where $\textbf{s}_k = \textbf{x}_{k+1} - \textbf{x}_k$ and $\textbf{y}_k=\nabla \textbf{f}_{k+1} - \nabla \textbf{f}_k$
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+        if (attempt == 0 && startAtLast && lastIKResult.rows() != 0)
+            x = lastIKResult;
+        else
+            x = randomJointStateInBounds();             // initial joints guess is a random state within the joint bounds
         
+        H = MatrixXd::Identity(n, n);                   // H: approximation of the hessian  using BFGS 
         nextCostGradient = costGradientEstimate(x, goal, useRotation, rotationAxisIgnore, 1e-3);
-        VectorXd y = nextCostGradient - costGradient;
-        VectorXd s = alpha * p;
-        
-        const VectorXd Hs = H * s;
-        const double sTHs = s.dot(Hs);
 
-        double theta = 1.0;
-        const double dampingThreshold = 0.2;
+        int k;
+        for (k = 0; k < maxIterations; k++) {
+            // ------------- Calculate Problem Terms --------------------
+            MatrixXd effector = fastForwardKinematics(x);
+            cost = costFunction(effector, goal, useRotation, rotationAxisIgnore);
 
-        const double ys = y.dot(s);
-        if (ys < dampingThreshold * sTHs) {
-            theta = (0.8 * sTHs) / (sTHs - ys); // Powell
-            y = theta * y + (1.0 - theta) * Hs;
+            // estimate $\grad f(\textbf{x}_k)$ using a central difference estimate for each element
+            VectorXd costGradient = nextCostGradient;
+
+            // calculate $h_i(\textbf{x}_k)$ algebraically
+            VectorXd constraints = jointConstraints(x);
+
+            // Nudge the hessian a bit, and ensure it is symmetric
+            for(int i=0; i<n; i++) H(i,i) += 1e-6;
+            H = 0.5 * (H + H.transpose());
+
+            lowerBox = lowerJointBounds - x;
+            upperBox = upperJointBounds - x;
+
+            // ------------- Check Convergence --------------------------
+            // check, roughly, if the solution has converged
+            if ((costGradient.norm() <= tolerance && (constraints.array() >= -tolerance).all()) || cost < tolerance)
+                break;
+
+            // ------------- Solve IQP Problem --------------------------
+            if (k == 0)
+                qp.init(
+                    H,
+                    costGradient,
+                    proxsuite::nullopt,
+                    proxsuite::nullopt,
+                    proxsuite::nullopt,
+                    proxsuite::nullopt,
+                    proxsuite::nullopt,
+                    lowerBox,
+                    upperBox
+                );
+            else 
+                qp.update(
+                    H,
+                    costGradient,
+                    proxsuite::nullopt,
+                    proxsuite::nullopt,
+                    proxsuite::nullopt,
+                    proxsuite::nullopt,
+                    proxsuite::nullopt,
+                    lowerBox,
+                    upperBox
+                );
+
+            qp.solve();
+            VectorXd p = qp.results.x;         
+
+            // ------------- Line Search --------------------------------
+            // since for simplification the problem was linearized for each IQP call, the solution isn't necessarily a solution to the non-linearized problem. 
+            // Hence we nudge around the linearized solution so that the non-linearized constraints tell us it is a valid solution.
+            double alpha = 1.0;
+            while (alpha > 1e-4) {
+                VectorXd x_new = x + alpha * p;
+                if (isValidState(x_new)) break;
+                alpha *= 0.75;
+            }
+
+            // ------------- Update Variables ---------------------------
+            // set $\textbf{x}_{k+1}$
+            x += alpha * p;
+
+            // ------------- Update Hessian -----------------------------
+            // update $\grad_{xx}^2\mathcal{L}_k$, (H) approximation
+            //
+            // $\mathcal{L}_k := \nabla^2_{\textbf{xx}}f(\textbf{x}_k)-\sum_{i}l_{k,i}\nabla^2_{\textbf{xx}}h_i(\textbf{x}_k)$
+            //
+            // since $f(\textbf{x})$ is a numerical thingy, and hence we can't define an algebraic hessian for it, we need to use some approximation method for it
+            // For this I use BFGS here, though there definitely is some better variant.
+            // The second component, dependent on $h_i(\textbf{x})$, is algebraically defined (currently). 
+            // Even better, for the simple constraints here, where we have constraints of the form $h_i(\textbf{x})=\pm x_{j} \pm b$, we have $\nabla^2_{\textbf{xx}}h_i(\textbf{x}_k)=0$
+            // since the contribution from the constraints is 0, we can update H directly using the BFGS update rule.
+            //
+            // BFGS Hessian approximation update goes like: $H_{k+1}=H_k - \frac{H_k s_ks_k^TH_k^T}{s_k^tH_ks_k}+\frac{y_ky_k^T}{y_k^Ts_k}$
+            // where $\textbf{s}_k = \textbf{x}_{k+1} - \textbf{x}_k$ and $\textbf{y}_k=\nabla \textbf{f}_{k+1} - \nabla \textbf{f}_k$
+            
+            nextCostGradient = costGradientEstimate(x, goal, useRotation, rotationAxisIgnore, 1e-3);
+            VectorXd y = nextCostGradient - costGradient;
+            VectorXd s = alpha * p;
+            
+            const VectorXd Hs = H * s;
+            const double sTHs = s.dot(Hs);
+
+            double theta = 1.0;
+            const double dampingThreshold = 0.2;
+
+            const double ys = y.dot(s);
+            if (ys < dampingThreshold * sTHs) {
+                theta = (0.8 * sTHs) / (sTHs - ys); // Powell
+                y = theta * y + (1.0 - theta) * Hs;
+            }
+            
+            // BFGS with modified y
+            const double rho = 1.0 / y.dot(s);
+            H -= (Hs * Hs.transpose()) / sTHs;
+            H += rho * y * y.transpose();
         }
-        
-        // BFGS with modified y
-        const double rho = 1.0 / y.dot(s);
-        H -= (Hs * Hs.transpose()) / sTHs;
-        H += rho * y * y.transpose();
-    }
 
-    std::cout << "SQP IK done in " << k << " iterations! \n";
-    if (k == maxIterations - 1) 
-        std::cout << "max Iterations reached! Singularity?\n\n";
-    else 
-        std::cout << "solution found! (local minimum)\n\n";
+        if (attempt == 0 && k == 0 && cost < tolerance) 
+            break;
+        std::cout << "SQP IK attempt " << attempt << " done in " << k << " iterations! \n";
+        if (cost < tolerance) {
+            std::cout << "perfect solution found!\n\n";
+            lastIKResult = x;
+            break;
+        } else if (attempt >= maxAttempts - 1) {
+            std::cout << "nothing found! \n\n";
+        }
+    }
 
     return x;
 }
@@ -265,7 +284,7 @@ double RobotKinematics::costFunction(const Matrix4d& input, const Matrix4d& goal
             rotationError -= rotationError.dot(rotationAxisIgnore) * rotationAxisIgnore;
         }
 
-        double rotationCost = (2.0 * qError.vec()).squaredNorm();
+        double rotationCost = (rotationError).squaredNorm();
         
         // the rotation cost is weighted relative to the positionCost
         totalCost += 0.7 * rotationCost;
@@ -358,6 +377,20 @@ bool RobotKinematics::isValidState(const VectorXd& jointStates) {
         ++index;
     }
     return true;
+}
+
+VectorXd RobotKinematics::randomJointStateInBounds() {
+    VectorXd result(joints.size());
+    std::mt19937 gen{std::random_device{}()};
+
+    int index = 0;
+    for (const auto& joint : joints) {
+        result[index] = std::uniform_real_distribution<double>{joint.lowerLimit, joint.upperLimit}(gen);
+
+        index++;
+    }
+
+    return result;
 }
 
 }

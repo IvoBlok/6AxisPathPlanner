@@ -23,6 +23,7 @@ public:
     VectorXf jointStatesFloat;
 
     Vector3f endPoint;
+    Vector3f endRotation;
     LoadedObject* goalObject;
 
     RobotGUI(VulkanRenderEngine& renderer) {
@@ -34,6 +35,7 @@ public:
         effector = nullptr;
 
         endPoint = Vector3f::Zero();
+        endRotation = Vector3f::Zero();
     }
 
     void drawGUI(VulkanRenderEngine& renderer) {
@@ -61,49 +63,34 @@ public:
             ImGui::SliderFloat("x", &endPoint(0), -1.5, 1.5);
             ImGui::SliderFloat("y", &endPoint(1), -1.5, 1.5);
             ImGui::SliderFloat("z", &endPoint(2), -1.5, 1.5);
-
+            ImGui::SliderFloat("yaw", &endRotation(0), -3.14, 3.14);
+            ImGui::SliderFloat("pitch", &endRotation(1), -3.14, 3.14);
+            ImGui::SliderFloat("roll", &endRotation(2), -3.14, 3.14);
             ImGui::Checkbox("continuous IK##RenderToggle", &continuousIK);
             
-            if (continuousIK) {
-                Matrix4d desiredOrientation = Matrix4d::Identity();
-                desiredOrientation.topRightCorner<3,1>() = endPoint.cast<double>();
+            Eigen::Affine3d transform = 
+            Eigen::Translation3d(endPoint.cast<double>()) *
+            Eigen::AngleAxisd(endRotation.z(), Eigen::Vector3d::UnitZ()) *
+            Eigen::AngleAxisd(endRotation.y(), Eigen::Vector3d::UnitY()) *
+            Eigen::AngleAxisd(endRotation.x(), Eigen::Vector3d::UnitX());
 
-                jointStates = robotKinematics.inverseKinematics(desiredOrientation, false, Vector3d::Zero(), 100, 0.001);
-            } else {
-                // calculate the joint state based on the given desired effector orientation
-                if (ImGui::Button("do SQP IK")) {
-                    Matrix4d desiredOrientation = Matrix4d::Identity();
-                    desiredOrientation.topRightCorner<3,1>() = endPoint.cast<double>();
+            Eigen::Matrix4d desiredOrientation = transform.matrix();
 
-                    jointStates = robotKinematics.inverseKinematics(desiredOrientation, false, Vector3d::Zero(), 100, 0.001);
+            if (continuousIK || ImGui::Button("do SQP IK")) {
+                jointStates = robotKinematics.inverseKinematics(desiredOrientation, true, Vector3d::UnitZ(), 100, 3, 1e-7, true);
+
+                // perform the forward kinematics
+                std::vector<Matrix4d> robotMatrices = robotKinematics.forwardKinematics(jointStates);
+
+                // update the renderer objects
+                base->locateWithMatrix(robotMatrices.front());
+                effector->locateWithMatrix(robotMatrices.back());
+                for (int i = 1; i < robotMatrices.size() - 1; i++) {
+                    joints[i - 1]->locateWithMatrix(robotMatrices[i]);
                 }
             }
 
-            // perform the forward kinematics
-            std::vector<Matrix4d> robotMatrices = robotKinematics.forwardKinematics(jointStates);
-
-            // show the matrices and joint controls
-            for (int i = 0; i < robotMatrices.size(); i++) {
-                if (i == 0)
-                    ImGui::SeparatorText("Base");
-                else if (i == robotMatrices.size() - 1)
-                    ImGui::SeparatorText("End Effector");
-                else {
-                    char label[32];
-                    snprintf(label, sizeof(label), "Joint %d", i);
-                    ImGui::SeparatorText(label);
-                }
-                ShowMatrix4dGrid(robotMatrices[i]);
-            }
-
-            // update the renderer objects
-            base->locateWithMatrix(robotMatrices.front());
-            effector->locateWithMatrix(robotMatrices.back());
-            for (int i = 1; i < robotMatrices.size() - 1; i++) {
-                joints[i - 1]->locateWithMatrix(robotMatrices[i]);
-            }
-
-            goalObject->position = glm::vec3{ endPoint(0), endPoint(1), endPoint(2) };
+            goalObject->locateWithMatrix(desiredOrientation);
         }
     }
 
@@ -125,8 +112,9 @@ private:
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 0.015f, 0.015f, 0.015f }  // scale
             );
-
-        // ------------- Simple 3-axis Rotation robot arm --------------------------------
+        goalObject->name = "goal";
+        
+        /*// ------------- Simple 3-axis Rotation robot arm --------------------------------
         // This defines a basic 3-axis (3 rotation joints) robot, to test te SQP IK
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -201,7 +189,7 @@ private:
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
         joints.back()->name = "joint 3";
-        
+        */
         
         /*// ------------- Simple 3-axis cartesian robot arm -----------------------------
         // This defines a basic 3-axis (3 linear joints) cartesian robot, to test te SQP IK
@@ -280,7 +268,7 @@ private:
         joints.back()->name = "joint 3";
         */
         
-        /*// ------------- Big fancy 7-axis robot arm ------------------------------------
+        // ------------- Big fancy 7-axis robot arm ------------------------------------
         // Robot axes are aligned with the world axes, and robot zero is located at the world zero
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -429,7 +417,7 @@ private:
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
         joints.back()->name = "joint 7";    
-        */
+        
 
         jointStates = VectorXd::Zero(robotKinematics.joints.size());
         jointStatesFloat = VectorXf::Zero(robotKinematics.joints.size());

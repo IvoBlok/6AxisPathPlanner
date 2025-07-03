@@ -61,9 +61,12 @@ public:
     Matrix4d fastForwardKinematics(VectorXd& jointStates);
 
     // 'inverseKinematics' calculates the required joint states so that the end effector matrix lines up with the given goal matrix. 
-    VectorXd inverseKinematics(Matrix4d& goal, const bool useRotation = true, Vector3d rotationAxisIgnore = Vector3d::Zero(), int maxIterations = 5, double tolerance = 1e-3);
+    VectorXd inverseKinematics(Matrix4d& goal, const bool useRotation = true, Vector3d rotationAxisIgnore = Vector3d::Zero(), int maxIterations = 33, int maxAttempts = 3, double tolerance = 1e-3, bool startAtLast = true);
     
 private:
+    // 'lastIKResult' stores, as the name implies, the last result from 'inverseKinematics'. If defined, and toggled on, 'inverseKinematics' uses this as a starting point for its next call
+    VectorXd lastIKResult;
+
     // 'costFunction' defines when a given endEffector orientation is good or not
     // TODO: allow for setting only certain d.o.f's of the goal as relevant; i.e. if you only care about accuracy in position, and 2 axes of rotation, allowing the software to freely choose the optimal 3'rd rotation
     double costFunction(const Matrix4d& input, const Matrix4d& goal, const bool useRotation = true, Vector3d rotationAxisIgnore = Vector3d::Zero());
@@ -82,6 +85,8 @@ private:
 
     // 'isValidState' checks if all given state elements fall within the defined joint boundaries
     bool isValidState(const VectorXd& jointStates);
+
+    VectorXd randomJointStateInBounds();
 };
 
 

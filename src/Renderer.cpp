@@ -2354,7 +2354,8 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
             LoadedObject& object = createObject(
                     "../../resources/assets/cube.obj",
                     Vector3d{ 0.f, 0.f, 1.f }, // color
-                    Vector3d{ 0.f, 5.f, 0.f }  // position
+                    Vector3d{ 0.f, 0.f, 0.f }, // position
+                    Vector3d{ .05f, .05f, .05f }  // scale
                 );
             
             object.name = "cube";
@@ -2363,7 +2364,8 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
             LoadedObject& object = createObject(
                     "../../resources/assets/plane.obj",
                     Vector3d{ 1.f, 0.9f, 0.f }, // color
-                    Vector3d{ 0.f, 0.f, 0.f }  // position
+                    Vector3d{ 0.f, 0.f, 0.f },  // position
+                    Vector3d{ .05f, .05f, .05f }  // scale
                 );
             
             object.name = "plane";

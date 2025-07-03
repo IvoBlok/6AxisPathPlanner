@@ -34,13 +34,13 @@ For file importing:
 * tinyObjLoader
 * native file dialog
 
-For path planning:
-* https://github.com/intents-software/mesh-plane-intersection/tree/master
-* https://github.com/jbuckmccready/CavalierContours
-
 For math:
 * Eigen
 * proxsuite
+
+Additionally, large chunks of the following repositories have been copied and modified to fit specific path planning needs:
+* https://github.com/intents-software/mesh-plane-intersection/tree/master
+* https://github.com/jbuckmccready/CavalierContours
 
 ### Installation
 

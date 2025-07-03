@@ -19,7 +19,7 @@ See 'https://www.afralisp.net/archive/lisp/Bulges1.htm' for the geometric relati
 #include "intersect/circleLineIntersect.hpp"
 #include "intersect/LineLineIntersect.hpp"
 
-#include "Eigen/CustomEigen.hpp"
+#include "CustomEigen.hpp"
 
 #include "mathUtils.hpp"
 #include "plane.hpp"

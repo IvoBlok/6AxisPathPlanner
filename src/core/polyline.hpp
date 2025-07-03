@@ -142,7 +142,7 @@ public:
     return isClosedVal;
   }
 
-  bool const isClosed() {
+  bool isClosed() const {
     return isClosedVal;
   }
 
@@ -150,7 +150,7 @@ public:
     return vertices;
   }
 
-  const std::vector<PlineVertex2_5D>& const vertexes() {
+  const std::vector<PlineVertex2_5D>& vertexes() const {
     return vertices;
   }
 

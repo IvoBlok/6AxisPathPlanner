@@ -1,5 +1,5 @@
 #include "robotKinematics.hpp"
-#include "Eigen/CustomEigen.hpp"
+#include "CustomEigen.hpp"
 
 #include "proxsuite/proxqp/dense/dense.hpp"
 
@@ -142,17 +142,32 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
         VectorXd constraints = jointConstraints(x);
 
         // calculate $\grad h_i(\textbf{x}_k)$ algebraically
-        MatrixXd constraintsGradientsTranspose = jointConstraintsGradients(x);
-        constraintsGradientsTranspose.transposeInPlace();
+        MatrixXd constraintsGradientsTranspose = jointConstraintsGradients(x); // (n x m), each column being the gradient of a constraint
+        constraintsGradientsTranspose.transposeInPlace();   // (m x n)
 
         // ------------- Solve IQP Problem --------------------------
+        // $\text{subject to} \; (\grad h_i(\textbf{x}_k))^T p + h_i(\textbf{x}_k) \ge 0, \; i \in (0,1,2...m)$
+        // can be rewritten into $(-h_i(\textbf{x}_k) \le \grad h_i(\textbf{x}_k))^T p \le -\infty $
+        VectorXd lowerBounds = -constraints;
+        VectorXd upperBounds = VectorXd::Constant(m, std::numeric_limits<double>::infinity());
 
-        // Get solutions
+        proxsuite::proxqp::dense::QP<double> qp(n, 0, m); // n vars, 0 equality constraints, m inequality constraints
+        qp.init(
+            H,                              // Hessian: MatrixXd (n x n)
+            costGradient,                   // Gradient: VectorXd (n)
+            proxsuite::nullopt,             // A = no equality constraint matrix
+            proxsuite::nullopt,             // b = no equality bounds
+            constraintsGradientsTranspose,  // C: inequality constraint matrix (m x n)
+            lowerBounds,                    // l: lower bounds (m)
+            upperBounds                     // u: upper bounds (m)
+        );
+
+        qp.solve();
+        VectorXd p = qp.results.x;         
 
         // ------------- Line Search --------------------------------
         // since for simplification the problem was linearized for each IQP call, the solution isn't necessarily a solution to the non-linearized problem. 
         // Hence we nudge around the linearized solution so that the non-linearized constraints tell us it is a valid solution.
-        /*
         double alpha = 1.0;
         while (alpha > 1e-4) {
             VectorXd x_new = x + alpha * p;
@@ -160,10 +175,8 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
             alpha *= 0.75;
         }
 
-        // ------------- Update Variables ---------------------------
-        // set $\textbf{x}_{k+1}$ and $\textbf{l}_{k+1}$
-
-        std::cout << "---- QP Problem Data ----\n";
+        std::cout << "---- QP Problem Data " << k << " ----\n";
+        /*
         std::cout << "H:\n" << H << "\n";
         std::cout << "grad f:\n" << costGradient << "\n";
         std::cout << "h: \n" << constraints << "\n";
@@ -172,9 +185,8 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
         std::cout << "x: \n" << x << "\n";
         std::cout << "p: \n" << p << "\n";
         std::cout << "l: \n" << l << "\n";
-        std::cout << "\n----------------------\n";
-
-        x += alpha * p;
+        */
+        std::cout << cost << "\n";
 
         // ------------- Check Convergence --------------------------
         // check, using the KKT conditions, if our tolerance has been achieved
@@ -196,6 +208,11 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
             break;
         }
 
+        // ------------- Update Variables ---------------------------
+        // set $\textbf{x}_{k+1}$ and $\textbf{l}_{k+1}$
+        x += alpha * p;
+        l = qp.results.z; 
+
         // ------------- Update Hessian -----------------------------
         // update $\grad_{xx}^2\mathcal{L}_k$, (H) approximation
         //
@@ -204,7 +221,7 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
         // since $f(\textbf{x})$ is a numerical thingy, and hence we can't define an algebraic hessian for it, we need to use some approximation method for it
         // For this I use BFGS here, though there definitely is some better variant.
         // The second component, dependent on $h_i(\textbf{x})$, is algebraically defined (currently). 
-        // Even better, for the simple constraints here, where we simply have constraints of the form $h_i(\textbf{x})=\pm x_{j} \pm b$, we have $\nabla^2_{\textbf{xx}}h_i(\textbf{x}_k)=0$
+        // Even better, for the simple constraints here, where we have constraints of the form $h_i(\textbf{x})=\pm x_{j} \pm b$, we have $\nabla^2_{\textbf{xx}}h_i(\textbf{x}_k)=0$
         // since the contribution from the constraints is 0, we can update H directly using the BFGS update rule.
         //
         // BFGS Hessian approximation update goes like: $H_{k+1}=H_k - \frac{H_k s_ks_k^TH_k^T}{s_k^tH_ks_k}+\frac{y_ky_k^T}{y_k^Ts_k}$
@@ -232,7 +249,6 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
 
         if (k == maxIterations - 1) 
             std::cout << "max Iterations reached! Singularity?\n";
-        */
     }
 
     return x;

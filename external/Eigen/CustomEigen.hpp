@@ -1,10 +1,10 @@
 #ifndef CUSTOM_EIGEN_HPP
 #define CUSTOM_EIGEN_HPP
 
-#include "Eigen"
-#include "Geometry"
-#include "Core"
-#include "Dense"
+#include "Eigen/Eigen"
+#include "Eigen/Geometry"
+#include "Eigen/Core"
+#include "Eigen/Dense"
 
 using Eigen::Vector2d;
 using Eigen::Vector3d;

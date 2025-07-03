@@ -11,7 +11,7 @@ the positions in 'vertices' are world positions; there is no separate translatio
 #include <functional>
 #include <string>
 
-#include "Eigen/CustomEigen.hpp"
+#include "CustomEigen.hpp"
 
 namespace core {
 class ObjectShape {

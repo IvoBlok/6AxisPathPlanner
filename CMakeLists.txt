@@ -135,6 +135,7 @@ target_include_directories(robotPathPlanner PRIVATE
     ${implot_SOURCE_DIR}      
     external  
     external/imgui
+    external/eigen
     ${stb_SOURCE_DIR}
     ${tinyobjloader_SOURCE_DIR}
     ${nfd_SOURCE_DIR}/src/include

@@ -188,14 +188,12 @@ endif()
 
 # Set compiler flags for different build types
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_compile_definitions(robotPathPlanner PRIVATE NDEBUG)
+    target_compile_definitions(robotPathPlanner PRIVATE 
+        NDEBUG
+        )
     if(MSVC)
         target_compile_options(robotPathPlanner PRIVATE 
             /O2      # Optimize for speed
-            /Oi      # Enable intrinsic functions
-            /GL      # Whole program optimization
-            /MP      # Build with multiple processes
-            #/W4     # Warning level 4
             /WX-     # Don't treat warnings as errors
             /RTC0    # Disable runtime checks 
         )
@@ -208,7 +206,7 @@ else()  # Debug build
         target_compile_options(robotPathPlanner PRIVATE 
             /Zi      # Debug information
             /Od      # Disable optimizations
-            /RTC1    # Runtime checks
+            /RTC0    # Runtime checks
             #/W4     # Warning level 4
             #/WX-    # Don't treat warnings as errors
             /MDd     # Debug multithreaded DLL runtime

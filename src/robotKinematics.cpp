@@ -2,7 +2,7 @@
 #include "CustomEigen.hpp"
 
 #include "proxsuite/proxqp/dense/dense.hpp"
-
+#include "proxsuite/proxqp/parallel/qp_solve.hpp"
 #include <iostream>
 #include <random>
 
@@ -122,17 +122,16 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
     */
     
     const int n = joints.size();                    // n: number of joints
+    const int m = n * 2;                            // n: number of joints
     VectorXd x(n);                                  // x: the current joint state guess
 
-    proxsuite::proxqp::dense::QP<double> qp(n, 0, 0, true); // n vars, 0 equality constraints, m inequality constraints
-    VectorXd lowerJointBounds = jointLowerBounds();
-    VectorXd upperJointBounds = jointUpperBounds();
-    VectorXd lowerBox(n);
-    VectorXd upperBox(n);
+    proxsuite::proxqp::dense::QP<double> qp(n, 0, m); // n vars, 0 equality constraints, m inequality constraints
+    VectorXd upperBounds = VectorXd::Constant(m, std::numeric_limits<double>::infinity());
 
     double cost;
     MatrixXd H;
     VectorXd nextCostGradient;
+    VectorXd l;
 
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
         if (attempt == 0 && startAtLast && lastIKResult.rows() != 0)
@@ -141,6 +140,7 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
             x = randomJointStateInBounds();             // initial joints guess is a random state within the joint bounds
         
         H = MatrixXd::Identity(n, n);                   // H: approximation of the hessian  using BFGS 
+        l = VectorXd::Zero(m);
         nextCostGradient = costGradientEstimate(x, goal, useRotation, rotationAxisIgnore, 1e-3);
 
         int k;
@@ -155,17 +155,29 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
             // calculate $h_i(\textbf{x}_k)$ algebraically
             VectorXd constraints = jointConstraints(x);
 
+            // calculate $\grad h_i(\textbf{x}_k)$ algebraically
+            MatrixXd constraintsGradientsTranspose = jointConstraintsGradients(x); // (n x m), each column being the gradient of a constraint
+            constraintsGradientsTranspose.transposeInPlace();   // (m x n)
+            
             // Nudge the hessian a bit, and ensure it is symmetric
             for(int i=0; i<n; i++) H(i,i) += 1e-6;
             H = 0.5 * (H + H.transpose());
 
-            lowerBox = lowerJointBounds - x;
-            upperBox = upperJointBounds - x;
+            VectorXd lowerBounds = -constraints;
 
             // ------------- Check Convergence --------------------------
-            // check, roughly, if the solution has converged
-            if ((costGradient.norm() <= tolerance && (constraints.array() >= -tolerance).all()) || cost < tolerance)
+            VectorXd stationarity = costGradient + constraintsGradientsTranspose.transpose() * l;
+            VectorXd complSlack = l.cwiseProduct(constraints);
+
+            // check all 4 separate conditions of KKT, and the absolute cost:
+            if ((stationarity.norm() <= tolerance &&                // Stationarity: $||\grad f_k + \sum_{i} l_{i,k} \grad h_{i,k}|| \le \text{tolerance}$
+                (constraints.array() >= -tolerance).all() &&        // Primal feasability: $h_{i,k}\ge -\text{tolerance}$
+                (l.array() >= -tolerance).all() &&                  // Dual feasability: $l_{i,k} \ge -\text{tolerance}$
+                complSlack.cwiseAbs().maxCoeff() <= tolerance)      // Complementary slackness: $|l_{i,k}h_{i,k}| \le \text{tolerance}$
+                || cost < tolerance) {                              // Optimal cost achieved: $f_k \le \text{tolerance}$
+                
                 break;
+            }
 
             // ------------- Solve IQP Problem --------------------------
             if (k == 0)
@@ -174,11 +186,9 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
                     costGradient,
                     proxsuite::nullopt,
                     proxsuite::nullopt,
-                    proxsuite::nullopt,
-                    proxsuite::nullopt,
-                    proxsuite::nullopt,
-                    lowerBox,
-                    upperBox
+                    constraintsGradientsTranspose,
+                    lowerBounds,
+                    upperBounds
                 );
             else 
                 qp.update(
@@ -187,10 +197,8 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
                     proxsuite::nullopt,
                     proxsuite::nullopt,
                     proxsuite::nullopt,
-                    proxsuite::nullopt,
-                    proxsuite::nullopt,
-                    lowerBox,
-                    upperBox
+                    lowerBounds,
+                    proxsuite::nullopt
                 );
 
             qp.solve();
@@ -209,6 +217,7 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
             // ------------- Update Variables ---------------------------
             // set $\textbf{x}_{k+1}$
             x += alpha * p;
+            l = qp.results.z; 
 
             // ------------- Update Hessian -----------------------------
             // update $\grad_{xx}^2\mathcal{L}_k$, (H) approximation

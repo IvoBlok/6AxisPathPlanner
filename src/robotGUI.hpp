@@ -114,13 +114,13 @@ private:
             );
         goalObject->name = "goal";
 
-        define7DRobot();
+        define7DRobot(renderer);
         
         jointStates = VectorXd::Zero(robotKinematics.joints.size());
         jointStatesFloat = VectorXf::Zero(robotKinematics.joints.size());
     }
 
-    void define3DRotationRobot() {
+    void define3DRotationRobot(VulkanRenderEngine& renderer) {
         // This defines a basic 3-axis (3 rotation joints) robot, to test te SQP IK
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -197,7 +197,7 @@ private:
         joints.back()->name = "joint 3";
     }
 
-    void define3DTranslationRobot() {
+    void define3DTranslationRobot(VulkanRenderEngine& renderer) {
         // This defines a basic 3-axis (3 linear joints) cartesian robot, to test te SQP IK
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -274,7 +274,7 @@ private:
         joints.back()->name = "joint 3";
     }
 
-    void define7DRobot() {
+    void define7DRobot(VulkanRenderEngine& renderer) {
         // Robot axes are aligned with the world axes, and robot zero is located at the world zero
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},

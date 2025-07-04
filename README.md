@@ -91,7 +91,7 @@ Start PCodeSender with the supplied PCode text file, which awaits untill the con
 - [ ] Fix transparency
 - [ ] Add non-planar pathing
 - [ ] Add collision control for path validation
-- [ ] Update CMakeFile to create a release executable with proper Eigen optimization
+- [ ] Update CMakeFile to create a release executable with proper Eigen (and proxsuite) optimization
 - [ ] Split off computational code into separate threads
 
 <!-- IDEAS -->

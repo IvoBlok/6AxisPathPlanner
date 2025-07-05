@@ -43,6 +43,7 @@ Note that all objects/lines/points class instances in the scene live in the Rend
 #include <set>
 #include <optional>
 #include <vector>
+#include <memory>
 #include <map>
 #include <unordered_map>
 #include <filesystem>
@@ -51,6 +52,8 @@ Note that all objects/lines/points class instances in the scene live in the Rend
 #include "core/objectShape.hpp"
 #include "core/polyline.hpp"
 #include "core/plane.hpp"
+
+using std::shared_ptr;
 
 static std::vector<char> readShaderFile(const std::string& relativePath);
 
@@ -112,6 +115,7 @@ namespace std {
 }
 
 
+class VulkanRenderEngine;
 
 namespace VulkanHelper {
     void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
@@ -201,9 +205,12 @@ public:
 
 	void load(const char* modelPath, const char* texturePath, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
     void load(const char* modelPath, Vector3d objectColor, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
-    void destroy();
     glm::mat4 getTransformationMatrix();
     void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+
+private:
+	friend class VulkanRenderEngine;
+    void destroyRenderData();
 };
 
 /*
@@ -225,7 +232,6 @@ public:
 	LoadedLine(const LoadedLine&) = default;
 	void load(core::Polyline2_5D& polylineIn, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
 	
-	void destroyRenderData();
 	void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 
 	core::Polyline2_5D& getPolyline();
@@ -234,6 +240,8 @@ public:
 	void updateRendererLine();
 
 private:
+	friend class VulkanRenderEngine;
+	
 	// 'polyline' generally contains the actual curve of interest. Math is done specifically to 'polyline' and not 'vertices'. 'vertices'/'indices' is merely the visual representation of the actual data.
 	// Exceptions to this might be purely visual indications, like gizmos. There polyline is irrelevant, and it is only the 'vertices'/'indices' that matters.
 	// currently this is a2.5D polyline. This doesn't support lines that don't fully lay in a single plane. 
@@ -248,6 +256,7 @@ private:
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
+	void destroyRenderData();
 
 	void createVertexBuffer();
 	void createIndexBuffer();
@@ -264,8 +273,8 @@ public:
     std::chrono::microseconds deltaTime;
 
 	
-	std::list<LoadedObject> loadedObjects;
-	std::list<LoadedLine> loadedLines;
+	std::list<shared_ptr<LoadedObject>> loadedObjects;
+	std::list<shared_ptr<LoadedLine>> loadedLines;
 
 
 	VulkanRenderEngine();
@@ -274,11 +283,14 @@ public:
     void drawFrame();
     void cleanup();
 
-    LoadedObject& createObject(const char* modelPath, const char* texturePath, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
-    LoadedObject& createObject(const char* modelPath, Vector3d objectColor = { 0.f, 0.f, 0.f }, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
+    shared_ptr<LoadedObject> createObject(const char* modelPath, const char* texturePath, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
+    shared_ptr<LoadedObject> createObject(const char* modelPath, Vector3d objectColor = { 0.f, 0.f, 0.f }, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f);
     
-	LoadedLine& createLine(core::Polyline2_5D& polyline, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
-	LoadedLine& createLine(core::Polyline2D& polyline, core::Plane plane, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
+	shared_ptr<LoadedLine> createLine(core::Polyline2_5D& polyline, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
+	shared_ptr<LoadedLine> createLine(core::Polyline2D& polyline, core::Plane plane, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
+
+	void deleteObject(shared_ptr<LoadedObject> object);
+	void deleteLine(shared_ptr<LoadedLine> line);
 
 	void handleUserInput();
 

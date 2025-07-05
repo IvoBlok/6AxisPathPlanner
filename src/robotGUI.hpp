@@ -15,15 +15,15 @@ class RobotGUI {
 public:
     RobotKinematics robotKinematics;
 
-    std::vector<LoadedObject*> joints;
-    LoadedObject* base;
-    LoadedObject* effector;
+    std::vector<shared_ptr<LoadedObject>> joints;
+    shared_ptr<LoadedObject> base;
+    shared_ptr<LoadedObject> effector;
     
     VectorXd jointStates;
 
     Vector3f endPoint;
     Vector3f endRotation;
-    LoadedObject* goalObject;
+    shared_ptr<LoadedObject> goalObject;
 
     RobotGUI(VulkanRenderEngine& renderer) {
         registerWithRenderer(renderer);
@@ -104,7 +104,7 @@ private:
 
     void defineFullRobot(VulkanRenderEngine& renderer) {
         robotKinematics = RobotKinematics{};
-        goalObject = &renderer.createObject(
+        goalObject = renderer.createObject(
                 "../../resources/assets/cube.obj",
                 Vector3d{ 1.f, 0.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -153,7 +153,7 @@ private:
                                                                     {0.0, 0.0, 1.0, 0.0},
                                                                     {0.0, 0.0, 0.0, 1.0}};
 
-        base = &renderer.createObject(
+        base = renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 0.f, 0.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -161,7 +161,7 @@ private:
             );
         base->name = "base";
 
-        effector = &renderer.createObject(
+        effector = renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 0.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -169,7 +169,7 @@ private:
             );
         effector->name = "effector";
 
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 1.f, 0.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -177,7 +177,7 @@ private:
             ));
         joints.back()->name = "joint 1";
         
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 1.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -185,7 +185,7 @@ private:
             ));
         joints.back()->name = "joint 2";
         
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 0.f, 1.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -230,7 +230,7 @@ private:
                                                                     {0.0, 0.0, 1.0, 0.0},
                                                                     {0.0, 0.0, 0.0, 1.0}};
 
-        base = &renderer.createObject(
+        base = renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 0.f, 0.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -238,7 +238,7 @@ private:
             );
         base->name = "base";
 
-        effector = &renderer.createObject(
+        effector = renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 0.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -246,7 +246,7 @@ private:
             );
         effector->name = "effector";
 
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 1.f, 0.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -254,7 +254,7 @@ private:
             ));
         joints.back()->name = "joint 1";
         
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 1.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -262,7 +262,7 @@ private:
             ));
         joints.back()->name = "joint 2";
         
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 0.f, 1.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -349,7 +349,7 @@ private:
 
 
         // create an object for each joint, the robot base, and the effector
-        base = &renderer.createObject(
+        base = renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 0.f, 0.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -357,7 +357,7 @@ private:
             );
         base->name = "base";
 
-        effector = &renderer.createObject(
+        effector = renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 0.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -365,7 +365,7 @@ private:
             );
         effector->name = "effector";
 
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 1.f, 0.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -373,7 +373,7 @@ private:
             ));
         joints.back()->name = "joint 1";
         
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 1.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -381,7 +381,7 @@ private:
             ));
         joints.back()->name = "joint 2";
         
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 0.f, 1.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -389,7 +389,7 @@ private:
             ));
         joints.back()->name = "joint 3";
         
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 1.f, 0.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -397,7 +397,7 @@ private:
             ));
         joints.back()->name = "joint 4";
         
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 0.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -405,7 +405,7 @@ private:
             ));
         joints.back()->name = "joint 5";
         
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ 0.f, 0.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
@@ -413,7 +413,7 @@ private:
             ));
         joints.back()->name = "joint 6";
         
-        joints.emplace_back(&renderer.createObject(
+        joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
                 Vector3d{ .5f, .5f, .5f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position

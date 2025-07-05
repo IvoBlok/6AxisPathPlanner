@@ -23,7 +23,7 @@ public:
             // Convert list to display vectors
             std::vector<std::string> objectNames;
             for (auto& obj : objects)
-                objectNames.push_back(obj.name);
+                objectNames.push_back(obj->name);
 
             // Validate indices
             selectedIdx1 = (selectedIdx1 >= 0 && selectedIdx1 < (int)objects.size()) ? selectedIdx1 : -1;
@@ -77,9 +77,9 @@ public:
                     std::advance(obj1, selectedIdx1);
                     auto obj2 = objects.begin();
                     std::advance(obj2, selectedIdx2);
-
-                    core::Plane plane = obj1->getPlane();
-                    core::ObjectShape shape = obj2->getObjectShape();
+                    
+                    core::Plane plane = (*obj1)->getPlane();
+                    core::ObjectShape shape = (*obj2)->getObjectShape();
 
                     std::vector<core::Polyline2D> meshPlaneIntersect = getMeshPlaneIntersection(plane, shape);
                     

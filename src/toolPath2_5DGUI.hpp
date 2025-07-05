@@ -38,7 +38,7 @@ private:
             // Convert list to display vectors
             std::vector<std::string> objectNames;
             for (auto& obj : objects)
-                objectNames.push_back(obj.name);
+                objectNames.push_back(obj->name);
             
 
             // Safe static storage with proper scoping
@@ -100,8 +100,8 @@ private:
                     auto stockObj = objects.begin();
                     std::advance(stockObj, selectedIdx2);
 
-                    facePassInfo.slicingPlane = planeObj->getPlane();
-                    facePassInfo.stock = stockObj->getObjectShape();
+                    facePassInfo.slicingPlane = (*planeObj)->getPlane();
+                    facePassInfo.stock = (*stockObj)->getObjectShape();
 
                     core::Polyline2_5D result = generateFacePass2_5D(facePassInfo);
                     
@@ -121,7 +121,7 @@ private:
             // Convert list to display vectors
             std::vector<std::string> objectNames;
             for (auto& obj : objects)
-                objectNames.push_back(obj.name);
+                objectNames.push_back(obj->name);
 
             // Safe static storage with proper scoping
             static int selectedIdx1 = -1;
@@ -207,9 +207,9 @@ private:
                     auto shapeObj = objects.begin();
                     std::advance(shapeObj, selectedIdx3);
 
-                    surfacePassInfo.startPlane = startPlaneObj->getPlane();
-                    surfacePassInfo.endPlane = endPlaneObj->getPlane();
-                    surfacePassInfo.shape = shapeObj->getObjectShape();
+                    surfacePassInfo.startPlane = (*startPlaneObj)->getPlane();
+                    surfacePassInfo.endPlane = (*endPlaneObj)->getPlane();
+                    surfacePassInfo.shape = (*shapeObj)->getObjectShape();
 
                     core::Polyline2_5D result = generateSurfacePass2_5D(surfacePassInfo);
                     
@@ -229,7 +229,7 @@ private:
             // Convert list to display vectors
             std::vector<std::string> objectNames;
             for (auto& obj : objects)
-                objectNames.push_back(obj.name);
+                objectNames.push_back(obj->name);
 
             // Safe static storage with proper scoping
             static int selectedIdx1 = -1;
@@ -340,10 +340,10 @@ private:
                     auto stockObj = objects.begin();
                     std::advance(stockObj, selectedIdx4);
 
-                    clearingPassInfo.startPlane = startPlaneObj->getPlane();
-                    clearingPassInfo.endPlane = endPlaneObj->getPlane();
-                    clearingPassInfo.shape = shapeObj->getObjectShape();
-                    clearingPassInfo.stock = stockObj->getObjectShape();
+                    clearingPassInfo.startPlane = (*startPlaneObj)->getPlane();
+                    clearingPassInfo.endPlane = (*endPlaneObj)->getPlane();
+                    clearingPassInfo.shape = (*shapeObj)->getObjectShape();
+                    clearingPassInfo.stock = (*stockObj)->getObjectShape();
 
                     core::Polyline2_5D result = generateClearingPass2_5D(clearingPassInfo);
                     

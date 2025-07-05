@@ -658,7 +658,7 @@ void LoadedObject::load(const char* modelPath, Vector3d objectColor, Vector3d ba
     rotationMatrix = baseRotationMatrix;
 }
 
-void LoadedObject::destroy() {
+void LoadedObject::destroyRenderData() {
     model.destroy();
     texture.destroy();
 }
@@ -1015,11 +1015,11 @@ void VulkanRenderEngine::cleanup() {
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
     for (auto& object : loadedObjects) {
-        object.destroy();
+        object->destroyRenderData();
     }
 
     for (auto& line : loadedLines) {
-        line.destroyRenderData();
+        line->destroyRenderData();
     }
 
     vkDestroyDescriptorSetLayout(device, uniformDescriptorSetLayout, nullptr);
@@ -1050,23 +1050,25 @@ void VulkanRenderEngine::cleanup() {
     glfwTerminate();
 }
 
-LoadedObject& VulkanRenderEngine::createObject(
+shared_ptr<LoadedObject> VulkanRenderEngine::createObject(
     const char* modelPath, 
     const char* texturePath, 
     Vector3d basePosition, 
     Vector3d baseScale, 
-    glm::mat4 rotationMatrix, float modelTransparency) 
+    glm::mat4 rotationMatrix, 
+    float modelTransparency) 
 {
     if (loadedObjects.size() >= MAX_OBJECTS)
         throw std::runtime_error("Max object count has been reached, can't create a new object!\n");
 
-    loadedObjects.push_back(LoadedObject());
-    loadedObjects.back().load(modelPath, texturePath, basePosition, baseScale, rotationMatrix, modelTransparency);
+    shared_ptr<LoadedObject> newObject = std::make_shared<LoadedObject>();
+    newObject->load(modelPath, texturePath, basePosition, baseScale, rotationMatrix, modelTransparency);
+    loadedObjects.push_back(newObject);
 
-    return loadedObjects.back();
+    return newObject;
 }
 
-LoadedObject& VulkanRenderEngine::createObject(
+shared_ptr<LoadedObject> VulkanRenderEngine::createObject(
     const char* modelPath, 
     Vector3d objectColor,
     Vector3d basePosition,
@@ -1077,13 +1079,15 @@ LoadedObject& VulkanRenderEngine::createObject(
     if (loadedObjects.size() >= MAX_OBJECTS)
         throw std::runtime_error("Max object count has been reached, can't create a new object!\n");
 
-    loadedObjects.push_back(LoadedObject());
-    loadedObjects.back().load(modelPath, objectColor, basePosition, baseScale, rotationMatrix, modelTransparency);
+    shared_ptr<LoadedObject> newObject = std::make_shared<LoadedObject>();
 
-    return loadedObjects.back();
+    newObject->load(modelPath, objectColor, basePosition, baseScale, rotationMatrix, modelTransparency);
+    loadedObjects.push_back(newObject);
+
+    return newObject;
 }
 
-LoadedLine& VulkanRenderEngine::createLine(
+shared_ptr<LoadedLine> VulkanRenderEngine::createLine(
     core::Polyline2_5D& polyline, 
     float lineTransparency, 
     glm::vec3 lineColor) 
@@ -1091,13 +1095,15 @@ LoadedLine& VulkanRenderEngine::createLine(
     if (loadedLines.size() >= MAX_LINES)
         throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
 
-    loadedLines.push_back(LoadedLine{});
-    loadedLines.back().load(polyline, lineTransparency, lineColor);
+    shared_ptr<LoadedLine> newLine = std::make_shared<LoadedLine>();
 
-    return loadedLines.back();
+    newLine->load(polyline, lineTransparency, lineColor);
+    loadedLines.push_back(newLine);
+
+    return newLine;
 }
 
-LoadedLine& VulkanRenderEngine::createLine(
+shared_ptr<LoadedLine> VulkanRenderEngine::createLine(
     core::Polyline2D& polyline, 
     core::Plane plane,
     float lineTransparency, 
@@ -1106,12 +1112,24 @@ LoadedLine& VulkanRenderEngine::createLine(
     if (loadedLines.size() >= MAX_LINES)
         throw std::runtime_error("Max lines count has been reached, can't create a new line!\n");
 
-    loadedLines.push_back(LoadedLine{});
-
     core::Polyline2_5D newPolyline{polyline, plane};
-    loadedLines.back().load(newPolyline, lineTransparency, lineColor);
 
-    return loadedLines.back();
+    shared_ptr<LoadedLine> newLine = std::make_shared<LoadedLine>();
+
+    newLine->load(newPolyline, lineTransparency, lineColor);
+    loadedLines.push_back(newLine);
+    
+    return newLine;
+}
+
+void VulkanRenderEngine::deleteObject(shared_ptr<LoadedObject> object) {
+    if (!object) return;
+    loadedObjects.remove(object);
+}
+
+void VulkanRenderEngine::deleteLine(shared_ptr<LoadedLine> line) {
+    if (!line) return;
+    loadedLines.remove(line);
 }
 
 void VulkanRenderEngine::handleUserInput() {
@@ -2150,7 +2168,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, lineBasedPipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
     for (auto& line : loadedLines) {
-        line.render(commandBuffer, lineBasedPipelineLayout);
+        line->render(commandBuffer, lineBasedPipelineLayout);
     }
 
     // ========================================
@@ -2166,7 +2184,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
     // render all objects one after the other...
     for (auto& object : loadedObjects)
     {
-        object.render(commandBuffer, triangleBasedPipelineLayout);
+        object->render(commandBuffer, triangleBasedPipelineLayout);
     }
 
     // ========================================
@@ -2179,8 +2197,8 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSizeConstraints(ImVec2(400, -1), ImVec2(FLT_MAX, -1));
 
-    std::vector<std::list<LoadedObject>::iterator> objectsToDelete;
-    std::vector<std::list<LoadedLine>::iterator> linesToDelete;
+    std::vector<std::list<shared_ptr<LoadedObject>>::iterator> objectsToDelete;
+    std::vector<std::list<shared_ptr<LoadedLine>>::iterator> linesToDelete;
 
     ImGui::Begin("Configuration", nullptr, 
         ImGuiWindowFlags_NoMove | 
@@ -2210,9 +2228,9 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 ImGui::SameLine(row_start_x + ImGui::GetTreeNodeToLabelSpacing());
                 ImGui::SetNextItemWidth(120);
                 char nameBuffer[256];
-                strncpy(nameBuffer, object.name.c_str(), sizeof(nameBuffer));
+                strncpy(nameBuffer, object->name.c_str(), sizeof(nameBuffer));
                 if (ImGui::InputText("##NameEdit", nameBuffer, sizeof(nameBuffer))) {
-                    object.name = nameBuffer;
+                    object->name = nameBuffer;
                 }
 
                 // Calculate positions for right-aligned controls
@@ -2222,7 +2240,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 const float total_right_width = checkbox_width + button_width + spacing;
 
                 ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - total_right_width);
-                ImGui::Checkbox("##RenderToggle", &object.renderObj);
+                ImGui::Checkbox("##RenderToggle", &object->renderObj);
 
                 // Delete button (fixed position relative to window edge)
                 ImGui::SameLine();
@@ -2232,24 +2250,24 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
 
                 // Contents when expanded
                 if (isOpen) {
-                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Faces: %d", object.model.vertices.size(), object.model.indices.size() / 3);
-                    float positionArray[3] = {object.position.x, object.position.y, object.position.z};
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Faces: %d", object->model.vertices.size(), object->model.indices.size() / 3);
+                    float positionArray[3] = {object->position.x, object->position.y, object->position.z};
                     if (ImGui::InputFloat3("Position", positionArray)) {
-                        object.position.x = positionArray[0];
-                        object.position.y = positionArray[1];
-                        object.position.z = positionArray[2];
+                        object->position.x = positionArray[0];
+                        object->position.y = positionArray[1];
+                        object->position.z = positionArray[2];
                     }
 
-                    float scaleArray[3] = {object.scale.x, object.scale.y, object.scale.z};
+                    float scaleArray[3] = {object->scale.x, object->scale.y, object->scale.z};
                     if (ImGui::InputFloat3("Scale", scaleArray)) {
-                        object.scale.x = scaleArray[0];
-                        object.scale.y = scaleArray[1];
-                        object.scale.z = scaleArray[2];
+                        object->scale.x = scaleArray[0];
+                        object->scale.y = scaleArray[1];
+                        object->scale.z = scaleArray[2];
                     }
 
                     // TODO add some way of controlling the rotation matrix
 
-                    float colorArray[3] = { object.color.x, object.color.y, object.color.z };
+                    float colorArray[3] = { object->color.x, object->color.y, object->color.z };
                     ImGui::Text("Color ");
                     ImGui::SameLine();
                     ImVec4 colVec4 = ImVec4(colorArray[0], colorArray[1], colorArray[2], 1.0f);
@@ -2262,14 +2280,14 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                             ImGuiColorEditFlags_NoSidePreview |
                             ImGuiColorEditFlags_NoSmallPreview)) 
                         {
-                            object.color.x = colorArray[0];
-                            object.color.y = colorArray[1];
-                            object.color.z = colorArray[2];
+                            object->color.x = colorArray[0];
+                            object->color.y = colorArray[1];
+                            object->color.z = colorArray[2];
                         }
                         ImGui::EndPopup();
                     }
                     
-                    ImGui::SliderFloat("Transparency", &object.model.transparency, 0.0f, 1.0f);
+                    ImGui::SliderFloat("Transparency", &object->model.transparency, 0.0f, 1.0f);
 
                     ImGui::TreePop(); // This must be called for each TreeNodeEx
                 }
@@ -2296,9 +2314,9 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 ImGui::SameLine(row_start_x + ImGui::GetTreeNodeToLabelSpacing());
                 ImGui::SetNextItemWidth(120);
                 char nameBuffer[256];
-                strncpy(nameBuffer, line.name.c_str(), sizeof(nameBuffer));
+                strncpy(nameBuffer, line->name.c_str(), sizeof(nameBuffer));
                 if (ImGui::InputText("##NameEdit", nameBuffer, sizeof(nameBuffer))) {
-                    line.name = nameBuffer;
+                    line->name = nameBuffer;
                 }
 
                 // Calculate positions for right-aligned controls
@@ -2308,7 +2326,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 const float total_right_width = checkbox_width + button_width + spacing;
 
                 ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - total_right_width);
-                ImGui::Checkbox("##RenderToggle", &line.renderLine);
+                ImGui::Checkbox("##RenderToggle", &line->renderLine);
 
                 // Delete button (fixed position relative to window edge)
                 ImGui::SameLine();
@@ -2317,9 +2335,9 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 }
 
                 if (isOpen) {
-                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Closed: %d", line.getPolyline().vertexes().size(), line.getPolyline().isClosed());
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Closed: %d", line->getPolyline().vertexes().size(), line->getPolyline().isClosed());
                     
-                    float colorArray[3] = { line.defaultColor.x, line.defaultColor.y, line.defaultColor.z };
+                    float colorArray[3] = { line->defaultColor.x, line->defaultColor.y, line->defaultColor.z };
                     ImGui::Text("Color ");
                     ImGui::SameLine();
                     ImVec4 colVec4 = ImVec4(colorArray[0], colorArray[1], colorArray[2], 1.0f);
@@ -2332,17 +2350,17 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                             ImGuiColorEditFlags_NoSidePreview |
                             ImGuiColorEditFlags_NoSmallPreview)) 
                         {
-                            line.defaultColor.x = colorArray[0];
-                            line.defaultColor.y = colorArray[1];
-                            line.defaultColor.z = colorArray[2];
+                            line->defaultColor.x = colorArray[0];
+                            line->defaultColor.y = colorArray[1];
+                            line->defaultColor.z = colorArray[2];
                         }
                         ImGui::EndPopup();
                     }
                     ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - total_right_width);
-                    ImGui::Checkbox("##OneColorToggle", &line.isOneColor);
+                    ImGui::Checkbox("##OneColorToggle", &line->isOneColor);
                     
-                    ImGui::SliderFloat("Transparency", &line.transparency, 0.0f, 1.0f);
-                    ImGui::SliderFloat("Line Width", &line.lineWidth, 0.0f, 10.0f);
+                    ImGui::SliderFloat("Transparency", &line->transparency, 0.0f, 1.0f);
+                    ImGui::SliderFloat("Line Width", &line->lineWidth, 0.0f, 10.0f);
                     ImGui::TreePop();
                 }
                 ImGui::PopID();
@@ -2351,37 +2369,37 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
 
         ImGui::SeparatorText(" operations ");
         if(ImGui::Button("Generate Cube")) {
-            LoadedObject& object = createObject(
+            shared_ptr<LoadedObject> object = createObject(
                     "../../resources/assets/cube.obj",
                     Vector3d{ 0.f, 0.f, 1.f }, // color
                     Vector3d{ 0.f, 0.f, 0.f }, // position
                     Vector3d{ .25f, .25f, .25f }  // scale
                 );
             
-            object.name = "cube";
+            object->name = "cube";
         }
         if(ImGui::Button("Generate Plane")) {
-            LoadedObject& object = createObject(
+            shared_ptr<LoadedObject> object = createObject(
                     "../../resources/assets/plane.obj",
                     Vector3d{ 1.f, 0.9f, 0.f }, // color
                     Vector3d{ 0.f, 0.f, 0.f },  // position
                     Vector3d{ .5f, .5f, .5f }  // scale
                 );
             
-            object.name = "plane";
+            object->name = "plane";
         }
         if(ImGui::Button("Import Object")) {
             char* outPath = NULL;
             nfdresult_t result = NFD_OpenDialog( "obj", NULL, &outPath );
                 
             if ( result == NFD_OKAY ) {
-                LoadedObject& object = createObject(
+                shared_ptr<LoadedObject> object = createObject(
                         outPath,
                         Vector3d{ 0.1f, 0.3f, 0.5f }, // color
                         Vector3d{ 0.f, 0.f, 0.f }  // position
                     );
                 
-                object.name = outPath;
+                object->name = outPath;
                 free(outPath);
             }
         }

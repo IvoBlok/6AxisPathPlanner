@@ -195,7 +195,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
         target_compile_options(robotPathPlanner PRIVATE 
             /O2      # Optimize for speed
             /WX-     # Don't treat warnings as errors
-            /RTC0    # Disable runtime checks 
         )
         target_link_options(robotPathPlanner PRIVATE /LTCG)  # Link-time code generation
     else()
@@ -206,7 +205,6 @@ else()  # Debug build
         target_compile_options(robotPathPlanner PRIVATE 
             /Zi      # Debug information
             /Od      # Disable optimizations
-            /RTC0    # Runtime checks
             #/W4     # Warning level 4
             #/WX-    # Don't treat warnings as errors
             /MDd     # Debug multithreaded DLL runtime

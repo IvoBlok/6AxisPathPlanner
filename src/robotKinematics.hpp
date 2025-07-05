@@ -12,15 +12,25 @@ using Eigen::MatrixXd;
 
 namespace kinematics {
 
-enum class JointType {
-    Linear,
-    Rotation
+enum class IKResultType {
+    Success,
+    OutOfReach
+};
+
+struct IKResult {
+    IKResultType type;
+    VectorXd state;
 };
 
 // the kinematics of the robot is defined by a connected series of joints. Joints are limited to the linear or single-axis rotation types. 
 // each joint defines the vector from its zero point to a point on the line of motion. 
 // The defining direction of the motion, i.e. the direction of translation or the direction around which the translation is done, is defined by the Z axis of the transformation matrix
 // Lastly it lists joint limits in both directions. Future additions might add stuff like allowed velocities, accelerations, etc...
+enum class JointType {
+    Linear,
+    Rotation
+};
+
 struct Joint {
     Matrix4d transformationMatrix; // this matrix defines the coordinate system of this joint relative to the previous joint. It also, with its translation components, defines the zero point (again relative to the previous joint)
     double lowerLimit;
@@ -61,7 +71,7 @@ public:
     Matrix4d fastForwardKinematics(VectorXd& jointStates);
 
     // 'inverseKinematics' calculates the required joint states so that the end effector matrix lines up with the given goal matrix. 
-    VectorXd inverseKinematics(Matrix4d& goal, const bool useRotation = true, Vector3d rotationAxisIgnore = Vector3d::Zero(), int maxIterations = 33, int maxAttempts = 3, double tolerance = 1e-3, bool startAtLast = true);
+    IKResult inverseKinematics(Matrix4d& goal, const bool useRotation = true, Vector3d rotationAxisIgnore = Vector3d::Zero(), int maxIterations = 33, int maxAttempts = 3, double tolerance = 1e-3, bool startAtLast = true);
     
 private:
     // 'lastIKResult' stores, as the name implies, the last result from 'inverseKinematics'. If defined, and toggled on, 'inverseKinematics' uses this as a starting point for its next call

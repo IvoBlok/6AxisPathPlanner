@@ -20,7 +20,6 @@ public:
     LoadedObject* effector;
     
     VectorXd jointStates;
-    VectorXf jointStatesFloat;
 
     Vector3f endPoint;
     Vector3f endRotation;
@@ -50,12 +49,9 @@ public:
             for(auto& joint : robotKinematics.joints) {
                 char label[32];
                 snprintf(label, sizeof(label), "Joint %d", index + 1);
-            
-                // because ImGui doesn't have slider for doubles, we need to do this weird double copy to ensure that jointStates and jointStatesFloat remain the same, independent of which is changed
-                jointStatesFloat(index) = jointStates(index);
-                ImGui::SliderFloat(label, &jointStatesFloat(index), joint.lowerLimit, joint.upperLimit);
-                jointStates(index) = (double)jointStatesFloat(index);
-
+                
+                float temp = static_cast<float>(jointStates(index)); 
+                ImGui::SliderFloat(label, &temp, joint.lowerLimit, joint.upperLimit, "%.3f", ImGuiSliderFlags_NoInput);
                 ++index;
             }
 
@@ -77,16 +73,18 @@ public:
             Eigen::Matrix4d desiredOrientation = transform.matrix();
 
             if (continuousIK || ImGui::Button("do SQP IK")) {
-                jointStates = robotKinematics.inverseKinematics(desiredOrientation, true, Vector3d::UnitZ(), 100, 3, 1e-7, true);
+                IKResult result = robotKinematics.inverseKinematics(desiredOrientation, true, Vector3d::UnitZ(), 100, 3, 1e-7, true);
 
-                // perform the forward kinematics
-                std::vector<Matrix4d> robotMatrices = robotKinematics.forwardKinematics(jointStates);
+                if (result.type == IKResultType::Success) {
+                    jointStates = result.state;
+                    std::vector<Matrix4d> robotMatrices = robotKinematics.forwardKinematics(jointStates);
 
-                // update the renderer objects
-                base->locateWithMatrix(robotMatrices.front());
-                effector->locateWithMatrix(robotMatrices.back());
-                for (int i = 1; i < robotMatrices.size() - 1; i++) {
-                    joints[i - 1]->locateWithMatrix(robotMatrices[i]);
+                    // update the renderer objects
+                    base->locateWithMatrix(robotMatrices.front());
+                    effector->locateWithMatrix(robotMatrices.back());
+                    for (int i = 1; i < robotMatrices.size() - 1; i++) {
+                        joints[i - 1]->locateWithMatrix(robotMatrices[i]);
+                    }
                 }
             }
 
@@ -117,7 +115,6 @@ private:
         define7DRobot(renderer);
         
         jointStates = VectorXd::Zero(robotKinematics.joints.size());
-        jointStatesFloat = VectorXf::Zero(robotKinematics.joints.size());
     }
 
     void define3DRotationRobot(VulkanRenderEngine& renderer) {

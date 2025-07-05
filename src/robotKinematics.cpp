@@ -98,8 +98,6 @@ Matrix4d RobotKinematics::fastForwardKinematics(VectorXd& jointStates) {
             tempMatrix.topLeftCorner<3,3>() *= Eigen::AngleAxisd(state, Vector3d::UnitZ()).toRotationMatrix();;
         }
         
-        // results.back() refers to the matrix going from World -> Joint_(i-1); i.e. the frame of joint i-1 expressed in the world frame
-        // since we want World -> Joint_(i), we do:  {World -> Joint_(i-1)} * {Joint_(i-1) -> Joint_(i)}
         result *= tempMatrix;
         ++index;
     }
@@ -108,7 +106,7 @@ Matrix4d RobotKinematics::fastForwardKinematics(VectorXd& jointStates) {
     return result;
 }
 
-VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotation, Vector3d rotationAxisIgnore, int maxIterations, int maxAttempts, double tolerance, bool startAtLast) {
+IKResult RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotation, Vector3d rotationAxisIgnore, int maxIterations, int maxAttempts, double tolerance, bool startAtLast) {
     /* This algorithm attemps to solve (redundant) inverse kinematics by solving the following problem:
         $\text{min}_x \;f(\textbf{x}) $
         $\text{subject to} \; h_i(\textbf{x}) \ge 0, \; i \in (0,1,2...m)$
@@ -121,19 +119,43 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
         with which we update the values for the next iteration: $\textbf{x}_{k+1}=\textbf{x}_k + \text{lineSearch}(p)$ and $\textbf{l}_{k+1}=\textbf{l}_k$
     */
     
+    IKResult result;
+
     const int n = joints.size();                    // n: number of joints
     const int m = n * 2;                            // n: number of joints
     VectorXd x(n);                                  // x: the current joint state guess
 
     proxsuite::proxqp::dense::QP<double> qp(n, 0, m); // n vars, 0 equality constraints, m inequality constraints
     VectorXd upperBounds = VectorXd::Constant(m, std::numeric_limits<double>::infinity());
+    VectorXd lowerBounds;
 
     double cost;
+    VectorXd costGradient;
+    VectorXd constraints;
+    MatrixXd constraintsGradients;
     MatrixXd H;
-    VectorXd nextCostGradient;
+    
     VectorXd l;
+    VectorXd p;
 
-    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+    VectorXd stationarity;
+    VectorXd complSlack;
+
+    VectorXd nextCostGradient;
+    MatrixXd effector;
+    
+    VectorXd y;
+    VectorXd s;
+    double ys;
+    VectorXd Hs;
+    double sTHs;
+
+    double theta;
+    const double dampingThreshold = 0.2;
+
+    int attempt;
+    int k;
+    for (attempt = 0; attempt < maxAttempts; attempt++) {
         if (attempt == 0 && startAtLast && lastIKResult.rows() != 0)
             x = lastIKResult;
         else
@@ -143,31 +165,30 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
         l = VectorXd::Zero(m);
         nextCostGradient = costGradientEstimate(x, goal, useRotation, rotationAxisIgnore, 1e-3);
 
-        int k;
         for (k = 0; k < maxIterations; k++) {
             // ------------- Calculate Problem Terms --------------------
-            MatrixXd effector = fastForwardKinematics(x);
+            effector = fastForwardKinematics(x);
             cost = costFunction(effector, goal, useRotation, rotationAxisIgnore);
 
             // estimate $\grad f(\textbf{x}_k)$ using a central difference estimate for each element
-            VectorXd costGradient = nextCostGradient;
+            costGradient = nextCostGradient;
 
             // calculate $h_i(\textbf{x}_k)$ algebraically
-            VectorXd constraints = jointConstraints(x);
+            constraints = jointConstraints(x);
 
             // calculate $\grad h_i(\textbf{x}_k)$ algebraically
-            MatrixXd constraintsGradientsTranspose = jointConstraintsGradients(x); // (n x m), each column being the gradient of a constraint
-            constraintsGradientsTranspose.transposeInPlace();   // (m x n)
+            constraintsGradients = jointConstraintsGradients(x); // (n x m), each column being the gradient of a constraint
+            constraintsGradients.transposeInPlace();   // (m x n)
             
             // Nudge the hessian a bit, and ensure it is symmetric
             for(int i=0; i<n; i++) H(i,i) += 1e-6;
             H = 0.5 * (H + H.transpose());
 
-            VectorXd lowerBounds = -constraints;
+            lowerBounds = -constraints;
 
             // ------------- Check Convergence --------------------------
-            VectorXd stationarity = costGradient + constraintsGradientsTranspose.transpose() * l;
-            VectorXd complSlack = l.cwiseProduct(constraints);
+            stationarity = costGradient + constraintsGradients.transpose() * l;
+            complSlack = l.cwiseProduct(constraints);
 
             // check all 4 separate conditions of KKT, and the absolute cost:
             if ((stationarity.norm() <= tolerance &&                // Stationarity: $||\grad f_k + \sum_{i} l_{i,k} \grad h_{i,k}|| \le \text{tolerance}$
@@ -186,7 +207,7 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
                     costGradient,
                     proxsuite::nullopt,
                     proxsuite::nullopt,
-                    constraintsGradientsTranspose,
+                    constraintsGradients,
                     lowerBounds,
                     upperBounds
                 );
@@ -202,7 +223,7 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
                 );
 
             qp.solve();
-            VectorXd p = qp.results.x;         
+            p = qp.results.x;         
 
             // ------------- Line Search --------------------------------
             // since for simplification the problem was linearized for each IQP call, the solution isn't necessarily a solution to the non-linearized problem. 
@@ -234,49 +255,38 @@ VectorXd RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
             // where $\textbf{s}_k = \textbf{x}_{k+1} - \textbf{x}_k$ and $\textbf{y}_k=\nabla \textbf{f}_{k+1} - \nabla \textbf{f}_k$
             
             nextCostGradient = costGradientEstimate(x, goal, useRotation, rotationAxisIgnore, 1e-3);
-            VectorXd y = nextCostGradient - costGradient;
-            VectorXd s = alpha * p;
+            y = nextCostGradient - costGradient;
+            s = alpha * p;
             
-            const VectorXd Hs = H * s;
-            const double sTHs = s.dot(Hs);
+            Hs = H * s;
+            sTHs = s.dot(Hs);
 
-            double theta = 1.0;
-            const double dampingThreshold = 0.2;
-
-            const double ys = y.dot(s);
+            ys = y.dot(s);
             if (ys < dampingThreshold * sTHs) {
                 theta = (0.8 * sTHs) / (sTHs - ys); // Powell
                 y = theta * y + (1.0 - theta) * Hs;
             }
             
             // BFGS with modified y
-            const double rho = 1.0 / y.dot(s);
             H -= (Hs * Hs.transpose()) / sTHs;
-            H += rho * y * y.transpose();
+            H += (y * y.transpose()) / y.dot(s);
         }
 
-        if (attempt == 0 && k == 0 && cost < tolerance) 
-            break;
-        std::cout << "SQP IK attempt " << attempt << " done in " << k << " iterations! \n";
         if (cost < tolerance) {
-            std::cout << "perfect solution found!\n\n";
             lastIKResult = x;
-            break;
-        } else if (attempt >= maxAttempts - 1) {
-            std::cout << "nothing found! \n\n";
+            result.state = x;
+            result.type = IKResultType::Success;
+            return result;
         }
     }
-
-    return x;
+    result.type = IKResultType::OutOfReach;
+    return result;
 }
 
 // private:
 double RobotKinematics::costFunction(const Matrix4d& input, const Matrix4d& goal, const bool useRotation, Vector3d rotationAxisIgnore) {
-    //TODO: modify this so that we can set certain position or rotation axes to be ignored
-    double totalCost = 0.0;
-
     // position error cost contribution
-    totalCost += (input.topRightCorner<3,1>() - goal.topRightCorner<3,1>()).squaredNorm();
+    double totalCost = (input.topRightCorner<3,1>() - goal.topRightCorner<3,1>()).squaredNorm();
 
     // rotation error cost contribution
     if (useRotation) {

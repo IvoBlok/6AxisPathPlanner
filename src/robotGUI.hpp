@@ -28,10 +28,10 @@ public:
     RobotGUI(VulkanRenderEngine& renderer) {
         registerWithRenderer(renderer);
 
-        robotDefined = false;
         continuousIK = false;
         base = nullptr;
         effector = nullptr;
+        goalObject = nullptr;
 
         endPoint = Vector3f::Zero();
         endRotation = Vector3f::Zero();
@@ -40,11 +40,35 @@ public:
     void drawGUI(VulkanRenderEngine& renderer) {
         if (ImGui::CollapsingHeader("Define Robot##robot_GUI")) {
 
-            if (!robotDefined) {
-                defineFullRobot(renderer);
-                robotDefined = true;
-            }
+            // robot selection dropdown
+            const char* items[] = { "3D Rotation", "3D Translation", "7D Kuka Inspired" };
+            static int selectedItem = -1;
+            ImGui::PushID("robot_GUI_select_robot_type");
+            ImGui::Text("Select Robot Type:");
+            const char* preview = (selectedItem > -1) ? items[selectedItem] : "-";
+            if (ImGui::BeginCombo("##robot_select_combo", preview)) {
+                for (int i = 0; i < 3; ++i) {
+                    ImGui::PushID(i);
+                    bool isSelected = (selectedItem == i);
+                    if (ImGui::Selectable(items[i], isSelected)) {
+                        selectedItem = i;
 
+                        if (selectedItem >= 0)
+                            defineFullRobot(renderer, selectedItem);
+                    }
+                    if (isSelected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::PopID();
+
+            if (joints.size() <= 0)
+                return;
+
+            // output the joint angles within their limits
             int index = 0;
             for(auto& joint : robotKinematics.joints) {
                 char label[32];
@@ -55,6 +79,7 @@ public:
                 ++index;
             }
 
+            // input for the goal
             ImGui::SeparatorText("Desired endpoint");
             ImGui::SliderFloat("x", &endPoint(0), -1.5, 1.5);
             ImGui::SliderFloat("y", &endPoint(1), -1.5, 1.5);
@@ -64,6 +89,23 @@ public:
             ImGui::SliderFloat("roll", &endRotation(2), -3.14, 3.14);
             ImGui::Checkbox("continuous IK##RenderToggle", &continuousIK);
             
+            // input IK settings
+            static bool useRotation = false;
+            static float rotationIgnoreDirection[3] = {0.f, 0.f, 0.f};
+            static int maxIterations = 30;
+            static int maxAttempts = 3;
+            static double tolerance = 1e-4;
+            static bool warmStart = true;
+
+            ImGui::SeparatorText("Inverse Kinematics Settings");
+            ImGui::Checkbox("rotation", &useRotation);
+            ImGui::InputFloat3("ignore direction", rotationIgnoreDirection);
+            ImGui::InputInt("max iterations", &maxIterations);
+            ImGui::InputInt("max attempts", &maxAttempts);
+            ImGui::InputDouble("tolerance", &tolerance);
+            ImGui::Checkbox("warm start", &warmStart);
+        
+            // debug IK calling
             Eigen::Affine3d transform = 
             Eigen::Translation3d(endPoint.cast<double>()) *
             Eigen::AngleAxisd(endRotation.z(), Eigen::Vector3d::UnitZ()) *
@@ -73,7 +115,7 @@ public:
             Eigen::Matrix4d desiredOrientation = transform.matrix();
 
             if (continuousIK || ImGui::Button("do SQP IK")) {
-                IKResult result = robotKinematics.inverseKinematics(desiredOrientation, true, Vector3d::UnitZ(), 100, 3, 1e-7, true);
+                IKResult result = robotKinematics.inverseKinematics(desiredOrientation, useRotation, Vector3d((double)rotationIgnoreDirection[0], (double)rotationIgnoreDirection[1], (double)rotationIgnoreDirection[2]), maxIterations, maxAttempts, tolerance, warmStart);
 
                 if (result.type == IKResultType::Success) {
                     jointStates = result.state;
@@ -102,7 +144,14 @@ private:
     bool robotDefined;
     bool continuousIK;
 
-    void defineFullRobot(VulkanRenderEngine& renderer) {
+    void defineFullRobot(VulkanRenderEngine& renderer, int robotOption) {
+        renderer.deleteObject(goalObject);
+        renderer.deleteObject(base);
+        renderer.deleteObject(effector);
+        for (auto& joint : joints)
+            renderer.deleteObject(joint);
+        joints.clear();
+
         robotKinematics = RobotKinematics{};
         goalObject = renderer.createObject(
                 "../../resources/assets/cube.obj",
@@ -111,8 +160,18 @@ private:
                 Vector3d{ 0.015f, 0.015f, 0.015f }  // scale
             );
         goalObject->name = "goal";
-
-        define7DRobot(renderer);
+        
+        switch (robotOption) {
+            case 0: 
+                define3DRotationRobot(renderer);
+                break;
+            case 1:
+                define3DTranslationRobot(renderer);
+                break;
+            case 2:
+                define7DRobot(renderer);
+                break;
+        }
         
         jointStates = VectorXd::Zero(robotKinematics.joints.size());
     }

@@ -86,9 +86,6 @@ public:
                     for (auto& curve : meshPlaneIntersect) 
                         renderer.createLine(curve, plane);
                 }
-                else {
-                    std::cerr << "Invalid object selection!\n";
-                }
             }
         }
     }

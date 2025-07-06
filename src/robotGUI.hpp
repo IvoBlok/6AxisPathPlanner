@@ -41,13 +41,12 @@ public:
         if (ImGui::CollapsingHeader("Define Robot##robot_GUI")) {
 
             // robot selection dropdown
-            const char* items[] = { "3D Rotation", "3D Translation", "7D Kuka Inspired" };
+            const char* items[] = { "3D Rotation", "3D Translation", "7D Kuka Inspired", "" };
             static int selectedItem = -1;
             ImGui::PushID("robot_GUI_select_robot_type");
-            ImGui::Text("Select Robot Type:");
             const char* preview = (selectedItem > -1) ? items[selectedItem] : "-";
             if (ImGui::BeginCombo("##robot_select_combo", preview)) {
-                for (int i = 0; i < 3; ++i) {
+                for (int i = 0; i < 4; ++i) {
                     ImGui::PushID(i);
                     bool isSelected = (selectedItem == i);
                     if (ImGui::Selectable(items[i], isSelected)) {
@@ -78,16 +77,6 @@ public:
                 ImGui::SliderFloat(label, &temp, joint.lowerLimit, joint.upperLimit, "%.3f", ImGuiSliderFlags_NoInput);
                 ++index;
             }
-
-            // input for the goal
-            ImGui::SeparatorText("Desired endpoint");
-            ImGui::SliderFloat("x", &endPoint(0), -1.5, 1.5);
-            ImGui::SliderFloat("y", &endPoint(1), -1.5, 1.5);
-            ImGui::SliderFloat("z", &endPoint(2), -1.5, 1.5);
-            ImGui::SliderFloat("yaw", &endRotation(0), -3.14, 3.14);
-            ImGui::SliderFloat("pitch", &endRotation(1), -3.14, 3.14);
-            ImGui::SliderFloat("roll", &endRotation(2), -3.14, 3.14);
-            ImGui::Checkbox("continuous IK##RenderToggle", &continuousIK);
             
             // input IK settings
             static bool useRotation = false;
@@ -106,6 +95,17 @@ public:
             ImGui::Checkbox("warm start", &warmStart);
         
             // debug IK calling
+            // -----------------------------------------------------------------
+            // input for the goal
+            ImGui::SeparatorText("Desired endpoint");
+            ImGui::SliderFloat("x", &endPoint(0), -1.5, 1.5);
+            ImGui::SliderFloat("y", &endPoint(1), -1.5, 1.5);
+            ImGui::SliderFloat("z", &endPoint(2), -1.5, 1.5);
+            ImGui::SliderFloat("yaw", &endRotation(0), -3.14, 3.14);
+            ImGui::SliderFloat("pitch", &endRotation(1), -3.14, 3.14);
+            ImGui::SliderFloat("roll", &endRotation(2), -3.14, 3.14);
+            ImGui::Checkbox("continuous IK##RenderToggle", &continuousIK);
+
             Eigen::Affine3d transform = 
             Eigen::Translation3d(endPoint.cast<double>()) *
             Eigen::AngleAxisd(endRotation.z(), Eigen::Vector3d::UnitZ()) *
@@ -129,8 +129,63 @@ public:
                     }
                 }
             }
-
             goalObject->locateWithMatrix(desiredOrientation);
+
+            // validating a polyline
+            // -----------------------------------------------------------------
+            ImGui::SeparatorText("Check polyline");
+
+            auto& lines = renderer.loadedLines;
+            
+            // Safe static storage with proper scoping
+            static int selectedIdx = -1;
+
+            // Convert list to display vectors
+            std::vector<std::string> lineNames;
+            for (auto& line : lines)
+                lineNames.push_back(line->name);
+
+            // Validate indices
+            selectedIdx = (selectedIdx >= 0 && selectedIdx < (int)lines.size()) ? selectedIdx : -1;
+
+            // Polyline selection
+            ImGui::PushID("polyline_selection_group");
+            ImGui::Text("Select Curve:");
+            preview = (selectedIdx != -1) ? lineNames[selectedIdx].c_str() : "-";
+            if (ImGui::BeginCombo("##polyline_select_combo", preview)) {
+                for (int i = 0; i < (int)lines.size(); ++i) {
+                    ImGui::PushID(i);
+                    bool isSelected = (selectedIdx == i);
+                    if (ImGui::Selectable(lineNames[i].c_str(), isSelected)) {
+                        selectedIdx = i;
+                    }
+                    if (isSelected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::PopID();
+
+            if (ImGui::Button("Check Path")) {
+                if (selectedIdx != -1) {
+
+                    auto line = lines.begin();
+                    std::advance(line, selectedIdx);
+                    
+                    const core::Polyline2_5D& polyline = (*line)->getPolyline();
+
+                    bool result = robotKinematics.isPolylineReachable(polyline, maxIterations, maxAttempts, tolerance, warmStart);
+
+                    if (result) 
+                        std::cout << "path is reachable!\n";
+                    else 
+                        std::cout << "path is fucked!\n";
+
+                }
+            }
+
         }
     }
 

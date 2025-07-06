@@ -19,6 +19,41 @@ const static Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
 
 constexpr double DOUBLE_THRESHOLD = 1e-8;
 
+
+// ---------------------------------------------------------------------------
+// Matrix4d
+// ---------------------------------------------------------------------------
+inline Eigen::Matrix4d createTransformationMatrix(const Eigen::Vector3d& translation, const Eigen::Vector3d& zVector) {
+    // Normalize the z-axis vector to ensure it's a unit vector
+    Eigen::Vector3d zAxis = zVector.normalized();
+
+    // Choose an arbitrary vector not parallel to z_axis to compute x_axis
+    Eigen::Vector3d tempVector(1, 0, 0);
+    if (zAxis.cross(tempVector).norm() < 1e-6) {
+        // If z_axis is parallel to (1,0,0), choose a different temp_vector
+        tempVector = Eigen::Vector3d(0, 1, 0);
+    }
+
+    // Compute x_axis as perpendicular to z_axis
+    Eigen::Vector3d xAxis = zAxis.cross(tempVector).normalized();
+
+    // Compute y_axis to complete the orthonormal basis
+    Eigen::Vector3d yAxis = zAxis.cross(xAxis);
+
+    // Construct the 3x3 rotation matrix
+    Eigen::Matrix3d rotation;
+    rotation.col(0) = xAxis;
+    rotation.col(1) = yAxis;
+    rotation.col(2) = zAxis;
+
+    // Construct the 4x4 transformation matrix
+    Eigen::Matrix4d transformation = Eigen::Matrix4d::Identity();
+    transformation.block<3,3>(0,0) = rotation;
+    transformation.block<3,1>(0,3) = translation;
+
+    return transformation;
+}
+
 // ---------------------------------------------------------------------------
 // VectorXd
 // ---------------------------------------------------------------------------

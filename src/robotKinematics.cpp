@@ -283,6 +283,21 @@ IKResult RobotKinematics::inverseKinematics(Matrix4d& goal, const bool useRotati
     return result;
 }
 
+bool RobotKinematics::isPolylineReachable(const core::Polyline2_5D& polyline, int maxIterations, int maxAttempts, double tolerance, bool startAtLast) {
+    // TODO validate the full path between the vertices; I'm currently only checking the vertex points, not the arcs/lines that join them
+
+    const std::vector<core::PlineVertex2_5D>& vertices = polyline.vertexes();
+
+    for (const auto& vertex : vertices) {
+        Matrix4d goal = createTransformationMatrix(vertex.point, vertex.plane.normal);
+        IKResult result = inverseKinematics(goal, true, vertex.plane.normal, maxIterations, maxAttempts, tolerance, startAtLast);
+        if (result.type != IKResultType::Success)
+            return false;
+    }
+
+    return true;
+}
+
 // private:
 double RobotKinematics::costFunction(const Matrix4d& input, const Matrix4d& goal, const bool useRotation, Vector3d rotationAxisIgnore) {
     // position error cost contribution

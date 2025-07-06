@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "CustomEigen.hpp"
+#include "core/polyline.hpp"
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -63,7 +64,7 @@ public:
 
     // 'forwardKinematics' calculates the transformation matrices for both the joints and the end effector. These are effectively the axes and zero point of each joint, expressed in world coordinates.
     // So right multiplying some joint matrix from this function converts a vector from joint space to world space. 
-    // input 'jointStates' defines the state of the robot; each vector element corresponds to the angle/displacement for the respective joint
+    // input 'jointStates' defines the state of the robot; each vector element corresponds to the angle/displacement for the respective joint.
     std::vector<Matrix4d> forwardKinematics(VectorXd& jointStates);
 
     // 'fastForwardKinematics' does the same thing as 'forwardKinematics', but only calculates the matrix for the end effector, cutting down on computational costs.
@@ -73,15 +74,17 @@ public:
     // 'inverseKinematics' calculates the required joint states so that the end effector matrix lines up with the given goal matrix. 
     IKResult inverseKinematics(Matrix4d& goal, const bool useRotation = true, Vector3d rotationAxisIgnore = Vector3d::Zero(), int maxIterations = 33, int maxAttempts = 3, double tolerance = 1e-3, bool startAtLast = true);
     
+    // 'isPolylineReachable' checks if the robot defined by this class can travel the given polyline, under the given constraints.
+    bool isPolylineReachable(const core::Polyline2_5D& polyline, int maxIterations = 33, int maxAttempts = 3, double tolerance = 1e-3, bool startAtLast = true);
+
 private:
-    // 'lastIKResult' stores, as the name implies, the last result from 'inverseKinematics'. If defined, and toggled on, 'inverseKinematics' uses this as a starting point for its next call
+    // 'lastIKResult' stores, as the name implies, the last result from 'inverseKinematics'. If defined, and toggled on, 'inverseKinematics' uses this as a starting point for its next call.
     VectorXd lastIKResult;
 
-    // 'costFunction' defines when a given endEffector orientation is good or not
-    // TODO: allow for setting only certain d.o.f's of the goal as relevant; i.e. if you only care about accuracy in position, and 2 axes of rotation, allowing the software to freely choose the optimal 3'rd rotation
+    // 'costFunction' defines when a given endEffector orientation is valid or not. The closer to zero, the better the input.
     double costFunction(const Matrix4d& input, const Matrix4d& goal, const bool useRotation = true, Vector3d rotationAxisIgnore = Vector3d::Zero());
 
-    // 'costGradient' estimates the gradient of 'costFunction' using a central difference approximation
+    // 'costGradient' estimates the gradient of 'costFunction' using a central difference approximation.
     VectorXd costGradientEstimate(const VectorXd& jointStates, const Matrix4d& goal, const bool useRotation = true, Vector3d rotationAxisIgnore = Vector3d::Zero(), const double stepSize = 1e-6);
 
     // 'jointConstraints' transforms the individual joint boundaries into a set of inequalities of the form $h_i(\textbf{x}_k) \ge 0$. It then calculates these function values for the given joint states.
@@ -93,13 +96,11 @@ private:
     VectorXd jointLowerBounds();
     VectorXd jointUpperBounds();
 
-    // 'isValidState' checks if all given state elements fall within the defined joint boundaries
+    // 'isValidState' checks if all given state elements fall within the defined joint boundaries.
     bool isValidState(const VectorXd& jointStates);
 
     VectorXd randomJointStateInBounds();
 };
-
-
 
 }
 #endif // ROBOT_KINEMATICS_HPP

@@ -4,6 +4,8 @@ This file defines a mathematical 2D plane in 3D space.
 #ifndef CORE_PLANE_HPP
 #define CORE_PLANE_HPP
 
+#include <iostream>
+
 #include "CustomEigen.hpp"
 
 using Eigen::Vector3d;

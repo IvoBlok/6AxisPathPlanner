@@ -83,8 +83,7 @@ Start PCodeSender with the supplied PCode text file, which awaits untill the con
 <!-- TO DO -->
 ## To Do
 
-- [ ] Expand on robot + tool visualization
-- [ ] Add inverse kinematics
+- [ ] Add IK null-space optimization
 - [ ] Add movement animation
 - [ ] Add full 3D polylines
 - [ ] Fix transparency

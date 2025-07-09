@@ -23,6 +23,11 @@ struct IKResult {
     VectorXd state;
 };
 
+struct PathValidationResult {
+    IKResultType type;
+    std::vector<VectorXd> states;
+};
+
 // the kinematics of the robot is defined by a connected series of joints. Joints are limited to the linear or single-axis rotation types. 
 // each joint defines the vector from its zero point to a point on the line of motion. 
 // The defining direction of the motion, i.e. the direction of translation or the direction around which the translation is done, is defined by the Z axis of the transformation matrix
@@ -74,8 +79,8 @@ public:
     // 'inverseKinematics' calculates the required joint states so that the end effector matrix lines up with the given goal matrix. 
     IKResult inverseKinematics(Matrix4d& goal, const bool useRotation = true, Vector3d rotationAxisIgnore = Vector3d::Zero(), int maxIterations = 33, int maxAttempts = 3, double tolerance = 1e-3, bool startAtLast = true);
     
-    // 'isPolylineReachable' checks if the robot defined by this class can travel the given polyline, under the given constraints.
-    bool isPolylineReachable(const core::Polyline2_5D& polyline, int maxIterations = 33, int maxAttempts = 3, double tolerance = 1e-3, bool startAtLast = true);
+    // 'validatePath' checks if the robot defined by this class can travel the given polyline, under the given constraints.
+    PathValidationResult validatePath(const core::Polyline2_5D& polyline, int maxIterations = 33, int maxAttempts = 3, double tolerance = 1e-3, bool startAtLast = true);
 
 private:
     // 'lastIKResult' stores, as the name implies, the last result from 'inverseKinematics'. If defined, and toggled on, 'inverseKinematics' uses this as a starting point for its next call.

@@ -176,13 +176,21 @@ public:
                     
                     const core::Polyline2_5D& polyline = (*line)->getPolyline();
 
-                    bool result = robotKinematics.isPolylineReachable(polyline, maxIterations, maxAttempts, tolerance, warmStart);
+                    validationResult = robotKinematics.validatePath(polyline, maxIterations, maxAttempts, tolerance, warmStart);
+                }
+            }
 
-                    if (result) 
-                        std::cout << "path is reachable!\n";
-                    else 
-                        std::cout << "path is fucked!\n";
+            if (validationResult.type == IKResultType::Success) {
+                static int pathStep = 1;
+                ImGui::SliderInt("animation", &pathStep, 1, validationResult.states.size());
 
+                std::vector<Matrix4d> robotMatrices = robotKinematics.forwardKinematics(validationResult.states[pathStep - 1]);
+
+                // update the renderer objects
+                base->locateWithMatrix(robotMatrices.front());
+                effector->locateWithMatrix(robotMatrices.back());
+                for (int i = 1; i < robotMatrices.size() - 1; i++) {
+                    joints[i - 1]->locateWithMatrix(robotMatrices[i]);
                 }
             }
 
@@ -199,7 +207,12 @@ private:
     bool robotDefined;
     bool continuousIK;
 
+    PathValidationResult validationResult;
+
     void defineFullRobot(VulkanRenderEngine& renderer, int robotOption) {
+        validationResult.type = IKResultType::OutOfReach;
+        validationResult.states.clear();
+
         renderer.deleteObject(goalObject);
         renderer.deleteObject(base);
         renderer.deleteObject(effector);

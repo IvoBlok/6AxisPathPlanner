@@ -2209,8 +2209,46 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
         ImGuiWindowFlags_NoBringToFrontOnFocus | 
         ImGuiWindowFlags_NoTitleBar);
     {
-        ImGui::SeparatorText(" state ");
+        if(ImGui::Button("Generate Cube")) {
+            shared_ptr<LoadedObject> object = createObject(
+                    "../../resources/assets/cube.obj",
+                    Vector3d{ 0.f, 0.f, 1.f }, // color
+                    Vector3d{ 0.f, 0.f, 0.f }, // position
+                    Vector3d{ .25f, .25f, .25f }  // scale
+                );
+            
+            object->name = "cube";
+        }
+        ImGui::SameLine();
+        if(ImGui::Button("Generate Plane")) {
+            shared_ptr<LoadedObject> object = createObject(
+                    "../../resources/assets/plane.obj",
+                    Vector3d{ 1.f, 0.9f, 0.f }, // color
+                    Vector3d{ 0.f, 0.f, 0.f },  // position
+                    Vector3d{ .5f, .5f, .5f }  // scale
+                );
+            
+            object->name = "plane";
+        }
+        ImGui::SameLine();
+        if(ImGui::Button("Import Object")) {
+            char* outPath = NULL;
+            nfdresult_t result = NFD_OpenDialog( "obj", NULL, &outPath );
+                
+            if ( result == NFD_OKAY ) {
+                shared_ptr<LoadedObject> object = createObject(
+                        outPath,
+                        Vector3d{ 0.1f, 0.3f, 0.5f }, // color
+                        Vector3d{ 0.f, 0.f, 0.f }  // position
+                    );
+                
+                object->name = outPath;
+                free(outPath);
+            }
+        }
 
+
+        ImGui::SeparatorText("");
         // properties of loaded Objects
         if (ImGui::CollapsingHeader("Objects")) {
             int i = 0;
@@ -2378,55 +2416,21 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
             }
         }
 
-        ImGui::SeparatorText(" operations ");
-        if(ImGui::Button("Generate Cube")) {
-            shared_ptr<LoadedObject> object = createObject(
-                    "../../resources/assets/cube.obj",
-                    Vector3d{ 0.f, 0.f, 1.f }, // color
-                    Vector3d{ 0.f, 0.f, 0.f }, // position
-                    Vector3d{ .25f, .25f, .25f }  // scale
-                );
-            
-            object->name = "cube";
-        }
-        if(ImGui::Button("Generate Plane")) {
-            shared_ptr<LoadedObject> object = createObject(
-                    "../../resources/assets/plane.obj",
-                    Vector3d{ 1.f, 0.9f, 0.f }, // color
-                    Vector3d{ 0.f, 0.f, 0.f },  // position
-                    Vector3d{ .5f, .5f, .5f }  // scale
-                );
-            
-            object->name = "plane";
-        }
-        if(ImGui::Button("Import Object")) {
-            char* outPath = NULL;
-            nfdresult_t result = NFD_OpenDialog( "obj", NULL, &outPath );
-                
-            if ( result == NFD_OKAY ) {
-                shared_ptr<LoadedObject> object = createObject(
-                        outPath,
-                        Vector3d{ 0.1f, 0.3f, 0.5f }, // color
-                        Vector3d{ 0.f, 0.f, 0.f }  // position
-                    );
-                
-                object->name = outPath;
-                free(outPath);
-            }
+    
+        ImGui::SeparatorText("");
+        // add the GUI for all registered modules (i.e. stuff like MeshIntersect, PolylineOffsets, etc)
+        for (auto& drawGUI : guiCallbacks) {
+            drawGUI(*this);
         }
         
+
         // ensure that the window fills the entire height
         ImVec2 windowSize = ImGui::GetWindowSize();
         ImVec2 windowPos = ImGui::GetWindowPos();
         float availableHeight = ImGui::GetIO().DisplaySize.y - windowPos.y;
         if (windowSize.y != availableHeight)
             ImGui::SetWindowSize(ImVec2(windowSize.x, availableHeight));
-    
-        ImGui::SeparatorText(" functions ");
-        // add the GUI for all registered modules (i.e. stuff like MeshIntersect, PolylineOffsets, etc)
-        for (auto& drawGUI : guiCallbacks) {
-            drawGUI(*this);
-        }
+
     }
 
     ImGui::End();

@@ -1,7 +1,7 @@
 #include "renderer.hpp"
-#include "meshIntersectGUI.hpp"
-#include "toolPath2_5DGUI.hpp"
-#include "robotGUI.hpp"
+#include "gui/meshIntersectGUI.hpp"
+#include "gui/toolPath2_5DGUI.hpp"
+#include "gui/robotGUI.hpp"
 
 int main() {
 
@@ -13,7 +13,6 @@ int main() {
 		toolPath2_5D::ToolPath2_5DGUI toolPath2_5DGui{renderer};
 		kinematics::RobotGUI robotGui{renderer};
 
-		// form the actual rendering loop
 		while (!glfwWindowShouldClose(renderer.window)) {
 			renderer.drawFrame();
 		}

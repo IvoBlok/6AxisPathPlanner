@@ -564,6 +564,7 @@ void LoadedObject::LoadedModel::createIndexBuffer() {
 // public
 LoadedObject::LoadedObject() {
     renderObj = true;
+    hideInGUI = false;
     name = "obj";
 
     position = glm::vec3{0.f};
@@ -577,8 +578,9 @@ LoadedObject::LoadedObject() {
     texture = LoadedTexture{};
 }
 
-LoadedObject::LoadedObject(std::string objectName, bool visible) {
+LoadedObject::LoadedObject(std::string objectName, bool visible, bool hide) {
     renderObj = visible;
+    hideInGUI = hide;
     name = objectName;
 
     position = glm::vec3{0.f};
@@ -699,6 +701,7 @@ void LoadedObject::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeli
 // public
 LoadedLine::LoadedLine() {
     renderLine = true;
+    hideInGUI = false;
     name = "line";
     lineWidth = 3.f;
     defaultColor = glm::vec3{ 1.f, 0.f, 0.f };
@@ -2213,6 +2216,10 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
             int i = 0;
             for (auto it = loadedObjects.begin(); it != loadedObjects.end(); ++it, ++i) {
                 auto& object = *it;
+
+                if (object->hideInGUI)
+                    continue;
+
                 ImGui::PushID(("Objects_" + std::to_string(i)).c_str());
 
                 // Get starting position for this row
@@ -2299,6 +2306,10 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
             int i = 0;
             for (auto it = loadedLines.begin(); it != loadedLines.end(); ++it, ++i) {
                 auto& line = *it;
+
+                if (line->hideInGUI)
+                    continue;
+
                 ImGui::PushID(("Lines_" + std::to_string(i)).c_str());
 
                 // Get starting position for this row

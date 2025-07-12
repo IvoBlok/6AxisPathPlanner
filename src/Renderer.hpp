@@ -181,6 +181,7 @@ private:
 
 public:
 	bool renderObj;
+	bool hideInGUI;
 	std::string name;
 
     glm::vec3 position;
@@ -194,7 +195,7 @@ public:
     LoadedTexture texture;
 
 	LoadedObject();
-	LoadedObject(std::string objectName, bool visible = true);
+	LoadedObject(std::string objectName, bool visible = true, bool hide = false);
 
 	void locateWithMatrix(Matrix4d matrix);
 
@@ -220,6 +221,7 @@ the polyline can undergo modifications. To update the rendering representation o
 class LoadedLine {
 public:
 	bool renderLine;
+	bool hideInGUI;
 	std::string name;
 
 	float transparency;

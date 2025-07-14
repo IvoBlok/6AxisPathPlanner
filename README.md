@@ -84,7 +84,7 @@ Start PCodeSender with the supplied PCode text file, which awaits untill the con
 ## To Do
 
 - [ ] Add IK null-space optimization
-- [ ] Add movement animation
+- [ ] Expand on movement animation
 - [ ] Add full 3D polylines
 - [ ] Fix transparency
 - [ ] Add non-planar pathing

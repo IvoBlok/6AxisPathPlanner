@@ -81,7 +81,18 @@ public:
     return result;
   }
 
+  PlineVertex2D getVertexInPlaneCoords() const {
+    PlineVertex2D result;
+    result.bulge() = bulge;
+    result.pos() = plane.getLocalCoords(point);
+    return result;
+  }
+
   Vector2d getPointInPlaneCoords() {
+    return plane.getLocalCoords(point);
+  }
+
+  Vector2d getPointInPlaneCoords() const {
     return plane.getLocalCoords(point);
   }
 

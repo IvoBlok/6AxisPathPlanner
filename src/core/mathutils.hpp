@@ -154,6 +154,10 @@ inline glm::vec3 randomVec3(float min = 0.0f, float max = 1.0f) {
     return glm::vec3(dist(gen), dist(gen), dist(gen));
 }
 
+template <typename T> T roundTo(T value, T precision = 1.0) {
+  return std::round(value / precision) * precision;
+}
+
 } // namespace utils
 } // namespace core
 

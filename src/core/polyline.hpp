@@ -15,15 +15,15 @@ This file defines the 2D and 2.5D polylines, and various functions that operate 
 
 namespace core {
 class Polyline2D {
-public:
+  using PVertex = PlineVertex2D;
 
+public:
   // when the polyline is closed, 'isPocket' signifies if the area enclosed by the polyline is desired material, or material to be removed
   bool isPocket = false;
 
-  /// Construct an empty open polyline.
+
   Polyline2D() : isClosedVal(false), vertices() {}
 
-  using PVertex = PlineVertex2D;
   inline PVertex const &operator[](std::size_t i) const { return vertices[i]; }
   inline PVertex &operator[](std::size_t i) { return vertices[i]; }
 
@@ -53,8 +53,8 @@ public:
   PVertex const &lastVertex() const { return vertices.back(); }
   PVertex &lastVertex() { return vertices.back(); }
 
-  std::vector<PVertex> &vertexes() { return vertices; }
-  std::vector<PVertex> const &vertexes() const { return vertices; }
+  std::vector<PVertex>& vertexes() { return vertices; }
+  const std::vector<PVertex>& vertexes() const { return vertices; }
 
   /// Iterate the segment indices of the polyline. visitor function is invoked for each segment
   /// index pair, stops when all indices have been visited or visitor returns false. visitor
@@ -79,17 +79,26 @@ public:
     }
   }
 
+  PVertex& operator[](int index) {
+    return vertices[(index % vertices.size())];
+  }
+
+  const PVertex& operator[](int index) const {
+    return vertices[(index % vertices.size())];
+  }
+
 private:
   bool isClosedVal;
   std::vector<PVertex> vertices;
 };
 
 class Polyline2_5D {
+  using PVertex = PlineVertex2_5D;
 public:
   /// Construct an empty open polyline.
   Polyline2_5D() : isClosedVal(false), vertices() {}
 
-  Polyline2_5D(Polyline2D& polyline, Plane& plane) {
+  Polyline2_5D(const Polyline2D& polyline, Plane& plane) {
     insertPolyLine2D(polyline, plane);
   }
 
@@ -97,15 +106,15 @@ public:
     insertPolyLine2_5D(polyline);
   }
 
-  void insertPolyLine2D(Polyline2D& polyline, Plane& plane) {
+  void insertPolyLine2D(const Polyline2D& polyline, Plane& plane) {
     vertices.clear();
 
     isClosedVal = polyline.isClosed();
 
-    std::vector<PlineVertex2D>& inputVertices = polyline.vertexes();
+    const auto& inputVertices = polyline.vertexes();
     for (size_t i = 0; i < inputVertices.size(); i++)
     {
-      PlineVertex2_5D new3DVertex;
+      PVertex new3DVertex;
       new3DVertex.bulge = inputVertices[i].bulge();
       new3DVertex.point = plane.getGlobalCoords(inputVertices[i].pos());
       new3DVertex.plane = plane;
@@ -132,7 +141,7 @@ public:
   }
 
   void movePolyline(Vector3d translation) {
-    for (PlineVertex2_5D& vertex : vertices) {
+    for (PVertex& vertex : vertices) {
       vertex.point += translation;
       vertex.plane.origin += translation;
     }
@@ -146,11 +155,24 @@ public:
     return isClosedVal;
   }
 
-  std::vector<PlineVertex2_5D>& vertexes() {
+  std::size_t size() const { return vertices.size(); }
+
+  void addVertex(PVertex vertex) { vertices.emplace_back(vertex); }
+  void addVertex(PVertex vertex, double newBulge) { vertices.emplace_back(vertex); vertices.back().bulge = newBulge; }
+
+  PVertex& operator[](int index) {
+    return vertices[(index % vertices.size())];
+  }
+
+  const PVertex& operator[](int index) const {
+    return vertices[(index % vertices.size())];
+  }
+
+  std::vector<PVertex>& vertexes() {
     return vertices;
   }
 
-  const std::vector<PlineVertex2_5D>& vertexes() const {
+  const std::vector<PVertex>& vertexes() const {
     return vertices;
   }
 
@@ -160,7 +182,7 @@ public:
 
 private:
   bool isClosedVal;
-  std::vector<PlineVertex2_5D> vertices;
+  std::vector<PVertex> vertices;
 };
 
 /// Scale X and Y of polyline by scaleFactor.
@@ -639,6 +661,47 @@ inline int getWindingNumber(Polyline2D const &pline, Vector2d const &point) {
   return windingNumber;
 }
 
+/// Creates a polyline where any bulge/arc vertices in the given polyline are replaced by a series of straight vertices
+inline Polyline2_5D replacePolylineArcs(const Polyline2_5D& polyline, double replaceLength) {
+    using Eigen::Vector2d;
+    using Eigen::Vector3d;
+
+    Polyline2_5D result;
+
+    int index = 0;
+    for (const auto& currentVertex : polyline.vertexes()) {
+        if (currentVertex.bulgeIsZero() || (index + 1 == polyline.size() && !polyline.isClosed() && !currentVertex.bulgeIsZero())) {
+            result.addVertex(currentVertex, 0.0);
+        } else {
+            Plane plane{currentVertex.plane};
+            PlineVertex2_5D nextVertex = polyline[index + 1];
+            
+            Vector2d localV1Coords = currentVertex.getPointInPlaneCoords();
+            Vector2d localV2Coords = plane.getLocalCoords(nextVertex.point);
+            ArcRadiusAndCenter arcInfo = arcRadiusAndCenter(currentVertex.getVertexInPlaneCoords(), PlineVertex2D{localV2Coords, 0.0});
+
+            double startAngle = angle(arcInfo.center, localV1Coords);
+            double endAngle = angle(arcInfo.center, localV2Coords);
+
+            double deltaAngle = utils::deltaAngle(startAngle, endAngle);
+
+            double arcLength = std::abs(deltaAngle * arcInfo.radius);
+            int segmentCount = std::ceil((arcLength * 1000.0) / replaceLength);
+            
+            for (size_t k = 0; k < segmentCount; k++) {
+                Vector2d localPosition;
+                localPosition.x() = arcInfo.center.x() + arcInfo.radius * std::cos(startAngle + (deltaAngle / segmentCount) * k);
+                localPosition.y() = arcInfo.center.y() + arcInfo.radius * std::sin(startAngle + (deltaAngle / segmentCount) * k);
+
+                PlineVertex2_5D newVertex{0.0, plane.getGlobalCoords(localPosition), plane};
+                result.addVertex(newVertex);
+            }
+        }
+        index++;
+    }
+
+    return result;
+}
 
 
 namespace internal {

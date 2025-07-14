@@ -1,5 +1,7 @@
 #include "renderer.hpp"
 
+#include "core/polylineExport.hpp"
+
 #include <fstream>
 #include <stdexcept>
 #include <cstring>
@@ -2410,6 +2412,15 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                     
                     ImGui::SliderFloat("Transparency", &line->transparency, 0.0f, 1.0f);
                     ImGui::SliderFloat("Line Width", &line->lineWidth, 0.0f, 10.0f);
+
+                    if (ImGui::Button("Export##LinePolylineExport")) {
+                        core::exportSettings settings;
+                        settings.useArcs = false;
+                        settings.arcReplacementMaxLength = 10.0;
+                        settings.fileName = line->name + ".txt";
+                        core::exportPath(line->getPolyline(), settings);
+                    }
+
                     ImGui::TreePop();
                 }
                 ImGui::PopID();

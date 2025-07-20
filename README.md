@@ -83,10 +83,12 @@ Start PCodeSender with the supplied PCode text file, which awaits untill the con
 <!-- TO DO -->
 ## To Do
 
+- [ ] Add full 3D polylines (and clean up polyline code)
+- [ ] Add rotation control back to objects
+- [ ] Add basic collision checks to toolPath planning, using a union of all triangles onto the milling plane, probably optional
 - [ ] Add IK null-space optimization
-- [ ] Expand on movement animation
-- [ ] Add full 3D polylines
 - [ ] Fix transparency
+- [ ] Expand on movement animation
 - [ ] Add non-planar pathing
 - [ ] Add collision control for path validation
 - [ ] Update CMakeFile to create a release executable with proper Eigen (and proxsuite) optimization

@@ -186,7 +186,7 @@ public:
 
     glm::vec3 position;
     glm::vec3 scale;
-    glm::mat4 rotationMatrix;
+	Vector3f rotation;
 
     bool isOneColor;
     glm::vec3 color;
@@ -198,6 +198,8 @@ public:
 	LoadedObject(std::string objectName, bool visible = true, bool hide = false);
 
 	void locateWithMatrix(Matrix4d matrix);
+	void updateRotation();
+	void updateRotationMatrix();
 
 	// getObjectShape converts the object geometry from vertex data in one format and the position,scale, rotation data together into a new vertex data format, where the transformations have been applied.
 	core::ObjectShape getObjectShape();
@@ -211,6 +213,9 @@ public:
 
 private:
 	friend class VulkanRenderEngine;
+
+	glm::mat4 rotationMatrix;
+
     void destroyRenderData();
 };
 

@@ -84,7 +84,6 @@ Start PCodeSender with the supplied PCode text file, which awaits untill the con
 ## To Do
 
 - [ ] Add full 3D polylines (and clean up polyline code)
-- [ ] Add rotation control back to objects
 - [ ] Add basic collision checks to toolPath planning, using a union of all triangles onto the milling plane, probably optional
 - [ ] Add IK null-space optimization
 - [ ] Fix transparency

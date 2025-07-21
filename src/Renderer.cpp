@@ -1,6 +1,7 @@
 #include "renderer.hpp"
 
 #include "core/polylineExport.hpp"
+#include "core/mathUtils.hpp"
 
 #include <fstream>
 #include <stdexcept>
@@ -571,6 +572,7 @@ LoadedObject::LoadedObject() {
 
     position = glm::vec3{0.f};
     scale = glm::vec3{1.f};
+    rotation = Vector3f{0.f, 0.f, 0.f};
     rotationMatrix = glm::mat4{1.f};
 
     bool isOneColor = true;
@@ -607,6 +609,27 @@ void LoadedObject::locateWithMatrix(Matrix4d matrix) {
             // Eigen: (row,col) | GLM: [col][row]
         }
     }
+    updateRotation();
+}
+
+void LoadedObject::updateRotation() {
+    Matrix3d matrix;
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            matrix(i, j) = rotationMatrix[j][i];
+
+    auto eulerAngles = Eigen::EulerAnglesXYZd{matrix};
+    rotation = eulerAngles.angles().cast<float>() * (360.f / (2 * core::PI));
+}
+
+void LoadedObject::updateRotationMatrix() {
+    auto eulerAngles = Eigen::EulerAnglesXYZf{rotation * ((2 * core::PI) / 360.f)};
+    auto matrix = eulerAngles.matrix();
+
+    rotationMatrix = glm::mat4{1.f};
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            rotationMatrix[j][i] = matrix(i, j); // Both eigen and glm are column-major in memory, their access is reversed; i.e. glm::mat[i] gives the i'th column, where Eigen::Matrix(i) gives the i'th row
 }
 
 
@@ -668,6 +691,8 @@ void LoadedObject::destroyRenderData() {
 }
 
 glm::mat4 LoadedObject::getTransformationMatrix() {
+    updateRotationMatrix();
+
     glm::mat4 transformationMatrix = glm::mat4{1.0f};
     transformationMatrix = glm::translate(transformationMatrix, position);  // 1. Translate first
     transformationMatrix = transformationMatrix * rotationMatrix;  // 2. Then rotate
@@ -2298,14 +2323,14 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 // Contents when expanded
                 if (isOpen) {
                     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Faces: %d", object->model.vertices.size(), object->model.indices.size() / 3);
-                    float positionArray[3] = {object->position.x, object->position.y, object->position.z};
+                    float positionArray[3] = { object->position.x, object->position.y, object->position.z };
                     if (ImGui::InputFloat3("Position", positionArray)) {
                         object->position.x = positionArray[0];
                         object->position.y = positionArray[1];
                         object->position.z = positionArray[2];
                     }
 
-                    float scaleArray[3] = {object->scale.x, object->scale.y, object->scale.z};
+                    float scaleArray[3] = { object->scale.x, object->scale.y, object->scale.z };
                     if (ImGui::InputFloat3("Scale", scaleArray)) {
                         object->scale.x = scaleArray[0];
                         object->scale.y = scaleArray[1];
@@ -2313,7 +2338,13 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                     }
 
                     // TODO add some way of controlling the rotation matrix
-
+                    float rotationArray[3] = { object->rotation.x(), object->rotation.y(), object->rotation.z() };
+                    if (ImGui::InputFloat3("Rotation", rotationArray)) {
+                        object->rotation.x() = rotationArray[0];
+                        object->rotation.y() = rotationArray[1];
+                        object->rotation.z() = rotationArray[2];
+                    }
+                    
                     float colorArray[3] = { object->color.x, object->color.y, object->color.z };
                     ImGui::Text("Color ");
                     ImGui::SameLine();

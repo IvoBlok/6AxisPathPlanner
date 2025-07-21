@@ -6,11 +6,19 @@
 #include "Eigen/Core"
 #include "Eigen/Dense"
 
+#include "unsupported/Eigen/EulerAngles"
+
 using Eigen::Vector2d;
 using Eigen::Vector3d;
+using Eigen::Vector3f;
 using Eigen::Vector4d;
 
 using Eigen::Matrix4d;
+using Eigen::Matrix4f;
+using Eigen::Matrix3d;
+using Eigen::Matrix3f;
+
+using Eigen::Quaterniond;
 
 #include <cmath>
 #include <type_traits>

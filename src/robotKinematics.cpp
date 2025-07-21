@@ -320,10 +320,10 @@ double RobotKinematics::costFunction(const Matrix4d& input, const Matrix4d& goal
 
     // rotation error cost contribution
     if (useRotation) {
-        Eigen::Quaterniond qInput(input.block<3,3>(0,0)), qGoal(goal.block<3,3>(0,0));
+        Quaterniond qInput(input.block<3,3>(0,0)), qGoal(goal.block<3,3>(0,0));
         qInput.normalize(); 
         qGoal.normalize();
-        Eigen::Quaterniond qError = qGoal.conjugate() * qInput;
+        Quaterniond qError = qGoal.conjugate() * qInput;
         Vector3d rotationError = 2.0 * qError.vec();
 
         if(rotationAxisIgnore.norm() > 1e-6) {

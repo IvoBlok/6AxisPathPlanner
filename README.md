@@ -77,7 +77,7 @@ This repository contains the path planner, which can be compiled using the instr
 
 Use the 6AxisPathPlanner executable to create your toolpaths. Then export these paths to a PCode (personal dumb version of GCode) .txt file. Transfer this file to the machine that will run PCodeSender. This machine is connected to the KRC1 controller by a 'standard' serial connection. The rather obscure 3964R serial protocol is used, due to the limited support of the controller. The controller requires some wacky settings to be modified to accept the communication. See the (pirated) controller documentation for this. 
 
-Start PCodeSender with the supplied PCode text file, which awaits untill the controller requests move instructions. Then start the KRLExternalControl on the robot. Both programs should exit when the last instructions have been sent/moved.
+Start PCodeSender with the supplied PCode text file, which waits untill the controller requests move instructions. Then start the KRLExternalControl on the robot. Both programs should exit when the last instructions have been sent/moved.
 
 
 <!-- TO DO -->

@@ -1,5 +1,5 @@
-#ifndef ROBOT_GUI_HPP
-#define ROBOT_GUI_HPP
+#ifndef ROBOT_GUI_TEST_HPP
+#define ROBOT_GUI_TEST_HPP
 
 #include "renderer.hpp"
 #include "robotKinematics.hpp"
@@ -11,7 +11,7 @@ using Eigen::VectorXf;
 using Eigen::Vector3f;
 
 namespace kinematics {
-class RobotGUI {
+class RobotGUITest {
 public:
     RobotKinematics robotKinematics;
 
@@ -25,7 +25,7 @@ public:
     Vector3f endRotation;
     shared_ptr<LoadedObject> goalObject;
 
-    RobotGUI(VulkanRenderEngine& renderer) {
+    RobotGUITest(VulkanRenderEngine& renderer) {
         registerWithRenderer(renderer);
 
         continuousIK = false;
@@ -565,4 +565,4 @@ private:
 
 }
 
-#endif // ROBOT_GUI_HPP
+#endif

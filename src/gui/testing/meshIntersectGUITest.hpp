@@ -1,13 +1,13 @@
-#ifndef MESH_INTERSECT_GUI_HPP
-#define MESH_INTERSECT_GUI_HPP
+#ifndef MESH_INTERSECT_GUI_TEST_HPP
+#define MESH_INTERSECT_GUI_TEST_HPP
 
 #include "renderer.hpp"
 #include "meshIntersect.hpp"
 
 namespace meshIntersect {
-class MeshIntersectGUI {
+class MeshIntersectGUITest {
 public:
-    MeshIntersectGUI(VulkanRenderEngine& renderer) {
+    MeshIntersectGUITest(VulkanRenderEngine& renderer) {
         registerWithRenderer(renderer);
     }
 

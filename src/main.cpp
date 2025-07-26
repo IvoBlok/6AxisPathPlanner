@@ -1,7 +1,7 @@
 #include "renderer.hpp"
-#include "gui/testing/meshIntersectGUI.hpp"
-#include "gui/testing/toolPath2_5DGUI.hpp"
-#include "gui/testing/robotGUI.hpp"
+#include "gui/testing/meshIntersectGUITest.hpp"
+#include "gui/testing/toolPath2_5DGUITest.hpp"
+#include "gui/testing/robotGUITest.hpp"
 
 #include "gui/pathPlannerGUI.hpp"
 
@@ -11,9 +11,9 @@ int main() {
 		VulkanRenderEngine renderer;
 		renderer.initialize();
 
-		meshIntersect::MeshIntersectGUI meshIntersectGui{renderer};
-		toolPath2_5D::ToolPath2_5DGUI toolPath2_5DGui{renderer};
-		kinematics::RobotGUI robotGui{renderer};
+		meshIntersect::MeshIntersectGUITest meshIntersectGuiTest{renderer};
+		toolPath2_5D::ToolPath2_5DGUITest toolPath2_5DGuiTest{renderer};
+		kinematics::RobotGUITest robotGuiTest{renderer};
 		PathPlannerGUI pathPlannerGUI{renderer};
 
 		while (!glfwWindowShouldClose(renderer.window)) {

@@ -2,118 +2,121 @@
 #define TOOL_PATH_2_5D_GUI_HPP
 
 #include "renderer.hpp"
+#include "ImGuiAdditions.hpp"
+
 #include "toolPath2_5D.hpp"
 
 namespace toolPath2_5D {
-class ToolPath2_5DGUI {
-public:
-    ToolPath2_5DGUI(VulkanRenderEngine& renderer) {
-        registerWithRenderer(renderer);
-    }
-
-    void drawGUI(VulkanRenderEngine& renderer) {
-        if (ImGui::CollapsingHeader("2.5D Toolpaths##2_5dToolPath")) {
-            drawFacePass(renderer);
-            drawSurfacePass(renderer);
-            drawClearingPass(renderer);
-        } 
-    }
-
-    void registerWithRenderer(VulkanRenderEngine& renderer) {
-        renderer.registerGuiModule([this](VulkanRenderEngine& r) {
-            this->drawGUI(r); 
-        });
-    }
-
-private:
-    FacePass2_5DInfo facePassInfo;
-    SurfacePass2_5DInfo surfacePassInfo;
-    ClearingPass2_5DInfo clearingPassInfo;
-
-    void drawFacePass(VulkanRenderEngine& renderer) {
-        ImGui::Indent(15.0f);
-        if (ImGui::CollapsingHeader("Face Pass##2_5dToolPath")) {
-            auto& objects = renderer.loadedObjects;
-
-            // Convert list to display vectors
-            std::vector<std::string> objectNames;
-            for (auto& obj : objects)
-                objectNames.push_back(obj->name);
-            
-
-            // Safe static storage with proper scoping
-            static int selectedIdx1 = -1;
-            static int selectedIdx2 = -1;
-
-            // Validate indices
-            selectedIdx1 = (selectedIdx1 >= 0 && selectedIdx1 < (int)objects.size()) ? selectedIdx1 : -1;
-            selectedIdx2 = (selectedIdx2 >= 0 && selectedIdx2 < (int)objects.size()) ? selectedIdx2 : -1;
-
-            // First dropdown - Plane selection
-            ImGui::PushID("face_pass_plane_select_group");
-            ImGui::Text("Select Plane:");
-            const char* preview1 = (selectedIdx1 != -1) ? objectNames[selectedIdx1].c_str() : "-";
-            if (ImGui::BeginCombo("##plane_select_combo", preview1)) {
-                for (int i = 0; i < (int)objects.size(); ++i) {
-                    ImGui::PushID(i);
-                    bool isSelected = (selectedIdx1 == i);
-                    if (ImGui::Selectable(objectNames[i].c_str(), isSelected)) {
-                        selectedIdx1 = i;
-                    }
-                    if (isSelected) {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                    ImGui::PopID();
-                }
-                ImGui::EndCombo();
-            }
-            ImGui::PopID();
-            
-            // Second dropdown - Stock selection
-            ImGui::PushID("face_pass_shape_select_group");
-            ImGui::Text("Select Stock:");
-            const char* preview2 = (selectedIdx2 != -1) ? objectNames[selectedIdx2].c_str() : "-";
-            if (ImGui::BeginCombo("##stock_select_combo", preview2)) {
-                for (int i = 0; i < (int)objects.size(); ++i) {
-                    ImGui::PushID(i + 2*objects.size()); // Different ID range
-                    bool isSelected = (selectedIdx2 == i);
-                    if (ImGui::Selectable(objectNames[i].c_str(), isSelected)) {
-                        selectedIdx2 = i;
-                    }
-                    if (isSelected) {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                    ImGui::PopID();
-                }
-                ImGui::EndCombo();
-            }
-            ImGui::PopID();
-            
-            // Aditional toolpath info
-            ImGui::InputDouble("Traverse height [mm]##face_pass", &facePassInfo.safeTraverseHeight);
-            ImGui::InputDouble("Stepover [mm]##face_pass", &facePassInfo.stepOver);
-
-            if (ImGui::Button("Generate!##face_pass")) {
-                if(selectedIdx1 != -1 && selectedIdx2 != -1) {
-                    auto planeObj = objects.begin();
-                    std::advance(planeObj, selectedIdx1);
-                    auto stockObj = objects.begin();
-                    std::advance(stockObj, selectedIdx2);
-
-                    facePassInfo.slicingPlane = (*planeObj)->getPlane();
-                    facePassInfo.stock = (*stockObj)->getObjectShape();
-
-                    core::Polyline2_5D result = generateFacePass2_5D(facePassInfo);
-                    
-                    if (!result.isEmpty())
-                        renderer.createLine(result);
-                }
-            }
+    class FacePassGUI {
+    public:
+        FacePass2_5DInfo info;
+        
+        FacePassGUI() {
+            selectedIndex1 = -1;
+            selectedIndex2 = -1;
         }
-        ImGui::Unindent(15.0f);
-    }
 
-    void drawSurfacePass(VulkanRenderEngine& renderer) {
+        void drawFacePass(VulkanRenderEngine& renderer) {
+            ImGui::Indent(15.0f);
+            if (ImGui::CollapsingHeader("Face Pass##2_5dToolPath")) {
+                auto& objects = renderer.loadedObjects;
+
+                // Convert list to display vectors
+                std::vector<std::string> objectNames;
+                for (auto& obj : objects)
+                    objectNames.push_back(obj->name);
+                
+                // Validate indices
+                selectedIndex1 = (selectedIndex1 >= 0 && selectedIndex1 < (int)objects.size()) ? selectedIndex1 : -1;
+                selectedIndex2 = (selectedIndex2 >= 0 && selectedIndex2 < (int)objects.size()) ? selectedIndex2 : -1;
+
+                // First dropdown - Plane selection
+                ImGui::PushID("face_pass_plane_select_group");
+                ImGui::Text("Select Plane:");
+                const char* preview1 = (selectedIndex1 != -1) ? objectNames[selectedIndex1].c_str() : "-";
+                if (ImGui::BeginCombo("##plane_select_combo", preview1)) {
+                    for (int i = 0; i < (int)objects.size(); ++i) {
+                        ImGui::PushID(i);
+                        bool isSelected = (selectedIndex1 == i);
+                        if (ImGui::Selectable(objectNames[i].c_str(), isSelected)) {
+                            selectedIndex1 = i;
+                        }
+                        if (isSelected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::EndCombo();
+                }
+                ImGui::PopID();
+                
+                // Second dropdown - Stock selection
+                ImGui::PushID("face_pass_shape_select_group");
+                ImGui::Text("Select Stock:");
+                const char* preview2 = (selectedIndex2 != -1) ? objectNames[selectedIndex2].c_str() : "-";
+                if (ImGui::BeginCombo("##stock_select_combo", preview2)) {
+                    for (int i = 0; i < (int)objects.size(); ++i) {
+                        ImGui::PushID(i + 2*objects.size()); // Different ID range
+                        bool isSelected = (selectedIndex2 == i);
+                        if (ImGui::Selectable(objectNames[i].c_str(), isSelected)) {
+                            selectedIndex2 = i;
+                        }
+                        if (isSelected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::EndCombo();
+                }
+                ImGui::PopID();
+                
+                // Aditional toolpath info
+                ImGui::InputDouble("Traverse height [mm]##face_pass", &info.safeTraverseHeight);
+                ImGui::InputDouble("Stepover [mm]##face_pass", &info.stepOver);
+
+                if (ImGui::Button("Generate!##face_pass")) {
+                    if(selectedIndex1 != -1 && selectedIndex2 != -1) {
+                        auto planeObj = objects.begin();
+                        std::advance(planeObj, selectedIndex1);
+                        auto stockObj = objects.begin();
+                        std::advance(stockObj, selectedIndex2);
+
+                        info.slicingPlane = (*planeObj)->getPlane();
+                        info.stock = (*stockObj)->getObjectShape();
+
+                        core::Polyline2_5D result = generateFacePass2_5D(info);
+                        
+                        if (!result.isEmpty())
+                            renderer.createLine(result);
+                    }
+                }
+            }
+            ImGui::Unindent(15.0f);
+        }
+    
+    private:
+        int selectedIndex1;
+        int selectedIndex2;
+    };
+
+    class SurfacePassGUI {
+    public:
+        SurfacePass2_5DInfo info;
+
+        SurfacePassGUI() {
+
+        }
+
+        void drawSurfacePass(VulkanRenderEngine& renderer) {
+
+        }
+
+    private:
+        int selectedIndex1;
+    };
+
+    /*
+    void drawSurfacePass(VulkanRenderEngine& renderer, SurfacePass2_5DInfo& surfacePassInfo) {
         ImGui::Indent(15.0f);
         if (ImGui::CollapsingHeader("Surface Pass##2_5dToolPath")) {
             auto& objects = renderer.loadedObjects;
@@ -221,7 +224,7 @@ private:
         ImGui::Unindent(15.0f);
     }
 
-    void drawClearingPass(VulkanRenderEngine& renderer) {
+    void drawClearingPass(VulkanRenderEngine& renderer, ClearingPass2_5DInfo& clearingPassInfo) {
         ImGui::Indent(15.0f);
         if (ImGui::CollapsingHeader("Clearing Pass##2_5dToolPath")) {
             auto& objects = renderer.loadedObjects;
@@ -354,7 +357,7 @@ private:
         }
         ImGui::Unindent(15.0f);
     }
-};
+    */
 
 } // namespace toolPath2_5D
 

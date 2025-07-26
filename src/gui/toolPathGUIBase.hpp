@@ -1,5 +1,5 @@
-#ifndef IMGUI_ADDITIONS_HPP
-#define IMGUI_ADDITIONS_HPP
+#ifndef TOOLPATH_GUI_BASE_HPP
+#define TOOLPATH_GUI_BASE_HPP
 
 #include "renderer.hpp"
 
@@ -24,5 +24,12 @@ inline void handleDropdown(std::string ID, std::string dropdownText, std::vector
     }
     ImGui::PopID();
 }
+
+class ToolPathGUIBase {
+public:
+    virtual void draw(VulkanRenderEngine& renderer) = 0;
+    virtual std::string name() const = 0;
+    virtual std::unique_ptr<ToolPathGUIBase> clone() const = 0;
+};  
 
 #endif

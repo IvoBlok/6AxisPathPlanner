@@ -35,8 +35,8 @@ public:
                 }
             }
 
-            for (auto& toolPath : toolPaths) {
-                toolPath->draw(renderer);
+            for (int i = 0; i < toolPaths.size(); i++) {
+                toolPaths[i]->draw(renderer, std::to_string(i));
             }
         }
     }

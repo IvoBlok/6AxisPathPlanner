@@ -2337,7 +2337,6 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                         object->scale.z = scaleArray[2];
                     }
 
-                    // TODO add some way of controlling the rotation matrix
                     float rotationArray[3] = { object->rotation.x(), object->rotation.y(), object->rotation.z() };
                     if (ImGui::InputFloat3("Rotation", rotationArray)) {
                         object->rotation.x() = rotationArray[0];

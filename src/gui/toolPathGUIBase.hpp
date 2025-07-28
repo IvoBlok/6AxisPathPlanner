@@ -5,7 +5,9 @@
 
 inline void handleDropdown(std::string ID, std::string dropdownText, std::vector<std::string>& objectNames, int& selectedIndex) {
     ImGui::PushID(ID.c_str());
-    ImGui::Text(dropdownText.c_str());
+
+    if (!dropdownText.empty() || dropdownText != "")
+        ImGui::Text(dropdownText.c_str());
 
     selectedIndex = (selectedIndex >= 0 && selectedIndex < (int)objectNames.size()) ? selectedIndex : -1;
     const char* preview = (selectedIndex != -1) ? objectNames[selectedIndex].c_str() : "-";

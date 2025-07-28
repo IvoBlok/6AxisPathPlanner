@@ -27,10 +27,10 @@ public:
             
             static int toolPathSelectionIndex = -1;
 
-            handleDropdown("toolPathSelectionDropdown", "toolpath ...", toolPathNames, toolPathSelectionIndex);
+            handleDropdown("toolPathSelectionDropdown", "", toolPathNames, toolPathSelectionIndex);
             ImGui::SameLine();
-            if (toolPathSelectionIndex >= 0 && toolPathSelectionIndex < toolPathOptions.size()) {
-                if (ImGui::Button("Add Tool Path")) {
+            if (ImGui::Button("Add Tool Path")) {
+                if (toolPathSelectionIndex >= 0 && toolPathSelectionIndex < toolPathOptions.size()) {
                     toolPaths.push_back(toolPathOptions[toolPathSelectionIndex]->clone());
                 }
             }

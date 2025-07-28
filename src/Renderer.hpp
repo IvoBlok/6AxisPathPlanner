@@ -210,6 +210,7 @@ public:
     void load(const char* modelPath, Vector3d objectColor, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
     glm::mat4 getTransformationMatrix();
     void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+	void drawGUI();
 
 private:
 	friend class VulkanRenderEngine;
@@ -240,6 +241,7 @@ public:
 	void load(core::Polyline2_5D& polylineIn, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
 	
 	void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+	void drawGUI();
 
 	core::Polyline2_5D& getPolyline();
 

@@ -721,6 +721,50 @@ void LoadedObject::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeli
     model.render(commandBuffer);
 }
 
+void LoadedObject::drawGUI() {
+    float positionArray[3] = { position.x, position.y, position.z };
+    if (ImGui::InputFloat3("Position", positionArray)) {
+        position.x = positionArray[0];
+        position.y = positionArray[1];
+        position.z = positionArray[2];
+    }
+
+    float scaleArray[3] = { scale.x, scale.y, scale.z };
+    if (ImGui::InputFloat3("Scale", scaleArray)) {
+        scale.x = scaleArray[0];
+        scale.y = scaleArray[1];
+        scale.z = scaleArray[2];
+    }
+
+    float rotationArray[3] = { rotation.x(), rotation.y(), rotation.z() };
+    if (ImGui::InputFloat3("Rotation", rotationArray)) {
+        rotation.x() = rotationArray[0];
+        rotation.y() = rotationArray[1];
+        rotation.z() = rotationArray[2];
+    }
+    
+    float colorArray[3] = { color.x, color.y, color.z };
+    ImGui::Text("Color ");
+    ImGui::SameLine();
+    ImVec4 colVec4 = ImVec4(colorArray[0], colorArray[1], colorArray[2], 1.0f);
+    if (ImGui::ColorButton("MyColor##3", colVec4, ImGuiColorEditFlags_NoTooltip)) {
+        ImGui::OpenPopup("colorPicker");
+    }
+    if (ImGui::BeginPopup("colorPicker")) {
+        if (ImGui::ColorPicker3("##picker", colorArray, 
+            ImGuiColorEditFlags_DisplayRGB | 
+            ImGuiColorEditFlags_NoSidePreview |
+            ImGuiColorEditFlags_NoSmallPreview)) 
+        {
+            color.x = colorArray[0];
+            color.y = colorArray[1];
+            color.z = colorArray[2];
+        }
+        ImGui::EndPopup();
+    }
+    
+    ImGui::SliderFloat("Transparency", &model.transparency, 0.0f, 1.0f);
+}
 
 
 // LoadedLine method definitions
@@ -788,6 +832,36 @@ void LoadedLine::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipeline
 
     vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 }
+
+void LoadedLine::drawGUI() {
+    float colorArray[3] = { defaultColor.x, defaultColor.y, defaultColor.z };
+    ImGui::Text("Color ");
+    ImGui::SameLine();
+    ImGui::Checkbox("##OneColorToggle", &isOneColor);
+    if (isOneColor) {
+        ImGui::SameLine();
+        ImVec4 colVec4 = ImVec4(colorArray[0], colorArray[1], colorArray[2], 1.0f);
+        if (ImGui::ColorButton("MyColor##3", colVec4, ImGuiColorEditFlags_NoTooltip)) {
+            ImGui::OpenPopup("colorPicker");
+        }
+        if (ImGui::BeginPopup("colorPicker")) {
+            if (ImGui::ColorPicker3("##picker", colorArray, 
+                ImGuiColorEditFlags_DisplayRGB | 
+                ImGuiColorEditFlags_NoSidePreview |
+                ImGuiColorEditFlags_NoSmallPreview)) 
+            {
+                defaultColor.x = colorArray[0];
+                defaultColor.y = colorArray[1];
+                defaultColor.z = colorArray[2];
+            }
+            ImGui::EndPopup();
+        }
+    }
+    
+    ImGui::SliderFloat("Transparency", &transparency, 0.0f, 1.0f);
+    ImGui::SliderFloat("Line Width", &lineWidth, 0.0f, 10.0f);
+}
+
 
 core::Polyline2_5D& LoadedLine::getPolyline() {
     return polyline;
@@ -2288,7 +2362,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 ImGui::PushID(("Objects_" + std::to_string(i)).c_str());
 
                 // Get starting position for this row
-                const float row_start_x = ImGui::GetCursorPosX();
+                const float rowStartX = ImGui::GetCursorPosX();
                 
                 // TreeNode with standard behavior
                 ImGui::AlignTextToFramePadding();
@@ -2297,7 +2371,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                     ImGuiTreeNodeFlags_AllowItemOverlap);
                 
                 // Name input (fixed position relative to row start)
-                ImGui::SameLine(row_start_x + ImGui::GetTreeNodeToLabelSpacing());
+                ImGui::SameLine(rowStartX + ImGui::GetTreeNodeToLabelSpacing());
                 ImGui::SetNextItemWidth(120);
                 char nameBuffer[256];
                 strncpy(nameBuffer, object->name.c_str(), sizeof(nameBuffer));
@@ -2306,12 +2380,12 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 }
 
                 // Calculate positions for right-aligned controls
-                const float checkbox_width = ImGui::GetFrameHeight();
-                const float button_width = 25.0f;
+                const float checkboxWidth = ImGui::GetFrameHeight();
+                const float buttonWidth = 25.0f;
                 const float spacing = ImGui::GetStyle().ItemSpacing.x;
-                const float total_right_width = checkbox_width + button_width + spacing;
+                const float totalRightWidth = checkboxWidth + buttonWidth + spacing;
 
-                ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - total_right_width);
+                ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - totalRightWidth);
                 ImGui::Checkbox("##RenderToggle", &object->renderObj);
 
                 // Delete button (fixed position relative to window edge)
@@ -2323,49 +2397,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 // Contents when expanded
                 if (isOpen) {
                     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Faces: %d", object->model.vertices.size(), object->model.indices.size() / 3);
-                    float positionArray[3] = { object->position.x, object->position.y, object->position.z };
-                    if (ImGui::InputFloat3("Position", positionArray)) {
-                        object->position.x = positionArray[0];
-                        object->position.y = positionArray[1];
-                        object->position.z = positionArray[2];
-                    }
-
-                    float scaleArray[3] = { object->scale.x, object->scale.y, object->scale.z };
-                    if (ImGui::InputFloat3("Scale", scaleArray)) {
-                        object->scale.x = scaleArray[0];
-                        object->scale.y = scaleArray[1];
-                        object->scale.z = scaleArray[2];
-                    }
-
-                    float rotationArray[3] = { object->rotation.x(), object->rotation.y(), object->rotation.z() };
-                    if (ImGui::InputFloat3("Rotation", rotationArray)) {
-                        object->rotation.x() = rotationArray[0];
-                        object->rotation.y() = rotationArray[1];
-                        object->rotation.z() = rotationArray[2];
-                    }
-                    
-                    float colorArray[3] = { object->color.x, object->color.y, object->color.z };
-                    ImGui::Text("Color ");
-                    ImGui::SameLine();
-                    ImVec4 colVec4 = ImVec4(colorArray[0], colorArray[1], colorArray[2], 1.0f);
-                    if (ImGui::ColorButton("MyColor##3", colVec4, ImGuiColorEditFlags_NoTooltip)) {
-                        ImGui::OpenPopup("colorPicker");
-                    }
-                    if (ImGui::BeginPopup("colorPicker")) {
-                        if (ImGui::ColorPicker3("##picker", colorArray, 
-                            ImGuiColorEditFlags_DisplayRGB | 
-                            ImGuiColorEditFlags_NoSidePreview |
-                            ImGuiColorEditFlags_NoSmallPreview)) 
-                        {
-                            object->color.x = colorArray[0];
-                            object->color.y = colorArray[1];
-                            object->color.z = colorArray[2];
-                        }
-                        ImGui::EndPopup();
-                    }
-                    
-                    ImGui::SliderFloat("Transparency", &object->model.transparency, 0.0f, 1.0f);
-
+                    object->drawGUI();
                     ImGui::TreePop(); // This must be called for each TreeNodeEx
                 }
                 ImGui::PopID();
@@ -2383,7 +2415,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 ImGui::PushID(("Lines_" + std::to_string(i)).c_str());
 
                 // Get starting position for this row
-                const float row_start_x = ImGui::GetCursorPosX();
+                const float rowStartX = ImGui::GetCursorPosX();
                 
                 // TreeNode with standard behavior
                 ImGui::AlignTextToFramePadding();
@@ -2392,7 +2424,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                     ImGuiTreeNodeFlags_AllowItemOverlap);
                 
                 // Name input (fixed position relative to row start)
-                ImGui::SameLine(row_start_x + ImGui::GetTreeNodeToLabelSpacing());
+                ImGui::SameLine(rowStartX + ImGui::GetTreeNodeToLabelSpacing());
                 ImGui::SetNextItemWidth(120);
                 char nameBuffer[256];
                 strncpy(nameBuffer, line->name.c_str(), sizeof(nameBuffer));
@@ -2401,12 +2433,12 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
                 }
 
                 // Calculate positions for right-aligned controls
-                const float checkbox_width = ImGui::GetFrameHeight();
-                const float button_width = 25.0f;
+                const float checkboxWidth = ImGui::GetFrameHeight();
+                const float buttonWidth = 25.0f;
                 const float spacing = ImGui::GetStyle().ItemSpacing.x;
-                const float total_right_width = checkbox_width + button_width + spacing;
+                const float totalRightWidth = checkboxWidth + buttonWidth + spacing;
 
-                ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - total_right_width);
+                ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - totalRightWidth);
                 ImGui::Checkbox("##RenderToggle", &line->renderLine);
 
                 // Delete button (fixed position relative to window edge)
@@ -2417,31 +2449,7 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
 
                 if (isOpen) {
                     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Closed: %d", line->getPolyline().vertexes().size(), line->getPolyline().isClosed());
-                    
-                    float colorArray[3] = { line->defaultColor.x, line->defaultColor.y, line->defaultColor.z };
-                    ImGui::Text("Color ");
-                    ImGui::SameLine();
-                    ImVec4 colVec4 = ImVec4(colorArray[0], colorArray[1], colorArray[2], 1.0f);
-                    if (ImGui::ColorButton("MyColor##3", colVec4, ImGuiColorEditFlags_NoTooltip)) {
-                        ImGui::OpenPopup("colorPicker");
-                    }
-                    if (ImGui::BeginPopup("colorPicker")) {
-                        if (ImGui::ColorPicker3("##picker", colorArray, 
-                            ImGuiColorEditFlags_DisplayRGB | 
-                            ImGuiColorEditFlags_NoSidePreview |
-                            ImGuiColorEditFlags_NoSmallPreview)) 
-                        {
-                            line->defaultColor.x = colorArray[0];
-                            line->defaultColor.y = colorArray[1];
-                            line->defaultColor.z = colorArray[2];
-                        }
-                        ImGui::EndPopup();
-                    }
-                    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - total_right_width);
-                    ImGui::Checkbox("##OneColorToggle", &line->isOneColor);
-                    
-                    ImGui::SliderFloat("Transparency", &line->transparency, 0.0f, 1.0f);
-                    ImGui::SliderFloat("Line Width", &line->lineWidth, 0.0f, 10.0f);
+                    line->drawGUI();
 
                     if (ImGui::Button("Export##LinePolylineExport")) {
                         core::exportSettings settings;

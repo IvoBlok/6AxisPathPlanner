@@ -3,14 +3,14 @@
 
 #include "renderer.hpp"
 
-inline void handleDropdown(std::string ID, std::string dropdownText, std::vector<std::string>& objectNames, int& selectedIndex) {
+inline void handleDropdown(std::string ID, std::string dropdownText, std::string defaultOptionText, std::vector<std::string>& objectNames, int& selectedIndex) {
     ImGui::PushID(ID.c_str());
 
     if (!dropdownText.empty() || dropdownText != "")
         ImGui::Text(dropdownText.c_str());
 
     selectedIndex = (selectedIndex >= 0 && selectedIndex < (int)objectNames.size()) ? selectedIndex : -1;
-    const char* preview = (selectedIndex != -1) ? objectNames[selectedIndex].c_str() : "-";
+    const char* preview = (selectedIndex != -1) ? objectNames[selectedIndex].c_str() : defaultOptionText.c_str();
     
     std::string comboLabel = "##" + ID + "_combo";
     if (ImGui::BeginCombo(comboLabel.c_str(), preview)) {
@@ -32,9 +32,13 @@ inline void handleDropdown(std::string ID, std::string dropdownText, std::vector
 
 class ToolPathGUIBase {
 public:
-    virtual void draw(VulkanRenderEngine& renderer, std::string ID) = 0;
+    explicit ToolPathGUIBase(VulkanRenderEngine& renderer) : renderer(renderer) {}
+    virtual void draw(std::string ID) = 0;
     virtual std::string name() const = 0;
     virtual std::unique_ptr<ToolPathGUIBase> clone() const = 0;
+
+protected:
+    VulkanRenderEngine& renderer;
 };  
 
 #endif

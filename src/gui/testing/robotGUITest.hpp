@@ -29,10 +29,6 @@ public:
         registerWithRenderer(renderer);
 
         continuousIK = false;
-        base = nullptr;
-        effector = nullptr;
-        goalObject = nullptr;
-
         endPoint = Vector3f::Zero();
         endRotation = Vector3f::Zero();
     }

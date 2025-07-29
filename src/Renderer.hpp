@@ -194,8 +194,8 @@ public:
 	LoadedModel model;
     LoadedTexture texture;
 
-	LoadedObject();
-	LoadedObject(std::string objectName, bool visible = true, bool hide = false);
+	LoadedObject(VulkanRenderEngine& renderEngine);
+	LoadedObject(VulkanRenderEngine& renderEngine, std::string objectName, bool visible = true, bool hide = false);
 
 	void locateWithMatrix(Matrix4d matrix);
 	void updateRotation();
@@ -208,12 +208,14 @@ public:
 
 	void load(const char* modelPath, const char* texturePath, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
     void load(const char* modelPath, Vector3d objectColor, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 baseRotationMatrix = glm::mat4{ 1.0f }, float modelTransparency = 1.f);
-    glm::mat4 getTransformationMatrix();
+	void deleteObject();
+	glm::mat4 getTransformationMatrix();
     void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 	void drawGUI();
 
 private:
 	friend class VulkanRenderEngine;
+	VulkanRenderEngine& renderer;
 
 	glm::mat4 rotationMatrix;
 
@@ -238,6 +240,7 @@ public:
 
 	LoadedLine();
 	LoadedLine(const LoadedLine&) = default;
+
 	void load(core::Polyline2_5D& polylineIn, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
 	
 	void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
@@ -250,6 +253,7 @@ public:
 
 private:
 	friend class VulkanRenderEngine;
+	VulkanRenderEngine* renderer;
 	
 	// 'polyline' generally contains the actual curve of interest. Math is done specifically to 'polyline' and not 'vertices'. 'vertices'/'indices' is merely the visual representation of the actual data.
 	// Exceptions to this might be purely visual indications, like gizmos. There polyline is irrelevant, and it is only the 'vertices'/'indices' that matters.
@@ -298,7 +302,11 @@ public:
 	shared_ptr<LoadedLine> createLine(core::Polyline2_5D& polyline, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
 	shared_ptr<LoadedLine> createLine(core::Polyline2D& polyline, core::Plane plane, float lineTransparency = 1.f, glm::vec3 lineColor = glm::vec3{ 1.f, 0.f, 0.f });
 
-	void deleteObject(shared_ptr<LoadedObject> object);
+    shared_ptr<LoadedObject> createDefaultPlane(Vector3d objectColor = { 0.f, 0.f, 0.f }, Vector3d basePosition = { 0.f, 0.f, 0.f }, Vector3d baseScale = { 1.f, 1.f, 1.f }, glm::mat4 rotationMatrix = glm::mat4{ 1.f }, float modelTransparency = 1.f, bool render = true, bool showInGui = true);
+
+
+	void deleteObject(shared_ptr<LoadedObject>& object);
+	void deleteObject(LoadedObject* object);
 	void deleteLine(shared_ptr<LoadedLine> line);
 
 	void handleUserInput();

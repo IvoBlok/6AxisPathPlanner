@@ -565,24 +565,11 @@ void LoadedObject::LoadedModel::createIndexBuffer() {
 // LoadedObject method definitions
 // =====================================================
 // public
-LoadedObject::LoadedObject() {
-    renderObj = true;
-    hideInGUI = false;
-    name = "obj";
-
-    position = glm::vec3{0.f};
-    scale = glm::vec3{1.f};
-    rotation = Vector3f{0.f, 0.f, 0.f};
-    rotationMatrix = glm::mat4{1.f};
-
-    bool isOneColor = true;
-    color = glm::vec3{0.f};
-
-    model = LoadedModel{};
-    texture = LoadedTexture{};
+LoadedObject::LoadedObject(VulkanRenderEngine& renderEngine) : renderer(renderEngine) {
+    LoadedObject(renderEngine, "obj", true, false);
 }
 
-LoadedObject::LoadedObject(std::string objectName, bool visible, bool hide) {
+LoadedObject::LoadedObject(VulkanRenderEngine& renderEngine, std::string objectName, bool visible, bool hide) : renderer(renderEngine) {
     renderObj = visible;
     hideInGUI = hide;
     name = objectName;
@@ -596,6 +583,8 @@ LoadedObject::LoadedObject(std::string objectName, bool visible, bool hide) {
 
     model = LoadedModel{};
     texture = LoadedTexture{};
+    
+    renderer = renderEngine;
 }
 
 void LoadedObject::locateWithMatrix(Matrix4d matrix) {
@@ -631,7 +620,6 @@ void LoadedObject::updateRotationMatrix() {
         for (int j = 0; j < 3; ++j)
             rotationMatrix[j][i] = matrix(i, j); // Both eigen and glm are column-major in memory, their access is reversed; i.e. glm::mat[i] gives the i'th column, where Eigen::Matrix(i) gives the i'th row
 }
-
 
 core::ObjectShape LoadedObject::getObjectShape() {
     glm::mat4 transformationMatrix = getTransformationMatrix();
@@ -683,6 +671,10 @@ void LoadedObject::load(const char* modelPath, Vector3d objectColor, Vector3d ba
     position = glm::vec3{ basePosition.x(), basePosition.y(), basePosition.z() };
     scale = glm::vec3{ baseScale.x(), baseScale.y(), baseScale.z() };
     rotationMatrix = baseRotationMatrix;
+}
+
+void LoadedObject::deleteObject() {
+    renderer.deleteObject(this);
 }
 
 void LoadedObject::destroyRenderData() {
@@ -767,6 +759,7 @@ void LoadedObject::drawGUI() {
 }
 
 
+
 // LoadedLine method definitions
 // =====================================================
 // public
@@ -777,6 +770,7 @@ LoadedLine::LoadedLine() {
     lineWidth = 3.f;
     defaultColor = glm::vec3{ 1.f, 0.f, 0.f };
     isOneColor = true;
+    renderer = nullptr;
 }
 
 void LoadedLine::load(core::Polyline2_5D& polylineIn, float lineTransparency, glm::vec3 lineColor) {
@@ -1165,7 +1159,7 @@ shared_ptr<LoadedObject> VulkanRenderEngine::createObject(
     if (loadedObjects.size() >= MAX_OBJECTS)
         throw std::runtime_error("Max object count has been reached, can't create a new object!\n");
 
-    shared_ptr<LoadedObject> newObject = std::make_shared<LoadedObject>();
+    shared_ptr<LoadedObject> newObject = std::make_shared<LoadedObject>(*this);
     newObject->load(modelPath, texturePath, basePosition, baseScale, rotationMatrix, modelTransparency);
     loadedObjects.push_back(newObject);
 
@@ -1183,13 +1177,37 @@ shared_ptr<LoadedObject> VulkanRenderEngine::createObject(
     if (loadedObjects.size() >= MAX_OBJECTS)
         throw std::runtime_error("Max object count has been reached, can't create a new object!\n");
 
-    shared_ptr<LoadedObject> newObject = std::make_shared<LoadedObject>();
+    shared_ptr<LoadedObject> newObject = std::make_shared<LoadedObject>(*this);
 
     newObject->load(modelPath, objectColor, basePosition, baseScale, rotationMatrix, modelTransparency);
     loadedObjects.push_back(newObject);
 
     return newObject;
 }
+
+shared_ptr<LoadedObject> VulkanRenderEngine::createDefaultPlane(
+    Vector3d objectColor,
+    Vector3d basePosition, 
+    Vector3d baseScale, 
+    glm::mat4 rotationMatrix, 
+    float modelTransparency, 
+    bool render, 
+    bool showInGui) {
+        shared_ptr<LoadedObject> object = createObject(
+                "../../resources/assets/plane.obj",
+                objectColor,
+                basePosition,
+                baseScale,
+                rotationMatrix,
+                modelTransparency
+            );
+        
+        object->name = "plane";
+        object->renderObj = render;
+        object->hideInGUI = !showInGui;
+        
+        return object;
+    }
 
 shared_ptr<LoadedLine> VulkanRenderEngine::createLine(
     core::Polyline2_5D& polyline, 
@@ -1226,9 +1244,16 @@ shared_ptr<LoadedLine> VulkanRenderEngine::createLine(
     return newLine;
 }
 
-void VulkanRenderEngine::deleteObject(shared_ptr<LoadedObject> object) {
+void VulkanRenderEngine::deleteObject(shared_ptr<LoadedObject>& object) {
     if (!object) return;
     loadedObjects.remove(object);
+}
+
+void VulkanRenderEngine::deleteObject(LoadedObject* object) {
+    if (!object) return;
+    loadedObjects.remove_if([object](const auto& ptr) { 
+        return ptr.get() == object; 
+    });
 }
 
 void VulkanRenderEngine::deleteLine(shared_ptr<LoadedLine> line) {
@@ -2322,14 +2347,11 @@ void VulkanRenderEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint
         }
         ImGui::SameLine();
         if(ImGui::Button("Generate Plane")) {
-            shared_ptr<LoadedObject> object = createObject(
-                    "../../resources/assets/plane.obj",
+            createDefaultPlane(
                     Vector3d{ 1.f, 0.9f, 0.f }, // color
                     Vector3d{ 0.f, 0.f, 0.f },  // position
                     Vector3d{ .5f, .5f, .5f }  // scale
                 );
-            
-            object->name = "plane";
         }
         ImGui::SameLine();
         if(ImGui::Button("Import Object")) {

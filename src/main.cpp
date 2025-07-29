@@ -1,23 +1,16 @@
-#include "renderer.hpp"
-#include "gui/testing/meshIntersectGUITest.hpp"
-#include "gui/testing/toolPath2_5DGUITest.hpp"
-#include "gui/testing/robotGUITest.hpp"
+#include "renderer/core/RenderEngine.hpp"
 
-#include "gui/pathPlannerGUI.hpp"
+#include <stdexcept>
+#include <iostream>
 
 int main() {
 
 	try {
-		VulkanRenderEngine renderer;
+		RenderEngine renderer;
 		renderer.initialize();
 
-		meshIntersect::MeshIntersectGUITest meshIntersectGuiTest{renderer};
-		toolPath2_5D::ToolPath2_5DGUITest toolPath2_5DGuiTest{renderer};
-		kinematics::RobotGUITest robotGuiTest{renderer};
-		PathPlannerGUI pathPlannerGUI{renderer};
-
-		while (!glfwWindowShouldClose(renderer.window)) {
-			renderer.drawFrame();
+		while (!renderer.shouldWindowClose()) {
+			renderer.handleFrame();
 		}
 		renderer.cleanup();
 	}

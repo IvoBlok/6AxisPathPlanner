@@ -90,6 +90,10 @@ FetchContent_MakeAvailable(
 # ============================================
 
 add_executable(robotPathPlanner 
+    src/renderer/core/RenderCoreTypes.cpp
+    src/renderer/core/RenderEngine.cpp
+    src/renderer/geometries/RendererCurve.cpp
+    src/renderer/geometries/RendererObject.cpp
     src/main.cpp
     src/renderer.cpp
     src/meshIntersect.cpp

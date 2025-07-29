@@ -34,7 +34,6 @@ Note that all objects/lines/points class instances in the scene live in the Rend
 #include <chrono>
 #include <iostream>
 #include <fstream>
-#include <stdexcept>
 #include <cstdlib>
 #include <cstdint>
 #include <limits>
@@ -278,18 +277,6 @@ private:
 
 class VulkanRenderEngine {
 public:
-    GLFWwindow* window;
-
-    glm::vec3 cameraPosition;
-    glm::vec3 cameraFront;
-    glm::vec3 cameraRight;
-    std::chrono::microseconds deltaTime;
-
-	
-	std::list<shared_ptr<LoadedObject>> loadedObjects;
-	std::list<shared_ptr<LoadedLine>> loadedLines;
-
-
 	VulkanRenderEngine();
 
     void initialize();
@@ -314,6 +301,17 @@ public:
 	void registerGuiModule(std::function<void(VulkanRenderEngine&)> callback);
 
 private:
+    GLFWwindow* window;
+
+    glm::vec3 cameraPosition;
+    glm::vec3 cameraFront;
+    glm::vec3 cameraRight;
+    std::chrono::microseconds deltaTime;
+
+	std::list<shared_ptr<LoadedObject>> loadedObjects;
+	std::list<shared_ptr<LoadedLine>> loadedLines;
+
+
 	VkInstance instance;
 	VkSurfaceKHR surface;
 

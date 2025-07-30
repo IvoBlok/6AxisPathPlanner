@@ -9,6 +9,10 @@
 #include <iostream>
 
 #include <nfd.h>
+#include <cmath>
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
 
 VkDevice device;
 VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -608,11 +612,11 @@ void LoadedObject::updateRotation() {
             matrix(i, j) = rotationMatrix[j][i];
 
     auto eulerAngles = Eigen::EulerAnglesXYZd{matrix};
-    rotation = eulerAngles.angles().cast<float>() * (360.f / (2 * core::PI));
+    rotation = eulerAngles.angles().cast<float>() * (360.f / (2 * M_PI));
 }
 
 void LoadedObject::updateRotationMatrix() {
-    auto eulerAngles = Eigen::EulerAnglesXYZf{rotation * ((2 * core::PI) / 360.f)};
+    auto eulerAngles = Eigen::EulerAnglesXYZf{rotation * ((2 * M_PI) / 360.f)};
     auto matrix = eulerAngles.matrix();
 
     rotationMatrix = glm::mat4{1.f};

@@ -1064,7 +1064,8 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     // render all objects one after the other...
     for (auto& object : objects)
     {
-        object->render(commandBuffer, triangleBasedPipelineLayout);
+        if (object->isObjectRendered)
+            object->render(commandBuffer, triangleBasedPipelineLayout);
     }
 
     // ========================================
@@ -1297,7 +1298,7 @@ void RenderEngine::VulkanInternals::cleanup(std::list<std::shared_ptr<renderer::
     vkDestroyDescriptorPool(vulkanContext.device, vulkanContext.descriptorPool, nullptr);
 
     for (auto& object : objects) {
-        // object->destroyRenderData(); // TODO
+        object->cleanup();
     }
 
     for (auto& curve : curves) {
@@ -1435,7 +1436,129 @@ renderer::VulkanContext& RenderEngine::getContext() const {
     return vulkanInternals->vulkanContext;
 }
 
+std::shared_ptr<renderer::Object> RenderEngine::createObject(
+    const char* modelPath,
+    const char* texturePath,
+    std::string name,
+    Vector3d basePosition,
+    Vector3d baseScale,
+    Vector3d baseRotation,
+    float transparency
+) {
+    if (objects.size() >= renderer::MAX_OBJECTS)
+        throw std::runtime_error("Max object count has been reached, can't create a new object!\n");
+    
+    std::shared_ptr<renderer::Object> newObject = std::make_shared<renderer::Object>(*this, name);
+    newObject->load(modelPath, texturePath, basePosition, baseScale, baseRotation, transparency);
+    objects.push_back(newObject);
+
+    return newObject;
+}
+
+std::shared_ptr<renderer::Object> RenderEngine::createObject(
+    const char* modelPath,
+    std::string name,
+    Vector3f color,
+    Vector3d basePosition,
+    Vector3d baseScale,
+    Vector3d baseRotation,
+    float transparency
+) {
+    if (objects.size() >= renderer::MAX_OBJECTS)
+        throw std::runtime_error("Max object count has been reached, can't create a new object!\n");
+    
+    std::shared_ptr<renderer::Object> newObject = std::make_shared<renderer::Object>(*this, name);
+    newObject->load(modelPath, color, basePosition, baseScale, baseRotation, transparency);
+    objects.push_back(newObject);
+
+    return newObject;
+}
+
+std::shared_ptr<renderer::Object> RenderEngine::createDefaultCube(
+    std::string name,
+    Vector3f color,
+    Vector3d basePosition,
+    Vector3d baseScale,
+    Vector3d baseRotation,
+    float transparency
+) {
+    std::shared_ptr<renderer::Object> cube = createObject("../../resources/assets/cube.obj", name, color, basePosition, baseScale, baseRotation, transparency);
+    return cube;
+}
+
+std::shared_ptr<renderer::Object> RenderEngine::createDefaultPlane(
+    std::string name,
+    Vector3f color,
+    Vector3d basePosition,
+    Vector3d baseScale,
+    Vector3d baseRotation,
+    float transparency
+) {
+    std::shared_ptr<renderer::Object> plane = createObject("../../resources/assets/plane.obj", name, color, basePosition, baseScale, baseRotation, transparency);
+    return plane;
+}
+
+void RenderEngine::deleteObject(std::shared_ptr<renderer::Object>& object) {
+    if (!object) return;
+    objects.remove(object);
+}
+
+void RenderEngine::deleteObject(renderer::Object* object) {
+    if (!object) return;
+    objects.remove_if([object](const auto& ptr) {
+        return ptr.get() == object;
+    });
+}
+
+void RenderEngine::deleteCurve(std::shared_ptr<renderer::Curve>& curve) {
+    if (!curve) return;
+    curves.remove(curve);
+}
+
+void RenderEngine::deleteCurve(renderer::Curve* curve) {
+    if (!curve) return;
+    curves.remove_if([curve](const auto& ptr) {
+        return ptr.get() == curve;
+    });
+}
+
+std::chrono::microseconds RenderEngine::getDeltaTime() {
+    return vulkanInternals->deltaTime;
+}
+
 void RenderEngine::recordGUI() {
+    // TEMP
+    if(ImGui::Button("Generate Cube")) {
+        createDefaultCube(
+                "cube",                     // name
+                Vector3f{ .1f, .2f, .8f },  // color
+                Vector3d{ 0.f, 0.f, 0.f },  // position
+                Vector3d{ .5f, .5f, .5f }   // scale
+            );
+    }
+    ImGui::SameLine();
+    if(ImGui::Button("Generate Plane")) {
+        createDefaultPlane(
+                "plane",                    // name
+                Vector3f{ 1.f, 0.9f, 0.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f },  // position
+                Vector3d{ .5f, .5f, .5f }   // scale
+            );
+    }
+
+    if (ImGui::CollapsingHeader("Objects")) {
+        int i = 0;
+        for (auto it = objects.begin(); it != objects.end(); ++it, ++i) {
+            auto& object = *it;
+
+            if (!object->isObjectShownInGui)
+                continue;
+
+            ImGui::PushID(("Objects_" + std::to_string(i)).c_str());
+            object->drawGUI();
+            ImGui::PopID();
+        }
+    }        
     // TODO replace all the object / curve variables with their new names / getter functions
     /*
     std::vector<std::list<shared_ptr<Object>>::iterator> objectsToDelete;

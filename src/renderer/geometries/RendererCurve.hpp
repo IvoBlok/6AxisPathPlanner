@@ -16,12 +16,12 @@ namespace renderer {
         
     private:
         // variables associated with the renderer and how it is rendered and interacts with it
-        // RenderEngine& engine;
+        // RenderEngine& renderer;
         
         bool isObjectRendered;
         bool isObjectShownInGui;
 
-        // variables associated with the objects' shape, orientation, etc...
+        // variables associated with the objects' shape, position, orientation, etc...
         Vector3d position;
         Vector3d scale;
         // rotation (some smart thing where both euler angles and matrix is allowed)

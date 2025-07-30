@@ -37,7 +37,7 @@ namespace renderer {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
 
-    const bool enableValidationLayers = false;
+    const bool enableValidationLayers = true;
 
     // define a struct containing all vulkan related context required for rendering
     struct VulkanContext {
@@ -96,6 +96,12 @@ namespace renderer {
 	void createImage(VulkanContext& context, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
     VkImageView createImageView(VulkanContext& context, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
     void transitionImageLayout(VulkanContext& context, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT);
+}
+
+namespace std {
+	template<> struct hash<renderer::RendererVertex> {
+		size_t operator()(renderer::RendererVertex const& vertex) const;
+	};
 }
 
 #endif

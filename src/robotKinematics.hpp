@@ -86,7 +86,7 @@ private:
     // 'lastIKResult' stores, as the name implies, the last result from 'inverseKinematics'. If defined, and toggled on, 'inverseKinematics' uses this as a starting point for its next call.
     VectorXd lastIKResult;
 
-    // 'costFunction' defines when a given endEffector orientation is valid or not. The closer to zero, the better the input.
+    // 'costFunction' defines when a given endEffector pose is valid or not. The closer to zero, the better the input.
     double costFunction(const Matrix4d& input, const Matrix4d& goal, const bool useRotation = true, Vector3d rotationAxisIgnore = Vector3d::Zero());
 
     // 'costGradient' estimates the gradient of 'costFunction' using a central difference approximation.

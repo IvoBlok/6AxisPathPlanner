@@ -5,7 +5,6 @@
 #include "CustomEigen.hpp"
 
 #include <glm/glm.hpp>
-
 namespace renderer {
 	class Texture {
 	public:

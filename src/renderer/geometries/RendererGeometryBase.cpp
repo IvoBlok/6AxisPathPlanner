@@ -4,6 +4,9 @@
 #include "tiny_obj_loader.h"
 
 #include <cmath>
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
 #include <cstring>
 
 namespace renderer {
@@ -20,14 +23,14 @@ namespace renderer {
     }
 
     void Texture::free() {
-        vkFreeDescriptorSets(context->device, descriptorPool, 1, &descriptorSet);
+        vkFreeDescriptorSets(context.device, context.descriptorPool, 1, &descriptorSet);
     }
 
     void Texture::destroy() {
-        vkDestroySampler(context->device, textureSampler, nullptr);
-        vkDestroyImageView(context->device, textureImageView, nullptr);
-        vkDestroyImage(context->device, textureImage, nullptr);
-        vkFreeMemory(context->device, textureImageMemory, nullptr);
+        vkDestroySampler(context.device, textureSampler, nullptr);
+        vkDestroyImageView(context.device, textureImageView, nullptr);
+        vkDestroyImage(context.device, textureImage, nullptr);
+        vkFreeMemory(context.device, textureImageMemory, nullptr);
     }
 
     void Texture::createTextureImage(const char* path) {
@@ -41,33 +44,33 @@ namespace renderer {
 
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
-
-        VulkanHelper::createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+        
+        createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
         void* data;
-        vkMapMemory(context->device, stagingBufferMemory, 0, imageSize, 0, &data);
+        vkMapMemory(context.device, stagingBufferMemory, 0, imageSize, 0, &data);
         memcpy(data, pixels, static_cast<size_t>(imageSize));
-        vkUnmapMemory(context->device, stagingBufferMemory);
+        vkUnmapMemory(context.device, stagingBufferMemory);
 
         stbi_image_free(pixels);
 
-        VulkanHelper::createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+        createImage(context, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
 
-        VulkanHelper::transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        VulkanHelper::copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-        VulkanHelper::transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        transitionImageLayout(context, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        copyBufferToImage(context, stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+        transitionImageLayout(context, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        vkDestroyBuffer(context->device, stagingBuffer, nullptr);
-        vkFreeMemory(context->device, stagingBufferMemory, nullptr);
+        vkDestroyBuffer(context.device, stagingBuffer, nullptr);
+        vkFreeMemory(context.device, stagingBufferMemory, nullptr);
     }
 
     void Texture::createTextureImageView() {
-        textureImageView = VulkanHelper::createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+        textureImageView = createImageView(context, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
     }
 
     void Texture::createTextureSampler() {
         VkPhysicalDeviceProperties properties{};
-        vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+        vkGetPhysicalDeviceProperties(context.physicalDevice, &properties);
 
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -87,7 +90,7 @@ namespace renderer {
         samplerInfo.minLod = 0.0f;
         samplerInfo.maxLod = 0.0f;
 
-        if (vkCreateSampler(context->device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+        if (vkCreateSampler(context.device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
             throw std::runtime_error("failed to create texture sampler!");
         }
     }
@@ -95,11 +98,11 @@ namespace renderer {
     void Texture::createTextureDescriptorSet() {
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = descriptorPool;
+        allocInfo.descriptorPool = context.descriptorPool;
         allocInfo.descriptorSetCount = 1;
-        allocInfo.pSetLayouts = &textureDescriptorSetLayout;
+        allocInfo.pSetLayouts = &context.textureDescriptorSetLayout;
 
-        if (vkAllocateDescriptorSets(context->device, &allocInfo, &descriptorSet) != VK_SUCCESS) {
+        if (vkAllocateDescriptorSets(context.device, &allocInfo, &descriptorSet) != VK_SUCCESS) {
             throw std::runtime_error("failed to allocate descriptor sets for textures!");
         }
 
@@ -117,7 +120,7 @@ namespace renderer {
         descriptorWrite.descriptorCount = 1;
         descriptorWrite.pImageInfo = &imageInfo;
 
-        vkUpdateDescriptorSets(context->device, 1, &descriptorWrite, 0, nullptr);
+        vkUpdateDescriptorSets(context.device, 1, &descriptorWrite, 0, nullptr);
     }
 
     
@@ -136,11 +139,11 @@ namespace renderer {
     }
 
     void Model::destroy() {
-        vkDestroyBuffer(context->device, indexBuffer, nullptr);
-        vkFreeMemory(context->device, indexBufferMemory, nullptr);
+        vkDestroyBuffer(context.device, indexBuffer, nullptr);
+        vkFreeMemory(context.device, indexBufferMemory, nullptr);
 
-        vkDestroyBuffer(context->device, vertexBuffer, nullptr);
-        vkFreeMemory(context->device, vertexBufferMemory, nullptr);
+        vkDestroyBuffer(context.device, vertexBuffer, nullptr);
+        vkFreeMemory(context.device, vertexBufferMemory, nullptr);
     }
 
     void Model::render(VkCommandBuffer commandBuffer) {
@@ -209,23 +212,23 @@ namespace renderer {
         // Create the staging buffer
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
-        VulkanHelper::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
         // Load the data into the staging buffer
         void* data;
-        vkMapMemory(context->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        vkMapMemory(context.device, stagingBufferMemory, 0, bufferSize, 0, &data);
         memcpy(data, vertices.data(), (size_t)bufferSize);
-        vkUnmapMemory(context->device, stagingBufferMemory);
+        vkUnmapMemory(context.device, stagingBufferMemory);
 
         // Create the vertex buffer locally on the GPU
-        VulkanHelper::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
 
         // send the copy buffer command buffer to the GPU
-        VulkanHelper::copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+        copyBuffer(context, stagingBuffer, vertexBuffer, bufferSize);
 
         // Clean up used local resources
-        vkDestroyBuffer(context->device, stagingBuffer, nullptr);
-        vkFreeMemory(context->device, stagingBufferMemory, nullptr);
+        vkDestroyBuffer(context.device, stagingBuffer, nullptr);
+        vkFreeMemory(context.device, stagingBufferMemory, nullptr);
     }
 
     void Model::createIndexBuffer() {
@@ -234,23 +237,23 @@ namespace renderer {
         // Create the staging buffer
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
-        VulkanHelper::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
         // Load the data into the staging buffer
         void* data;
-        vkMapMemory(context->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        vkMapMemory(context.device, stagingBufferMemory, 0, bufferSize, 0, &data);
         memcpy(data, indices.data(), (size_t)bufferSize);
-        vkUnmapMemory(context->device, stagingBufferMemory);
+        vkUnmapMemory(context.device, stagingBufferMemory);
 
         // Create the index buffer locally on the GPU
-        VulkanHelper::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
 
         // send the copy buffer command buffer to the GPU
-        VulkanHelper::copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+        copyBuffer(context, stagingBuffer, indexBuffer, bufferSize);
 
         // Clean up used local resources
-        vkDestroyBuffer(context->device, stagingBuffer, nullptr);
-        vkFreeMemory(context->device, stagingBufferMemory, nullptr);
+        vkDestroyBuffer(context.device, stagingBuffer, nullptr);
+        vkFreeMemory(context.device, stagingBufferMemory, nullptr);
     }
 
 
@@ -260,7 +263,7 @@ namespace renderer {
 
     Rotation::Rotation() {
         eulerAngles = Vector3d::Zero();
-        rotationMatrix = Matrix3d::Unit();
+        rotationMatrix = Matrix3d::Identity();
     }
 
     Rotation& Rotation::operator=(const Vector3d& euler) {
@@ -287,7 +290,7 @@ namespace renderer {
     }
 
     Matrix4d Rotation::matrix4d() const {
-        Matrix4d result = Matrix4d::Unit();
+        Matrix4d result = Matrix4d::Identity();
         result.topLeftCorner<3,3>() = rotationMatrix;
         return result;
     }

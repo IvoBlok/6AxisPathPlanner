@@ -26,7 +26,8 @@ public:
     bool shouldWindowClose();
 
 	void registerGuiModule(std::function<void(RenderEngine&)> callback);
-
+    renderer::VulkanContext& getContext() const;
+    
     // TODO implement these again
     /*
     std::shared_ptr<renderer::Object> createObject(...);

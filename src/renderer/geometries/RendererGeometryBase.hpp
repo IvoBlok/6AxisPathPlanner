@@ -7,13 +7,54 @@
 #include <glm/glm.hpp>
 
 namespace renderer {
-    class Texture {
+	class Texture {
+	public:
+		VkDescriptorSet descriptorSet;
 
-    };
+        Texture(RenderEngine& renderer);
 
-    class Model {
+		void load(const char* path);
+		void free();
+		void destroy();
 
-    };
+	private:
+        VulkanContext& context;
+
+		VkImage textureImage;
+		VkDeviceMemory textureImageMemory;
+		VkImageView textureImageView;
+		VkSampler textureSampler;
+
+		void createTextureImage(const char* path);
+		void createTextureImageView();
+		void createTextureSampler();
+		void createTextureDescriptorSet();
+	};
+
+	class Model {
+	public:
+		std::vector<RendererVertex> vertices;
+		std::vector<uint32_t> indices;
+		float transparency;
+
+        Model(RenderEngine& renderer);
+
+		void load(const char* path, float modelTransparency = 1.f);
+		void destroy();
+		void render(VkCommandBuffer commandBuffer);
+
+	private:
+        VulkanContext& context;
+
+		VkBuffer vertexBuffer;
+		VkDeviceMemory vertexBufferMemory;
+		VkBuffer indexBuffer;
+		VkDeviceMemory indexBufferMemory;
+
+		void loadModel(const char* path);
+		void createVertexBuffer();
+		void createIndexBuffer();
+	};
 
     class Rotation {
     public:

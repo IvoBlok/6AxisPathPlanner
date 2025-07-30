@@ -11,8 +11,6 @@
 #include "imgui_impl_vulkan_but_better.hpp"	
 #include "implot.h"
 
-#include "stb_image.h"
-#include "tiny_obj_loader.h"
 #include <nfd.h>
 
 #include <fstream>
@@ -1431,6 +1429,10 @@ void RenderEngine::cleanup() {
 
 void RenderEngine::registerGuiModule(std::function<void(RenderEngine&)> callback) {
     guiCallbacks.emplace_back(std::move(callback));
+}
+
+renderer::VulkanContext& RenderEngine::getContext() const {
+    return vulkanInternals->vulkanContext;
 }
 
 void RenderEngine::recordGUI() {

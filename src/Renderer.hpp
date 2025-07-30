@@ -22,8 +22,6 @@ Note that all objects/lines/points class instances in the scene live in the Rend
 #include "stb_image.h"
 #include "tiny_obj_loader.h"
 
-//#include "OPTICK/optick.h"
-
 #include "imconfig.h"
 #include "imgui_internal.h"
 #include "imgui.h"

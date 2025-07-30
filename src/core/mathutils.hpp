@@ -19,10 +19,6 @@ This file defines some additional 'pure' mathematical operations and constants t
 #include <glm/glm.hpp>
 
 namespace core {
-
-const double PI = 3.141592653;
-const double TAU = PI * 2.f;
-
 namespace utils {
 
 #define CORE_ASSERT(cond, msg) assert(cond &&msg)

@@ -9,7 +9,6 @@
 namespace renderer {
     class Curve {
     public:
-        Curve();
 
         void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
         
@@ -28,6 +27,7 @@ namespace renderer {
         // rotation (some smart thing where both euler angles and matrix is allowed)
         // color (either 1 color or a varying color along the curve)
 
+        Curve();
 
 
     };

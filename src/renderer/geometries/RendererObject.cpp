@@ -53,7 +53,10 @@ namespace renderer {
 
     void Object::load(const char* modelPath, Vector3f objectColor, Vector3d basePosition, Vector3d baseScale, Vector3d baseRotation, float modelTransparency) {
         model.load(modelPath, modelTransparency);
+        texture.first.value().loadDummy();
+        texture.second = false;
 
+        color = objectColor;
         useTexture = false;
         position = basePosition;
         scale = baseScale;

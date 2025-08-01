@@ -52,7 +52,7 @@ public:
 
     std::shared_ptr<renderer::Object> createDefaultCube(
         std::string name = "cube",
-        Vector3f color = Vector3d::Zero(),
+        Vector3f color = Vector3f::UnitX(),
         Vector3d basePosition = Vector3d::Zero(),
         Vector3d baseScale = Vector3d::Ones(),
         Vector3d baseRotation = Vector3d::Zero(),
@@ -61,7 +61,7 @@ public:
 
     std::shared_ptr<renderer::Object> createDefaultPlane(
         std::string name = "plane",
-        Vector3f color = Vector3d::Zero(),
+        Vector3f color = Vector3f::UnitZ(),
         Vector3d basePosition = Vector3d::Zero(),
         Vector3d baseScale = Vector3d::Ones(),
         Vector3d baseRotation = Vector3d::Zero(),

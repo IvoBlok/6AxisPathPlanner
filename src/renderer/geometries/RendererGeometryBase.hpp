@@ -15,6 +15,7 @@ namespace renderer {
         Texture(RenderEngine& renderer);
 
 		void load(const char* path);
+		void loadDummy();
 		void free();
 		void destroy();
 
@@ -66,6 +67,7 @@ namespace renderer {
 		CurveBuffer(RenderEngine& renderer);
 
 		void load(core::Polyline2_5D& polyline, float curveTransparency = 1.f);
+		
 		void destroy();
 		void render(VkCommandBuffer commandBuffer);
 

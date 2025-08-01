@@ -22,6 +22,39 @@ namespace renderer {
         createTextureDescriptorSet();
     }
 
+    void Texture::loadDummy() {
+        // Create a 1x1 white pixel
+        const uint32_t texWidth = 1;
+        const uint32_t texHeight = 1;
+        const uint32_t whitePixel = 0xFFFFFFFF; // RGBA white
+        
+        VkDeviceSize imageSize = sizeof(whitePixel);
+
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        
+        createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+        void* data;
+        vkMapMemory(context.device, stagingBufferMemory, 0, imageSize, 0, &data);
+        memcpy(data, &whitePixel, static_cast<size_t>(imageSize));
+        vkUnmapMemory(context.device, stagingBufferMemory);
+
+        createImage(context, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+
+        transitionImageLayout(context, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        copyBufferToImage(context, stagingBuffer, textureImage, texWidth, texHeight);
+        transitionImageLayout(context, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        vkDestroyBuffer(context.device, stagingBuffer, nullptr);
+        vkFreeMemory(context.device, stagingBufferMemory, nullptr);
+
+        // Create image view and sampler as usual
+        createTextureImageView();
+        createTextureSampler();
+        createTextureDescriptorSet();
+    }
+
     void Texture::free() {
         vkFreeDescriptorSets(context.device, context.descriptorPool, 1, &descriptorSet);
     }

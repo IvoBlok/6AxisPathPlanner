@@ -50,7 +50,6 @@ public:
         float transparency
     );
 
-    // TODO createCurve functions, createDefaultCube, etc...
     std::shared_ptr<renderer::Object> createDefaultCube(
         std::string name = "cube",
         Vector3f color = Vector3d::Zero(),
@@ -68,6 +67,8 @@ public:
         Vector3d baseRotation = Vector3d::Zero(),
         float transparency = 1.f
     );
+
+    // TODO createCurve functions, createDefaultCube, etc...
 
     void deleteObject(std::shared_ptr<renderer::Object>& object);
     void deleteObject(renderer::Object* object);

@@ -3,8 +3,10 @@
 
 #include "renderer/core/RenderEngine.hpp"
 #include "CustomEigen.hpp"
+#include "core/polyline.hpp"
 
 #include <glm/glm.hpp>
+
 namespace renderer {
 	class Texture {
 	public:
@@ -51,6 +53,31 @@ namespace renderer {
 		VkDeviceMemory indexBufferMemory;
 
 		void loadModel(const char* path);
+		void createVertexBuffer();
+		void createIndexBuffer();
+	};
+
+	class CurveBuffer {
+	public:
+		std::vector<RendererVertex> vertices;
+		std::vector<uint32_t> indices;
+		float transparency;
+
+		CurveBuffer(RenderEngine& renderer);
+
+		void load(core::Polyline2_5D& polyline, float curveTransparency = 1.f);
+		void destroy();
+		void render(VkCommandBuffer commandBuffer);
+
+	private:
+        VulkanContext& context;
+
+		VkBuffer vertexBuffer;
+		VkDeviceMemory vertexBufferMemory;
+		VkBuffer indexBuffer;
+		VkDeviceMemory indexBufferMemory;
+
+		void loadPolyline(core::Polyline2_5D& polyline);
 		void createVertexBuffer();
 		void createIndexBuffer();
 	};

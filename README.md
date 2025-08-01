@@ -92,6 +92,8 @@ Start PCodeSender with the supplied PCode text file, which waits untill the cont
 - [ ] Add collision control for path validation
 - [ ] Update CMakeFile to create a release executable with proper Eigen (and proxsuite) optimization
 - [ ] Split off computational code into separate threads
+- [ ] Update CurveData renderer code so that it doesn't use an indexBuffer
+- [ ] Add destructors to classes holding renderer object/curve buffers, so the buffers are cleaned up forcibly at destruction. This should also allow for easier resetting of these classes, say if a Curve class is updated to hold new curveData.
 
 <!-- IDEAS -->
 ## Ideas

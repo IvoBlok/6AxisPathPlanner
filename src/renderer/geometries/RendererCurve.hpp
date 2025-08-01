@@ -1,35 +1,47 @@
 #ifndef RENDERER_CURVE_HPP
 #define RENDERER_CURVE_HPP
 
+#include "RendererGeometryBase.hpp"
 #include "renderer/core/RenderEngine.hpp"
-#include "CustomEigen.hpp"
-
-#include <glm/glm.hpp>
 
 namespace renderer {
     class Curve {
     public:
+        void remove();
 
-        void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
-        
+        friend class RenderEngine;
+
+        Curve(RenderEngine& renderer);        
+        Curve(RenderEngine& renderer, std::string name, bool isCurveRendered = true, bool isCurveShownInGui = true);
+	    Curve(const Curve&) = default;
         
         
     private:
         // variables associated with the renderer and how it is rendered and interacts with it
-        // RenderEngine& renderer;
+        // ======================================================================================
+
+        RenderEngine& renderer;
         
-        bool isObjectRendered;
-        bool isObjectShownInGui;
+        bool isCurveRendered;
+        bool isCurveShownInGui;
 
-        // variables associated with the objects' shape, position, orientation, etc...
-        Vector3d position;
-        Vector3d scale;
-        // rotation (some smart thing where both euler angles and matrix is allowed)
-        // color (either 1 color or a varying color along the curve)
+        std::string name;
+        float lineWidth;
 
-        Curve();
+        // variables associated with the curve's shape, color, etc ...
+        // ======================================================================================
 
+        Vector3f defaultColor;
+        bool useDefaultColor;
 
+        CurveBuffer curveBuffer;
+
+        void load(core::Polyline2_5D& polyline, Vector3f defaultColorIn, float transparency);
+
+        void drawGUI();
+        void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+
+        void cleanup();
     };
 }
 

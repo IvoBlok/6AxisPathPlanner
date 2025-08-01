@@ -1,7 +1,73 @@
 #include "RendererCurve.hpp"
 
-namespace renderer {
-    Curve::Curve() { }
+#include "imconfig.h"
+#include "imgui_internal.h"
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan_but_better.hpp"	
+#include "implot.h"
 
-    void Curve::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) { }
+namespace renderer {
+    Curve::Curve(RenderEngine& renderer) : Curve(renderer, "curve") { }    
+
+    Curve::Curve(RenderEngine& renderer, std::string name, bool isCurveRendered, bool isCurveShownInGui) 
+        : renderer(renderer), curveBuffer(renderer), name(name), isCurveRendered(isCurveRendered), isCurveShownInGui(isCurveShownInGui) 
+    {
+        lineWidth = 3.f;
+
+        defaultColor = Vector3f::UnitX();
+        useDefaultColor = true;
+    }
+
+    void Curve::load(core::Polyline2_5D& polyline, Vector3f defaultColorIn, float transparency) {
+        curveBuffer.load(polyline);
+        curveBuffer.transparency = transparency;   
+        defaultColor = defaultColorIn;
+    }
+
+    void Curve::drawGUI() {
+        float colorArray[3] = { defaultColor.x(), defaultColor.y(), defaultColor.z() };
+        ImGui::Text("Color ");
+        ImGui::SameLine();
+        ImGui::Checkbox("##OneColorToggle", &useDefaultColor);
+        if (useDefaultColor) {
+            ImGui::SameLine();
+            ImVec4 colVec4 = ImVec4(colorArray[0], colorArray[1], colorArray[2], 1.0f);
+            if (ImGui::ColorButton("MyColor##3", colVec4, ImGuiColorEditFlags_NoTooltip)) {
+                ImGui::OpenPopup("colorPicker");
+            }
+            if (ImGui::BeginPopup("colorPicker")) {
+                if (ImGui::ColorPicker3("##picker", colorArray, 
+                    ImGuiColorEditFlags_DisplayRGB | 
+                    ImGuiColorEditFlags_NoSidePreview |
+                    ImGuiColorEditFlags_NoSmallPreview)) 
+                {
+                    defaultColor.x() = colorArray[0];
+                    defaultColor.y() = colorArray[1];
+                    defaultColor.z() = colorArray[2];
+                }
+                ImGui::EndPopup();
+            }
+        }
+        
+        ImGui::SliderFloat("Transparency", &curveBuffer.transparency, 0.0f, 1.0f);
+        ImGui::SliderFloat("Line Width", &lineWidth, 0.0f, 10.0f);
+    }
+
+    void Curve::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) {
+        vkCmdSetLineWidth(commandBuffer, lineWidth);
+
+        LineShaderPushConstant pushConstant{};
+        pushConstant.color = glm::vec3{ defaultColor.x(), defaultColor.y(), defaultColor.z() };;
+        pushConstant.isOneColor = useDefaultColor;
+        pushConstant.transparency = curveBuffer.transparency;
+
+        vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(LineShaderPushConstant), &pushConstant);
+
+        curveBuffer.render(commandBuffer);
+    }
+
+    void Curve::cleanup() {
+        curveBuffer.destroy();
+    }
 }

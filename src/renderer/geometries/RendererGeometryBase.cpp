@@ -144,6 +144,9 @@ namespace renderer {
 
         vkDestroyBuffer(context.device, vertexBuffer, nullptr);
         vkFreeMemory(context.device, vertexBufferMemory, nullptr);
+
+        vertices.clear();
+        indices.clear();
     }
 
     void Model::render(VkCommandBuffer commandBuffer) {
@@ -232,6 +235,165 @@ namespace renderer {
     }
 
     void Model::createIndexBuffer() {
+        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+        // Create the staging buffer
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+        // Load the data into the staging buffer
+        void* data;
+        vkMapMemory(context.device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memcpy(data, indices.data(), (size_t)bufferSize);
+        vkUnmapMemory(context.device, stagingBufferMemory);
+
+        // Create the index buffer locally on the GPU
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+
+        // send the copy buffer command buffer to the GPU
+        copyBuffer(context, stagingBuffer, indexBuffer, bufferSize);
+
+        // Clean up used local resources
+        vkDestroyBuffer(context.device, stagingBuffer, nullptr);
+        vkFreeMemory(context.device, stagingBufferMemory, nullptr);
+    }
+
+    
+
+    // CurveBuffer class implementation
+    // ======================================================================================
+
+    CurveBuffer::CurveBuffer(RenderEngine& renderer) : context(renderer.getContext()) { }
+
+    void CurveBuffer::load(core::Polyline2_5D& polyline, float curveTransparency) {
+        loadPolyline(polyline);
+        createVertexBuffer();
+        createIndexBuffer();
+
+        transparency = curveTransparency;
+    }
+
+    void CurveBuffer::destroy() {
+        vkDestroyBuffer(context.device, indexBuffer, nullptr);
+        vkFreeMemory(context.device, indexBufferMemory, nullptr);
+
+        vkDestroyBuffer(context.device, vertexBuffer, nullptr);
+        vkFreeMemory(context.device, vertexBufferMemory, nullptr);
+
+        vertices.clear();
+        indices.clear();
+    }
+
+    void CurveBuffer::render(VkCommandBuffer commandBuffer) {
+        VkBuffer vertexBuffers[] = { vertexBuffer };
+        VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+        vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+    }
+
+    void CurveBuffer::loadPolyline(core::Polyline2_5D& polyline) {
+        std::vector<core::PlineVertex2_5D>& pathVertices = polyline.vertexes();
+
+        // by default, each polyline segment (be it a line-segment, or an arc), gets a random color assigned
+        glm::vec3 randomPolyVertexColor;
+
+        auto addLineVertex = [&](core::PlineVertex2_5D& plineVertex) {
+            RendererVertex vertex;
+
+            vertex.pos = glm::vec3{ plineVertex.point.x(), plineVertex.point.y(),plineVertex.point.z() };
+            vertex.color = randomPolyVertexColor;
+            vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
+
+            vertices.push_back(vertex);
+            indices.push_back(indices.size());
+        };
+
+        auto addArcVertex = [&](core::PlineVertex2_5D& currentVertex, core::PlineVertex2_5D& nextVertex) {
+            Vector2d localv1Coords = currentVertex.getPointInPlaneCoords();
+            Vector2d localv2Coords = nextVertex.getPointInPlaneCoords();
+            core::ArcRadiusAndCenter arcInfo = core::arcRadiusAndCenter(currentVertex.getVertexInPlaneCoords(), nextVertex.getVertexInPlaneCoords());
+            
+            float startAngle = angle(arcInfo.center, localv1Coords);
+            float endAngle = angle(arcInfo.center, localv2Coords);
+
+            float deltaAngle = core::utils::deltaAngle(startAngle, endAngle);
+            
+            for (size_t k = 0; k < 10; k++)
+            {
+                Vector2d localPosition;
+                localPosition.x() = arcInfo.center.x() + arcInfo.radius * std::cos(startAngle + (deltaAngle / 10.f) * k);
+                localPosition.y() = arcInfo.center.y() + arcInfo.radius * std::sin(startAngle + (deltaAngle / 10.f) * k);
+                Vector3d vertexPosition = currentVertex.plane.getGlobalCoords(localPosition);
+
+                RendererVertex vertex;
+
+                vertex.pos = glm::vec3{ vertexPosition.x(), vertexPosition.y(), vertexPosition.z() };
+                vertex.color = randomPolyVertexColor;
+                vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
+
+                vertices.push_back(vertex);
+                indices.push_back(indices.size());
+            }
+        };
+
+        for (size_t i = 0; i < pathVertices.size(); i++)
+        {
+            randomPolyVertexColor = core::utils::randomVec3();
+            if (!pathVertices[i].bulgeIsZero()) {
+
+                // if the polyline is open, the last vertex merely indicates the destination point of the previous polyline vertex, and hence in this case we should always just add the last one as a point
+                if (!polyline.isClosed() && i == pathVertices.size() - 1) {
+                    addLineVertex(pathVertices[i]);
+                    continue;                    
+                }
+
+                // in all other cases, we need to know the next vertex to convert an arc into a line-based approximation so it can be rendered
+                // since we already took out the case with a last vertex and an open polyline, here we can just find the next using a modulo operator
+                core::PlineVertex2_5D& nextVertex = pathVertices[(i + 1) % pathVertices.size()];
+
+                addArcVertex(pathVertices[i], nextVertex);
+            }
+            else {
+                addLineVertex(pathVertices[i]);
+            }
+        }
+
+        if (polyline.isClosed()) {
+            randomPolyVertexColor = core::utils::randomVec3();
+            addLineVertex(pathVertices[0]);
+        }
+    }
+
+    void CurveBuffer::createVertexBuffer() {
+        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+
+        // Create the staging buffer
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+        // Load the data into the staging buffer
+        void* data;
+        vkMapMemory(context.device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memcpy(data, vertices.data(), (size_t)bufferSize);
+        vkUnmapMemory(context.device, stagingBufferMemory);
+
+        // Create the vertex buffer locally on the GPU
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+
+        // send the copy buffer command buffer to the GPU
+        copyBuffer(context, stagingBuffer, vertexBuffer, bufferSize);
+
+        // Clean up used local resources
+        vkDestroyBuffer(context.device, stagingBuffer, nullptr);
+        vkFreeMemory(context.device, stagingBufferMemory, nullptr);
+    }
+
+    void CurveBuffer::createIndexBuffer() {
         VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
         // Create the staging buffer

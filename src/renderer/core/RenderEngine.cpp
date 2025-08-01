@@ -1047,8 +1047,9 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     // bind the UBO
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, lineBasedPipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-    for (auto& line : curves) {
-        line->render(commandBuffer, lineBasedPipelineLayout);
+    for (auto& curve : curves) {
+        if (curve->isCurveRendered)
+            curve->render(commandBuffer, lineBasedPipelineLayout);
     }
 
     // ========================================
@@ -1302,7 +1303,7 @@ void RenderEngine::VulkanInternals::cleanup(std::list<std::shared_ptr<renderer::
     }
 
     for (auto& curve : curves) {
-        // curve->destroyRenderData(); // TODO
+        curve->cleanup();
     }
 
     vkDestroyDescriptorSetLayout(vulkanContext.device, vulkanContext.uniformDescriptorSetLayout, nullptr);
@@ -1355,23 +1356,22 @@ void RenderEngine::handleFrame() {
 
     // Retrieve a new image from the swap chain
     uint32_t imageIndex;
-    VkResult result = vkAcquireNextImageKHR(vulkanInternals->vulkanContext.device, vulkanInternals->swapChain, UINT64_MAX, vulkanInternals->imageAvailableSemaphores[vulkanInternals->currentFrame], VK_NULL_HANDLE, &imageIndex);
+    VkResult acquireResult = vkAcquireNextImageKHR(vulkanInternals->vulkanContext.device, vulkanInternals->swapChain, UINT64_MAX, vulkanInternals->imageAvailableSemaphores[vulkanInternals->currentFrame], VK_NULL_HANDLE, &imageIndex);
 
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+    if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
         vulkanInternals->recreateSwapChain();
         return;
     }
-    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+    else if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error("failed to acquire swap chain image!");
     }
+    
+    // Only reset the fence if work will be submitted to the GPU
+    vkResetFences(vulkanInternals->vulkanContext.device, 1, &vulkanInternals->inFlightFences[vulkanInternals->currentFrame]);
 
     // Update the uniform buffers
     vulkanInternals->updateUniformBuffer(vulkanInternals->currentFrame);
-
     vulkanInternals->recordCommandBuffer(curves, objects, [this](){ recordGUI(); }, vulkanInternals->commandBuffers[vulkanInternals->currentFrame], imageIndex);
-
-    // Only reset the fence if work will be submitted to the GPU
-    vkResetFences(vulkanInternals->vulkanContext.device, 1, &vulkanInternals->inFlightFences[vulkanInternals->currentFrame]);
 
     // Submit the command buffer.. i.e. actually do the graphics computations
     VkSubmitInfo submitInfo{};
@@ -1403,13 +1403,13 @@ void RenderEngine::handleFrame() {
     presentInfo.pImageIndices = &imageIndex;
     presentInfo.pResults = nullptr; // Optional
 
-    VkResult result2 = vkQueuePresentKHR(vulkanInternals->vulkanContext.presentQueue, &presentInfo);
+    VkResult presentResult = vkQueuePresentKHR(vulkanInternals->vulkanContext.presentQueue, &presentInfo);
 
-    if (result2 == VK_ERROR_OUT_OF_DATE_KHR || result2 == VK_SUBOPTIMAL_KHR || vulkanInternals->frameBufferResized) {
+    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR || vulkanInternals->frameBufferResized) {
         vulkanInternals->frameBufferResized = false;
         vulkanInternals->recreateSwapChain();
     }
-    else if (result != VK_SUCCESS) {
+    else if (presentResult != VK_SUCCESS) {
         throw std::runtime_error("failed to present swap chain image!");
     }
 
@@ -1556,6 +1556,20 @@ void RenderEngine::recordGUI() {
 
             ImGui::PushID(("Objects_" + std::to_string(i)).c_str());
             object->drawGUI();
+            ImGui::PopID();
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Curves")) {
+        int i = 0;
+        for (auto it = curves.begin(); it != curves.end(); ++it, ++i) {
+            auto& curve = *it;
+
+            if (!curve->isCurveShownInGui)
+                continue;
+
+            ImGui::PushID(("Curve_" + std::to_string(i)).c_str());
+            curve->drawGUI();
             ImGui::PopID();
         }
     }        
@@ -1728,5 +1742,4 @@ void RenderEngine::recordGUI() {
     for (auto& drawGUI : guiCallbacks) {
         drawGUI(*this);
     }*/
-    ImGui::Text("Wow 'recordGUI' got properly called!");
 }

@@ -19,6 +19,10 @@ namespace renderer {
         useDefaultColor = true;
     }
 
+    Curve::~Curve() {
+        cleanup();
+    }
+
     void Curve::remove() {
         renderer.deleteCurve(this);
     }
@@ -84,7 +88,9 @@ namespace renderer {
     }
 
     void Curve::cleanup() {
-        vkDeviceWaitIdle(renderer.getContext().device);
-        curveBuffer.destroy();
+        if (renderer.getContext().device != VK_NULL_HANDLE) {
+            vkDeviceWaitIdle(renderer.getContext().device);
+            curveBuffer.destroy();
+        }
     }
 }

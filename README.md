@@ -93,7 +93,7 @@ Start PCodeSender with the supplied PCode text file, which waits untill the cont
 - [ ] Update CMakeFile to create a release executable with proper Eigen (and proxsuite) optimization
 - [ ] Split off computational code into separate threads
 - [ ] Update CurveData renderer code so that it doesn't use an indexBuffer
-- [ ] Add destructors to classes holding renderer object/curve buffers, so the buffers are cleaned up forcibly at destruction. This should also allow for easier resetting of these classes, say if a Curve class is updated to hold new curveData.
+- [ ] Update Renderer Object / shader so it doesn't require a texture when it doesn't use it / doesn't use a dummy texture. Also probably look into alternative ways of storing this potentially large group of descriptorSets, vulkan might not be happy with preparing for potentially NUM_OBJECTS descriptor sets.
 
 <!-- IDEAS -->
 ## Ideas

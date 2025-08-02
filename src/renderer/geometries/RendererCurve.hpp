@@ -16,6 +16,8 @@ namespace renderer {
         Curve(RenderEngine& renderer, std::string name, bool isCurveRendered = true, bool isCurveShownInGui = true);
 	    Curve(const Curve&) = default;
 
+        ~Curve();
+
         void remove();
         
         void setName(std::string nameIn);

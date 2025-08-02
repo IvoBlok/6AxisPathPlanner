@@ -916,14 +916,14 @@ void RenderEngine::VulkanInternals::createDescriptorPool() {
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[1].descriptorCount = 3;
+    poolSizes[1].descriptorCount = renderer::MAX_OBJECTS;
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) + 3;
+    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) + renderer::MAX_OBJECTS;
 
     if (vkCreateDescriptorPool(vulkanContext.device, &poolInfo, nullptr, &vulkanContext.descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
@@ -1296,8 +1296,6 @@ void RenderEngine::VulkanInternals::cleanup(std::list<std::shared_ptr<renderer::
         vkFreeMemory(vulkanContext.device, uniformBuffersMemory[i], nullptr);
     }
 
-    vkDestroyDescriptorPool(vulkanContext.device, vulkanContext.descriptorPool, nullptr);
-
     for (auto& object : objects) {
         object->cleanup();
     }
@@ -1305,6 +1303,8 @@ void RenderEngine::VulkanInternals::cleanup(std::list<std::shared_ptr<renderer::
     for (auto& curve : curves) {
         curve->cleanup();
     }
+
+    vkDestroyDescriptorPool(vulkanContext.device, vulkanContext.descriptorPool, nullptr);
 
     vkDestroyDescriptorSetLayout(vulkanContext.device, vulkanContext.uniformDescriptorSetLayout, nullptr);
     vkDestroyDescriptorSetLayout(vulkanContext.device, vulkanContext.textureDescriptorSetLayout, nullptr);
@@ -1332,6 +1332,8 @@ void RenderEngine::VulkanInternals::cleanup(std::list<std::shared_ptr<renderer::
     glfwDestroyWindow(window);
 
     glfwTerminate();
+
+    vulkanContext.device = VK_NULL_HANDLE;
 }
 
 
@@ -1353,6 +1355,8 @@ void RenderEngine::handleFrame() {
 
     // Wait for the previous frame to finish rendering
     vkWaitForFences(vulkanInternals->vulkanContext.device, 1, &vulkanInternals->inFlightFences[vulkanInternals->currentFrame], VK_TRUE, UINT64_MAX);
+
+    processRemovals();
 
     // Retrieve a new image from the swap chain
     uint32_t imageIndex;
@@ -1527,9 +1531,6 @@ std::chrono::microseconds RenderEngine::getDeltaTime() {
 }
 
 void RenderEngine::recordGUI() {
-    std::vector<std::list<shared_ptr<Object>>::iterator> objectsToDelete;
-    std::vector<std::list<shared_ptr<Curve>>::iterator> curvesToDelete;
-
     if(ImGui::Button("Generate Cube")) {
         createDefaultCube(
                 "cube",                     // name
@@ -1553,10 +1554,10 @@ void RenderEngine::recordGUI() {
         nfdresult_t result = NFD_OpenDialog( "obj", NULL, &outPath );
             
         if ( result == NFD_OKAY ) {
-            shared_ptr<Object> object = createObject(
+            std::shared_ptr<renderer::Object> object = createObject(
                     outPath,
                     std::string(outPath),
-                    Vector3d{ 0.1f, 0.3f, 0.5f } // color
+                    Vector3f{ 0.1f, 0.3f, 0.5f } // color
                 );
             free(outPath);
         }
@@ -1604,7 +1605,7 @@ void RenderEngine::recordGUI() {
             // Delete button (fixed position relative to window edge)
             ImGui::SameLine();
             if (ImGui::Button("X##CloseObject", ImVec2(25, ImGui::GetFrameHeight()))) {
-                objectsToDelete.push_back(it);
+                objectsToDelete.push_back(object);
             }
 
             // Contents when expanded
@@ -1620,9 +1621,9 @@ void RenderEngine::recordGUI() {
     if(ImGui::CollapsingHeader("Lines")) {
         int i = 0;
         for (auto it = curves.begin(); it != curves.end(); ++it, ++i) {
-            auto& line = *it;
+            auto& curve = *it;
 
-            if (!line->isCurveShownInGui)
+            if (!curve->isCurveShownInGui)
                 continue;
 
             ImGui::PushID(("Lines_" + std::to_string(i)).c_str());
@@ -1640,9 +1641,9 @@ void RenderEngine::recordGUI() {
             ImGui::SameLine(rowStartX + ImGui::GetTreeNodeToLabelSpacing());
             ImGui::SetNextItemWidth(120);
             char nameBuffer[256];
-            strncpy(nameBuffer, line->getName().c_str(), sizeof(nameBuffer));
+            strncpy(nameBuffer, curve->getName().c_str(), sizeof(nameBuffer));
             if (ImGui::InputText("##NameEdit", nameBuffer, sizeof(nameBuffer))) {
-                line->setName(nameBuffer);
+                curve->setName(nameBuffer);
             }
 
             // Calculate positions for right-aligned controls
@@ -1652,34 +1653,44 @@ void RenderEngine::recordGUI() {
             const float totalRightWidth = checkboxWidth + buttonWidth + spacing;
 
             ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - totalRightWidth);
-            ImGui::Checkbox("##RenderToggle", &line->isCurveRendered);
+            ImGui::Checkbox("##RenderToggle", &curve->isCurveRendered);
 
             // Delete button (fixed position relative to window edge)
             ImGui::SameLine();
             if (ImGui::Button("X##CloseObject", ImVec2(25, ImGui::GetFrameHeight()))) {
-                curvesToDelete.push_back(it);
+                curvesToDelete.push_back(curve);
             }
 
             if (isOpen) {
-                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d", line->getNumberOfVertices());
-                line->drawGUI();
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d", curve->getNumberOfVertices());
+                curve->drawGUI();
 
                 ImGui::TreePop();
             }
             ImGui::PopID();
         }
-
-        for (auto& object : objectsToDelete)
-            objects.erase(object);
-
-        for (auto& line : curvesToDelete)
-            curves.erase(line);
     }
-
 
     ImGui::SeparatorText("");
     // add the GUI for all registered modules (i.e. stuff like MeshIntersect, PolylineOffsets, etc)
     for (auto& drawGUI : guiCallbacks) {
         drawGUI(*this);
     }
+}
+
+void RenderEngine::processRemovals() {
+    vkDeviceWaitIdle(getContext().device);
+
+    for (auto& object : objectsToDelete) {
+        objects.remove(object);
+        object->cleanup();
+    }
+
+    for (auto& curve : curvesToDelete) {
+        curves.remove(curve);
+        curve->cleanup();
+    }
+
+    objectsToDelete.clear();
+    curvesToDelete.clear();
 }

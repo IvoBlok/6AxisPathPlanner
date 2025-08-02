@@ -80,13 +80,18 @@ public:
 private:
     std::list<std::shared_ptr<renderer::Curve>> curves;
     std::list<std::shared_ptr<renderer::Object>> objects;
-    
+
+    std::vector<std::shared_ptr<renderer::Object>> objectsToDelete;
+    std::vector<std::shared_ptr<renderer::Curve>> curvesToDelete;
+
 	std::vector<std::function<void(RenderEngine&)>> guiCallbacks;
 
     struct VulkanInternals;
     std::unique_ptr<VulkanInternals> vulkanInternals;
 
     void recordGUI();
+
+    void processRemovals();
 };
 
 #endif

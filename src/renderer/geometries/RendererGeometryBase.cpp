@@ -67,7 +67,6 @@ namespace renderer {
     }
 
     void Texture::destroy() {
-        vkDeviceWaitIdle(context.device);
         if (textureSampler != VK_NULL_HANDLE) {
             vkDestroySampler(context.device, textureSampler, nullptr);
             textureSampler = VK_NULL_HANDLE;
@@ -206,8 +205,6 @@ namespace renderer {
     }
 
     void Model::destroy() {
-        vkDeviceWaitIdle(context.device);
-
         if (indexBuffer != VK_NULL_HANDLE) {
             vkDestroyBuffer(context.device, indexBuffer, nullptr);
             indexBuffer = VK_NULL_HANDLE;
@@ -364,8 +361,6 @@ namespace renderer {
     }
 
     void CurveBuffer::destroy() {
-        vkDeviceWaitIdle(context.device);
-
         if (indexBuffer != VK_NULL_HANDLE) {
             vkDestroyBuffer(context.device, indexBuffer, nullptr);
             indexBuffer = VK_NULL_HANDLE;

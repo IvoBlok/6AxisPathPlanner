@@ -25,6 +25,10 @@ namespace renderer {
         useTexture = false;
     }
 
+    Object::~Object() {
+        cleanup();
+    }
+
     void Object::remove() {
         renderer.deleteObject(this);
     }
@@ -151,13 +155,13 @@ namespace renderer {
         // bind the model matrix, and render the object
         vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ObjectShaderPushConstant), &pushConstant);
         model.render(commandBuffer);
-     }
-
-    void Object::cleanup() {
-        vkDeviceWaitIdle(renderer.getContext().device);
-        model.destroy();
-        if (texture.second)
-            texture.first.value().destroy();
     }
 
+    void Object::cleanup() {
+        if (renderer.getContext().device != VK_NULL_HANDLE) {
+            vkDeviceWaitIdle(renderer.getContext().device);
+            model.destroy();
+            texture.first.value().destroy();
+        }
+    }
 }

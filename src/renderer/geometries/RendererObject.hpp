@@ -17,7 +17,8 @@ namespace renderer {
         
         Object(RenderEngine& renderer);
         Object(RenderEngine& renderer, std::string name, bool isObjectRendered = true, bool isObjectShownInGui = true);
-
+        ~Object();
+        
         void remove();
         void setPose(Matrix4d matrix);
 

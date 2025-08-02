@@ -27,6 +27,8 @@ namespace renderer {
 
         const core::Polyline2_5D& getPolyline() const;
         
+        void drawGUI();
+        
     private:
         // variables associated with the renderer and how it is rendered and interacts with it
         // ======================================================================================
@@ -47,7 +49,6 @@ namespace renderer {
         
         void load(core::Polyline2_5D& polylineIn, Vector3f defaultColorIn, float transparency);
 
-        void drawGUI();
         void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 
         void cleanup();

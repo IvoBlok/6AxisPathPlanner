@@ -14,7 +14,7 @@ public:
     FacePassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) {
         selectedIndex1 = -1;
 
-        planeObject = renderer.createDefaultPlane("facePassPlane", Vector3d{0.1, 0.7, 0.2});
+        planeObject = renderer.createDefaultPlane("facePassPlane", Vector3f{0.1, 0.7, 0.2});
         planeObject->isObjectShownInGui = false;
         planeObject->isObjectRendered = false;
     }

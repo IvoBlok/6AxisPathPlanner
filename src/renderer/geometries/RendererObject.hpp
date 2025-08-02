@@ -32,6 +32,8 @@ namespace renderer {
         core::ObjectShape getObjectShape();
         core::Plane getPlane();
 
+        void drawGUI();
+
     private:
         // variables associated with the renderer and how it is rendered and interacts with it
         // ======================================================================================
@@ -57,7 +59,6 @@ namespace renderer {
         
         glm::mat4 getPoseGLM();
 
-        void drawGUI();
         void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
 
         void cleanup();

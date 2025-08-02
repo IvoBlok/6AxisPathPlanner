@@ -92,10 +92,10 @@ public:
         float transparency = 1.f
     );
 
-    void deleteObject(std::shared_ptr<renderer::Object>& object);
-    void deleteObject(renderer::Object* object);
-    void deleteCurve(std::shared_ptr<renderer::Curve>& curve);
-    void deleteCurve(renderer::Curve* curve);
+    void removeObject(std::shared_ptr<renderer::Object>& object);
+    void removeObject(renderer::Object* object);
+    void removeCurve(std::shared_ptr<renderer::Curve>& curve);
+    void removeCurve(renderer::Curve* curve);
 
     std::chrono::microseconds getDeltaTime();
 
@@ -106,8 +106,8 @@ private:
     std::list<std::shared_ptr<renderer::Curve>> curves;
     std::list<std::shared_ptr<renderer::Object>> objects;
 
-    std::vector<std::shared_ptr<renderer::Object>> objectsToDelete;
-    std::vector<std::shared_ptr<renderer::Curve>> curvesToDelete;
+    std::vector<std::shared_ptr<renderer::Object>> objectsToRemove;
+    std::vector<std::shared_ptr<renderer::Curve>> curvesToRemove;
 
 	std::vector<std::function<void(RenderEngine&)>> guiCallbacks;
 

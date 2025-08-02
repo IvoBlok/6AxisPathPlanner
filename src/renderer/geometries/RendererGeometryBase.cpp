@@ -132,7 +132,6 @@ namespace renderer {
         return descriptorSet;
     }
 
-
     void Texture::createTextureImage(const char* path) {
         int texWidth, texHeight, texChannels;
         stbi_uc* pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
@@ -688,4 +687,5 @@ namespace renderer {
         auto angles = Eigen::EulerAnglesXYZd{eulerAngles * ((2 * M_PI) / 360.0)};
         rotationMatrix = angles.matrix();
     }
+
 }

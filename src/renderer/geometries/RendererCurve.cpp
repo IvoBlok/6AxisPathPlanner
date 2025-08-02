@@ -13,11 +13,12 @@ namespace renderer {
     }
 
     Curve::~Curve() {
+        remove();
         cleanup();
     }
 
     void Curve::remove() {
-        renderer.deleteCurve(this);
+        renderer.removeCurve(this);
     }
 
     void Curve::setName(std::string nameIn) {
@@ -34,14 +35,6 @@ namespace renderer {
 
     const core::Polyline2_5D& Curve::getPolyline() const {
         return polyline;
-    }
-
-    void Curve::load(core::Polyline2_5D& polylineIn, Vector3f defaultColorIn, float transparency) {
-        polyline = core::Polyline2_5D(polylineIn);
-        
-        curveBuffer.load(polylineIn);
-        curveBuffer.transparency = transparency;   
-        defaultColor = defaultColorIn;
     }
 
     void Curve::drawGUI() {
@@ -71,6 +64,14 @@ namespace renderer {
         
         ImGui::SliderFloat("Transparency", &curveBuffer.transparency, 0.0f, 1.0f);
         ImGui::SliderFloat("Line Width", &lineWidth, 0.0f, 10.0f);
+    }
+
+    void Curve::load(core::Polyline2_5D& polylineIn, Vector3f defaultColorIn, float transparency) {
+        polyline = core::Polyline2_5D(polylineIn);
+        
+        curveBuffer.load(polylineIn);
+        curveBuffer.transparency = transparency;   
+        defaultColor = defaultColorIn;
     }
 
     void Curve::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) {

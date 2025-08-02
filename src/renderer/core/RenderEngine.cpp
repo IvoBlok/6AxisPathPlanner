@@ -1522,35 +1522,35 @@ std::shared_ptr<renderer::Curve> RenderEngine::createCurve(
     return createCurve(newPolyline, name, color, transparency);
 }
 
-void RenderEngine::deleteObject(std::shared_ptr<renderer::Object>& object) {
+void RenderEngine::removeObject(std::shared_ptr<renderer::Object>& object) {
     if (!object) return;
-    objectsToDelete.push_back(object);
+    objectsToRemove.push_back(object);
 }
 
-void RenderEngine::deleteObject(renderer::Object* object) {
+void RenderEngine::removeObject(renderer::Object* object) {
     if (!object) return;
     auto it = std::find_if(objects.begin(), objects.end(), [object](const std::shared_ptr<renderer::Object>& ptr) {
         return ptr.get() == object;
     });
 
     if (it != objects.end()) {
-        objectsToDelete.push_back(*it);
+        objectsToRemove.push_back(*it);
     }
 }
 
-void RenderEngine::deleteCurve(std::shared_ptr<renderer::Curve>& curve) {
+void RenderEngine::removeCurve(std::shared_ptr<renderer::Curve>& curve) {
     if (!curve) return;
-    curvesToDelete.push_back(curve);
+    curvesToRemove.push_back(curve);
 }
 
-void RenderEngine::deleteCurve(renderer::Curve* curve) {
+void RenderEngine::removeCurve(renderer::Curve* curve) {
     if (!curve) return;
     auto it = std::find_if(curves.begin(), curves.end(), [curve](const std::shared_ptr<renderer::Curve>& ptr) {
         return ptr.get() == curve;
     });
 
     if (it != curves.end()) {
-        curvesToDelete.push_back(*it);
+        curvesToRemove.push_back(*it);
     }
 }
 
@@ -1641,7 +1641,7 @@ void RenderEngine::recordGUI() {
             // Delete button (fixed position relative to window edge)
             ImGui::SameLine();
             if (ImGui::Button("X##CloseObject", ImVec2(25, ImGui::GetFrameHeight()))) {
-                objectsToDelete.push_back(object);
+                objectsToRemove.push_back(object);
             }
 
             // Contents when expanded
@@ -1694,7 +1694,7 @@ void RenderEngine::recordGUI() {
             // Delete button (fixed position relative to window edge)
             ImGui::SameLine();
             if (ImGui::Button("X##CloseObject", ImVec2(25, ImGui::GetFrameHeight()))) {
-                curvesToDelete.push_back(curve);
+                curvesToRemove.push_back(curve);
             }
 
             if (isOpen) {
@@ -1717,16 +1717,16 @@ void RenderEngine::recordGUI() {
 void RenderEngine::processRemovals() {
     vkDeviceWaitIdle(getContext().device);
 
-    for (auto& object : objectsToDelete) {
+    for (auto& object : objectsToRemove) {
         objects.remove(object);
         object->cleanup();
     }
 
-    for (auto& curve : curvesToDelete) {
+    for (auto& curve : curvesToRemove) {
         curves.remove(curve);
         curve->cleanup();
     }
 
-    objectsToDelete.clear();
-    curvesToDelete.clear();
+    objectsToRemove.clear();
+    curvesToRemove.clear();
 }

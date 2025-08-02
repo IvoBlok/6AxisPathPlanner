@@ -4,6 +4,8 @@
 #include "renderer/gui/testing/robotGUITest.hpp"
 #include "renderer/gui/testing/toolPath2_5DGUITest.hpp"
 
+#include "renderer/gui/pathPlannerGUI.hpp"
+
 #include <stdexcept>
 #include <iostream>
 
@@ -16,6 +18,8 @@ int main() {
 		meshIntersect::MeshIntersectGUITest meshIntersectGuiTest{renderer};
 		toolPath2_5D::ToolPath2_5DGUITest toolPath2_5DGuiTest{renderer};
 		kinematics::RobotGUITest robotGuiTest{renderer};
+
+		PathPlannerGUI pathPlannerGUI{renderer};
 
 		while (!renderer.shouldWindowClose()) {
 			renderer.handleFrame();

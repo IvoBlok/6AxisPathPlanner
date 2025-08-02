@@ -11,7 +11,7 @@ public:
     PathPlannerGUI(RenderEngine& renderer) {
         registerWithRenderer(renderer);
 
-        //toolPathOptions.push_back(std::make_unique<toolPath2_5D::FacePassGUI>(renderer));
+        toolPathOptions.push_back(std::make_unique<toolPath2_5D::FacePassGUI>(renderer));
         toolPathOptions.push_back(std::make_unique<toolPath2_5D::SurfacePassGUI>(renderer));
         toolPathOptions.push_back(std::make_unique<toolPath2_5D::ClearingPassGUI>(renderer));
 

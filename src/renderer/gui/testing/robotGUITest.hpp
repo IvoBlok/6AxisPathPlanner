@@ -213,11 +213,11 @@ private:
         validationResult.type = IKResultType::OutOfReach;
         validationResult.states.clear();
 
-        renderer.deleteObject(goalObject);
-        renderer.deleteObject(base);
-        renderer.deleteObject(effector);
+        renderer.removeObject(goalObject);
+        renderer.removeObject(base);
+        renderer.removeObject(effector);
         for (auto& joint : joints)
-            renderer.deleteObject(joint);
+            renderer.removeObject(joint);
         joints.clear();
 
         robotKinematics = RobotKinematics{};

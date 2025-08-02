@@ -19,11 +19,12 @@ namespace renderer {
     }
 
     Object::~Object() {
+        remove();
         cleanup();
     }
 
     void Object::remove() {
-        renderer.deleteObject(this);
+        renderer.removeObject(this);
     }
 
     void Object::setPose(Matrix4d matrix) {
@@ -86,37 +87,6 @@ namespace renderer {
         return objectPlane;
     }
 
-    void Object::load(const char* modelPath, const char* texturePath, Vector3d basePosition, Vector3d baseScale, Vector3d baseRotation, float modelTransparency) {
-        model.load(modelPath, modelTransparency);
-        texture.first.value().load(texturePath);
-        texture.second = true;
-
-        useTexture = true;
-        position = basePosition;
-        scale = baseScale;
-        rotation = baseRotation;
-    }   
-
-    void Object::load(const char* modelPath, Vector3f objectColor, Vector3d basePosition, Vector3d baseScale, Vector3d baseRotation, float modelTransparency) {
-        model.load(modelPath, modelTransparency);
-        texture.first.value().loadDummy();
-        texture.second = false;
-
-        color = objectColor;
-        useTexture = false;
-        position = basePosition;
-        scale = baseScale;
-        rotation = baseRotation;
-    }
-    
-    glm::mat4 Object::getPoseGLM() {
-        glm::mat4 transformationMatrix = glm::mat4{1.f};
-        transformationMatrix = glm::translate(transformationMatrix, glm::vec3{position(0), position(1), position(2)});  // Translate first
-        transformationMatrix = transformationMatrix * rotation.glmMatrix();                                             // Then rotate
-        transformationMatrix = glm::scale(transformationMatrix, glm::vec3{scale(0), scale(1), scale(2)});               // Scale last
-        return transformationMatrix;
-    }
-
     void Object::drawGUI() {
         float positionArray[3] = { (float)position.x(), (float)position.y(), (float)position.z() };
         if (ImGui::InputFloat3("Position", positionArray)) {
@@ -162,6 +132,37 @@ namespace renderer {
         }
         
         ImGui::SliderFloat("Transparency", &model.transparency, 0.0f, 1.0f);
+    }
+    
+    void Object::load(const char* modelPath, const char* texturePath, Vector3d basePosition, Vector3d baseScale, Vector3d baseRotation, float modelTransparency) {
+        model.load(modelPath, modelTransparency);
+        texture.first.value().load(texturePath);
+        texture.second = true;
+
+        useTexture = true;
+        position = basePosition;
+        scale = baseScale;
+        rotation = baseRotation;
+    }   
+
+    void Object::load(const char* modelPath, Vector3f objectColor, Vector3d basePosition, Vector3d baseScale, Vector3d baseRotation, float modelTransparency) {
+        model.load(modelPath, modelTransparency);
+        texture.first.value().loadDummy();
+        texture.second = false;
+
+        color = objectColor;
+        useTexture = false;
+        position = basePosition;
+        scale = baseScale;
+        rotation = baseRotation;
+    }
+    
+    glm::mat4 Object::getPoseGLM() {
+        glm::mat4 transformationMatrix = glm::mat4{1.f};
+        transformationMatrix = glm::translate(transformationMatrix, glm::vec3{position(0), position(1), position(2)});  // Translate first
+        transformationMatrix = transformationMatrix * rotation.glmMatrix();                                             // Then rotate
+        transformationMatrix = glm::scale(transformationMatrix, glm::vec3{scale(0), scale(1), scale(2)});               // Scale last
+        return transformationMatrix;
     }
 
     void Object::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) {

@@ -21,16 +21,11 @@ public:
 
     void drawGUI(RenderEngine& renderer) {
         if (ImGui::CollapsingHeader("path planner##pathPlanner")) {
-            std::vector<std::string> toolPathNames;
-            for (const auto& option : toolPathOptions)
-                toolPathNames.push_back(option->name());
             
-            handleDropdown("toolPathSelectionDropdown", "", "choose tool path type ...", toolPathNames, toolPathSelectionIndex);
+            handleDropdown("toolPathSelectionDropdown", "", toolPathOptions, toolPathSelectionIndex, "choose tool path type ...");
             ImGui::SameLine();
             if (ImGui::Button("Add Tool Path")) {
-                if (toolPathSelectionIndex >= 0 && toolPathSelectionIndex < toolPathOptions.size()) {
-                    toolPaths.push_back(toolPathOptions[toolPathSelectionIndex]->clone());
-                }
+                toolPaths.push_back(toolPathOptions[toolPathSelectionIndex]->clone());
             }
             
 
@@ -38,7 +33,7 @@ public:
             int i = 0;
             for (auto it = toolPaths.begin(); it != toolPaths.end(); ++it, ++i) {
                 auto& toolPath = *it;
-                std::string treeNodeName = std::to_string(i) + ": " + toolPath->name();
+                std::string treeNodeName = std::to_string(i) + ": " + toolPath->getName();
 
                 ImGui::PushID(std::to_string(i).c_str());
                 ImGui::AlignTextToFramePadding();

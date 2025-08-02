@@ -4,7 +4,7 @@ namespace renderer {
     Curve::Curve(RenderEngine& renderer) : Curve(renderer, "curve") { }    
 
     Curve::Curve(RenderEngine& renderer, std::string name, bool isCurveRendered, bool isCurveShownInGui) 
-        : renderer(renderer), curveBuffer(renderer), name(name), isCurveRendered(isCurveRendered), isCurveShownInGui(isCurveShownInGui) 
+        : alive(true), renderer(renderer), curveBuffer(renderer), name(name), isCurveRendered(isCurveRendered), isCurveShownInGui(isCurveShownInGui) 
     {
         lineWidth = 3.f;
 
@@ -20,6 +20,10 @@ namespace renderer {
         renderer.removeCurve(this);
     }
 
+    bool Curve::isAlive() const {
+        return alive;
+    }
+
     void Curve::setName(std::string nameIn) {
         name = nameIn;
     }
@@ -29,6 +33,7 @@ namespace renderer {
     }
 
     int Curve::getNumberOfVertices() const {
+        if(!alive) return 0;
         return curveBuffer.vertices.size();
     }
 

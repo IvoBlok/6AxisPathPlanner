@@ -12,8 +12,6 @@ public:
     FacePass2_5DInfo info;
     
     FacePassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) {
-        selectedIndex1 = -1;
-
         planeObject = renderer.createDefaultPlane("facePassPlane", Vector3f{0.1, 0.7, 0.2});
         planeObject->isObjectShownInGui = false;
         planeObject->isObjectRendered = false;
@@ -24,29 +22,24 @@ public:
     }
 
     void draw(bool isOpen) override {
-        // TODO rewrite 'handleDropdown' so that it can handle not being given all objects, like not showing the 'hideInGui' objects
         if (isOpen) {
             planeObject->isObjectRendered = true;
 
             auto& objects = renderer.getObjects();
-            std::vector<std::string> objectNames;
-            for (auto& obj : objects)
-                objectNames.push_back(obj->getName());
             
             ImGui::SeparatorText("Face Plane");
             planeObject->drawGUI();
-            handleDropdown("facePassStockSelectGroup", "Select Stock:", "...", objectNames, selectedIndex1);
+            
+            handleDropdown("facePassStockSelectGroup", "Select Stock:", objects, stockObject, [](const auto& obj) { return obj->isObjectShownInGui; });
             
             ImGui::InputDouble("Traverse height [mm]##facePass", &info.safeTraverseHeight);
             ImGui::InputDouble("Stepover [mm]##facePass", &info.stepOver);
 
             if (ImGui::Button("Generate##facePass")) {
-                if(selectedIndex1 != -1) {
-                    auto stockObj = objects.begin();
-                    std::advance(stockObj, selectedIndex1);
+                if(stockObject) {
 
                     info.slicingPlane = planeObject->getPlane();
-                    info.stock = (*stockObj)->getObjectShape();
+                    info.stock = stockObject->getObjectShape();
 
                     core::Polyline2_5D result = generateFacePass2_5D(info);
                     
@@ -58,7 +51,7 @@ public:
             planeObject->isObjectRendered = false;
     }
 
-    std::string name() const override {
+    std::string getName() const override {
         return "2.5D Face pass";
     }
 
@@ -67,49 +60,34 @@ public:
     }
 
 private:
-    int selectedIndex1;
-
     std::shared_ptr<renderer::Object> planeObject;
+    std::shared_ptr<renderer::Object> stockObject;
 };
 
 class SurfacePassGUI : public ToolPathGUIBase {
 public:
     SurfacePass2_5DInfo info;
 
-    SurfacePassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) {
-        selectedIndex1 = -1;
-        selectedIndex2 = -1;
-        selectedIndex3 = -1;
-    }
+    SurfacePassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) { }
 
     void draw(bool isOpen) override {
         if (isOpen) {
             auto& objects = renderer.getObjects();
 
-            std::vector<std::string> objectNames;
-            for (auto& obj : objects)
-                objectNames.push_back(obj->getName());
-
-            handleDropdown("surfacePassStartPlaneSelectGroup", "Select Start Plane:", "...", objectNames, selectedIndex1);
-            handleDropdown("surfacePassEndPlaneSelectGroup", "Select End Plane:", "...", objectNames, selectedIndex2);
-            handleDropdown("surfacePassShapeSelectGroup", "Select Shape:", "...", objectNames, selectedIndex3);
+            handleDropdown("surfacePassStartPlaneSelectGroup", "Select Start Plane:", objects, startPlane, [](const auto& obj) {return obj->isObjectShownInGui; });
+            handleDropdown("surfacePassEndPlaneSelectGroup", "Select End Plane:", objects, endPlane, [](const auto& obj) {return obj->isObjectShownInGui; });
+            handleDropdown("surfacePassShapeSelectGroup", "Select Shape:", objects, shapeObject, [](const auto& obj) {return obj->isObjectShownInGui; });
 
             ImGui::InputDouble("Traverse height [mm]##surfacePass", &info.safeTraverseHeight);
             ImGui::InputDouble("Tool radius [mm]##surfacePass", &info.toolRadius);
             ImGui::InputDouble("Depth of Cut [mm]##surfacePass", &info.depthOfCut);
 
             if (ImGui::Button("Generate##surfacePass")) {
-                if(selectedIndex1 != -1 && selectedIndex2 != -1 && selectedIndex3 != -1) {
-                    auto startPlaneObj = objects.begin();
-                    std::advance(startPlaneObj, selectedIndex1);
-                    auto endPlaneObj = objects.begin();
-                    std::advance(endPlaneObj, selectedIndex2);
-                    auto shapeObj = objects.begin();
-                    std::advance(shapeObj, selectedIndex3);
+                if(startPlane && endPlane && shapeObject) {
 
-                    info.startPlane = (*startPlaneObj)->getPlane();
-                    info.endPlane = (*endPlaneObj)->getPlane();
-                    info.shape = (*shapeObj)->getObjectShape();
+                    info.startPlane = startPlane->getPlane();
+                    info.endPlane = endPlane->getPlane();
+                    info.shape = shapeObject->getObjectShape();
 
                     core::Polyline2_5D result = generateSurfacePass2_5D(info);
                     
@@ -120,7 +98,7 @@ public:
         }
     }
 
-    std::string name() const override {
+    std::string getName() const override {
         return "2.5D Surface pass";
     }
 
@@ -129,34 +107,25 @@ public:
     }
 
 private:
-    int selectedIndex1;
-    int selectedIndex2;
-    int selectedIndex3;
+    std::shared_ptr<renderer::Object> startPlane;
+    std::shared_ptr<renderer::Object> endPlane;
+    std::shared_ptr<renderer::Object> shapeObject;
 };
 
 class ClearingPassGUI : public ToolPathGUIBase {
 public:
     ClearingPass2_5DInfo info;
 
-    ClearingPassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) {
-        selectedIndex1 = -1;
-        selectedIndex2 = -1;
-        selectedIndex3 = -1;
-        selectedIndex4 = -1;
-    }
+    ClearingPassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) { }
 
     void draw(bool isOpen) override {
         if (isOpen) {
             auto& objects = renderer.getObjects();
 
-            std::vector<std::string> objectNames;
-            for (auto& obj : objects)
-                objectNames.push_back(obj->getName());
-
-            handleDropdown("clearingPassStartPlaneSelectGroup", "Select Start Plane:", "...", objectNames, selectedIndex1);
-            handleDropdown("clearingPassEndPlaneSelectGroup", "Select End Plane:", "...", objectNames, selectedIndex2);
-            handleDropdown("clearingPassShapeSelectGroup", "Select Shape:", "...", objectNames, selectedIndex3);
-            handleDropdown("clearingPassStockSelectGroup", "Select Stock:", "...", objectNames, selectedIndex4);
+            handleDropdown("clearingPassStartPlaneSelectGroup", "Select Start Plane:", objects, startPlane, [](const auto& obj) {return obj->isObjectShownInGui; });
+            handleDropdown("clearingPassEndPlaneSelectGroup", "Select End Plane:", objects, endPlane, [](const auto& obj) {return obj->isObjectShownInGui; });
+            handleDropdown("clearingPassShapeSelectGroup", "Select Shape:", objects, shapeObject, [](const auto& obj) {return obj->isObjectShownInGui; });
+            handleDropdown("clearingPassStockSelectGroup", "Select Stock:", objects, stockObject, [](const auto& obj) {return obj->isObjectShownInGui; });
 
             ImGui::InputDouble("Traverse height [mm]##clearingPass", &info.safeTraverseHeight);
             ImGui::InputDouble("Tool radius [mm]##clearingPass", &info.toolRadius);
@@ -164,20 +133,11 @@ public:
             ImGui::InputDouble("Stepover [mm]##clearingPass", &info.stepOver);
 
             if (ImGui::Button("Generate##clearingPass")) {
-                if(selectedIndex1 != -1 && selectedIndex2 != -1 && selectedIndex3 != -1 && selectedIndex4 != -1) {
-                    auto startPlaneObj = objects.begin();
-                    std::advance(startPlaneObj, selectedIndex1);
-                    auto endPlaneObj = objects.begin();
-                    std::advance(endPlaneObj, selectedIndex2);
-                    auto shapeObj = objects.begin();
-                    std::advance(shapeObj, selectedIndex3);
-                    auto stockObj = objects.begin();
-                    std::advance(stockObj, selectedIndex4);
-
-                    info.startPlane = (*startPlaneObj)->getPlane();
-                    info.endPlane = (*endPlaneObj)->getPlane();
-                    info.shape = (*shapeObj)->getObjectShape();
-                    info.stock = (*stockObj)->getObjectShape();
+                if(startPlane && endPlane && shapeObject && stockObject) {
+                    info.startPlane = startPlane->getPlane();
+                    info.endPlane = endPlane->getPlane();
+                    info.shape = shapeObject->getObjectShape();
+                    info.stock = stockObject->getObjectShape();
 
                     core::Polyline2_5D result = generateClearingPass2_5D(info);
                     
@@ -188,7 +148,7 @@ public:
         }
     }
 
-    std::string name() const override {
+    std::string getName() const override {
         return "2.5D Clearing pass";
     }
 
@@ -197,10 +157,10 @@ public:
     }
 
 private:
-    int selectedIndex1;
-    int selectedIndex2;
-    int selectedIndex3;
-    int selectedIndex4;
+    std::shared_ptr<renderer::Object> startPlane;
+    std::shared_ptr<renderer::Object> endPlane;
+    std::shared_ptr<renderer::Object> shapeObject;
+    std::shared_ptr<renderer::Object> stockObject;
 };
 
 } // namespace toolPath2_5D

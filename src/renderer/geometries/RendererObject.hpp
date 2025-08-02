@@ -21,6 +21,7 @@ namespace renderer {
         ~Object();
         
         void remove();
+        bool isAlive() const; // repeatedly check if isAlive return true, to check if your std::shared_ptr is still valid
         void setPose(Matrix4d matrix);
 
         void setName(std::string nameIn);
@@ -39,6 +40,7 @@ namespace renderer {
         // ======================================================================================
         
         RenderEngine& renderer;
+        bool alive;
         std::string name;
 
         // variables associated with the objects' shape, position, orientation, etc...

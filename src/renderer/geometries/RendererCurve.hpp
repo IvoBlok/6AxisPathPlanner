@@ -19,6 +19,7 @@ namespace renderer {
         ~Curve();
 
         void remove();
+        bool isAlive() const; // repeatedly check if isAlive return true, to check if your std::shared_ptr is still valid
         
         void setName(std::string nameIn);
         std::string getName() const;
@@ -34,7 +35,7 @@ namespace renderer {
         // ======================================================================================
 
         RenderEngine& renderer;
-
+        bool alive;                 // denotes if the curve is still handled by the renderer (if it has been destroyed, and hence is invalid)
         std::string name;
         float lineWidth;
 

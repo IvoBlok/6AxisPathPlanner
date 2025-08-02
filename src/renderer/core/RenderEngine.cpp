@@ -1444,7 +1444,7 @@ std::shared_ptr<renderer::Object> RenderEngine::createObject(
     Vector3d baseRotation,
     float transparency
 ) {
-    if (objects.size() >= renderer::MAX_OBJECTS)
+    if (objects.size() + objectsToRemove.size() >= renderer::MAX_OBJECTS)
         throw std::runtime_error("Max object count has been reached, can't create a new object!\n");
     
     std::shared_ptr<renderer::Object> newObject = std::make_shared<renderer::Object>(*this, name);
@@ -1463,7 +1463,7 @@ std::shared_ptr<renderer::Object> RenderEngine::createObject(
     Vector3d baseRotation,
     float transparency
 ) {
-    if (objects.size() >= renderer::MAX_OBJECTS)
+    if (objects.size() + objectsToRemove.size() >= renderer::MAX_OBJECTS)
         throw std::runtime_error("Max object count has been reached, can't create a new object!\n");
     
     std::shared_ptr<renderer::Object> newObject = std::make_shared<renderer::Object>(*this, name);
@@ -1503,7 +1503,7 @@ std::shared_ptr<renderer::Curve> RenderEngine::createCurve(
     Vector3f color,
     float transparency
 ) {
-    if (curves.size() >= renderer::MAX_CURVES)
+    if (curves.size() + curvesToRemove.size() >= renderer::MAX_CURVES)
         throw std::runtime_error("Max curve count has been reached, can't create a new curve!\n");
 
     std::shared_ptr<renderer::Curve> newCurve = std::make_shared<renderer::Curve>(*this, name);
@@ -1720,13 +1720,15 @@ void RenderEngine::processRemovals() {
     vkDeviceWaitIdle(getContext().device);
 
     for (auto& object : objectsToRemove) {
-        objects.remove(object);
         object->cleanup();
+        object->alive = false;
+        objects.remove(object);
     }
 
     for (auto& curve : curvesToRemove) {
-        curves.remove(curve);
         curve->cleanup();
+        curve->alive = false;
+        curves.remove(curve);
     }
 
     objectsToRemove.clear();

@@ -26,7 +26,13 @@ namespace renderer {
         renderer.removeObject(this);
     }
 
+    bool Object::isAlive() const {
+        return alive;
+    }
+
     void Object::setPose(Matrix4d matrix) {
+        if(!alive) return;
+
         // given a 'standard' transformation matrix, extract the position, scale and rotation elements and set the respective object variables
         position = matrix.block<3, 1>(0, 3);
         
@@ -47,14 +53,18 @@ namespace renderer {
     }
 
     int Object::getNumberOfVertices() const {
+        if(!alive) return 0;
         return model.vertices.size();
     }
 
     int Object::getNumberOfIndices() const {
+        if(!alive) return 0;
         return model.indices.size();
     }
 
     core::ObjectShape Object::getObjectShape() {
+        if(!alive) return core::ObjectShape{};
+
         glm::mat4 transformationMatrix = rotation.glmMatrix();
 
         core::ObjectShape objectShape{};
@@ -79,6 +89,8 @@ namespace renderer {
     }
 
     core::Plane Object::getPlane() {
+        if(!alive) return core::Plane{};
+
         Vector3d normal = Vector3d::UnitZ();
         normal = rotation.matrix3d() * normal;
 

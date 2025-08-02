@@ -8,6 +8,23 @@
 #include "implot.h"
 
 namespace renderer {
+
+    Object::Object(RenderEngine& renderer) : Object(renderer, "obj") { }
+
+    Object::Object(RenderEngine& renderer, std::string name, bool isObjectRendered, bool isObjectShownInGui) 
+        : model(renderer), renderer(renderer), name(name), isObjectRendered(isObjectRendered), isObjectShownInGui(isObjectShownInGui) 
+    {
+        texture.first.emplace(renderer);
+        texture.second = false;
+
+        position = Vector3d::Zero();
+        scale = Vector3d::Zero();
+        rotation = static_cast<Vector3d>(Vector3d::Zero());
+        
+        color = Vector3f::Zero();
+        useTexture = false;
+    }
+
     void Object::remove() {
         renderer.deleteObject(this);
     }
@@ -24,20 +41,20 @@ namespace renderer {
         rotation = rotationScaleMatrix;
     }
 
-    Object::Object(RenderEngine& renderer) : Object(renderer, "obj") { }
+    void Object::setName(std::string nameIn) {
+        name = nameIn;
+    }
 
-    Object::Object(RenderEngine& renderer, std::string name, bool isObjectRendered, bool isObjectShownInGui) 
-        : model(renderer), renderer(renderer), name(name), isObjectRendered(isObjectRendered), isObjectShownInGui(isObjectShownInGui) 
-    {
-        texture.first.emplace(renderer);
-        texture.second = false;
+    std::string Object::getName() const {
+        return name;
+    }
 
-        position = Vector3d::Zero();
-        scale = Vector3d::Zero();
-        rotation = static_cast<Vector3d>(Vector3d::Zero());
-        
-        color = Vector3f::Zero();
-        useTexture = false;
+    int Object::getNumberOfVertices() const {
+        return model.vertices.size();
+    }
+
+    int Object::getNumberOfIndices() const {
+        return model.indices.size();
     }
 
     void Object::load(const char* modelPath, const char* texturePath, Vector3d basePosition, Vector3d baseScale, Vector3d baseRotation, float modelTransparency) {
@@ -137,8 +154,10 @@ namespace renderer {
      }
 
     void Object::cleanup() {
+        vkDeviceWaitIdle(renderer.getContext().device);
         model.destroy();
-        texture.first.value().destroy();
+        if (texture.second)
+            texture.first.value().destroy();
     }
 
 }

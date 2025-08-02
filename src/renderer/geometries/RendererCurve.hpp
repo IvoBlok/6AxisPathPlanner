@@ -7,23 +7,27 @@
 namespace renderer {
     class Curve {
     public:
-        void remove();
-
+        bool isCurveRendered;
+        bool isCurveShownInGui;
+        
         friend class RenderEngine;
 
         Curve(RenderEngine& renderer);        
         Curve(RenderEngine& renderer, std::string name, bool isCurveRendered = true, bool isCurveShownInGui = true);
 	    Curve(const Curve&) = default;
+
+        void remove();
         
+        void setName(std::string nameIn);
+        std::string getName() const;
+
+        int getNumberOfVertices() const;
         
     private:
         // variables associated with the renderer and how it is rendered and interacts with it
         // ======================================================================================
 
         RenderEngine& renderer;
-        
-        bool isCurveRendered;
-        bool isCurveShownInGui;
 
         std::string name;
         float lineWidth;

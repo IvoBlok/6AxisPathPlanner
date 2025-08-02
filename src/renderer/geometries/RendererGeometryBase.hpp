@@ -13,10 +13,17 @@ namespace renderer {
 		VkDescriptorSet descriptorSet;
 
         Texture(RenderEngine& renderer);
+		~Texture();
+
+		// disable copying to avoid vulkan buffers getting freed twice
+		Texture(const Texture&) = delete;
+		Texture& operator=(const Texture&) = delete;
+
+		Texture(Texture&& other) = delete;
+		Texture& operator=(Texture&& other) = delete;
 
 		void load(const char* path);
 		void loadDummy();
-		void free();
 		void destroy();
 
 	private:
@@ -40,6 +47,14 @@ namespace renderer {
 		float transparency;
 
         Model(RenderEngine& renderer);
+		~Model();
+
+		// disable copying to avoid vulkan buffers getting freed twice
+		Model(const Model&) = delete;
+		Model& operator=(const Model&) = delete;
+
+		Model(Model&& other) = delete;
+		Model& operator=(Model&& other) = delete;
 
 		void load(const char* path, float modelTransparency = 1.f);
 		void destroy();
@@ -65,6 +80,14 @@ namespace renderer {
 		float transparency;
 
 		CurveBuffer(RenderEngine& renderer);
+		~CurveBuffer();
+
+		// disable copying to avoid vulkan buffers getting freed twice
+		CurveBuffer(const CurveBuffer&) = delete;
+		CurveBuffer& operator=(const CurveBuffer&) = delete;
+
+		CurveBuffer(CurveBuffer&& other) = delete;
+		CurveBuffer& operator=(CurveBuffer&& other) = delete;
 
 		void load(core::Polyline2_5D& polyline, float curveTransparency = 1.f);
 		

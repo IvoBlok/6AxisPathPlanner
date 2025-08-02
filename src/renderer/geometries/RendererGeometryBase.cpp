@@ -13,7 +13,18 @@ namespace renderer {
     // Texture class implementation
     // ======================================================================================
 
-    Texture::Texture(RenderEngine& renderer) : context(renderer.getContext()) { }
+    Texture::Texture(RenderEngine& renderer) : context(renderer.getContext()) {
+        textureImage = VK_NULL_HANDLE;
+        textureImageMemory = VK_NULL_HANDLE;
+        textureImageView = VK_NULL_HANDLE;
+        textureSampler = VK_NULL_HANDLE;
+
+        descriptorSet = VK_NULL_HANDLE;
+    }
+
+    Texture::~Texture() {
+        destroy();
+    }
 
     void Texture::load(const char* path) {
         createTextureImage(path);
@@ -55,15 +66,29 @@ namespace renderer {
         createTextureDescriptorSet();
     }
 
-    void Texture::free() {
-        vkFreeDescriptorSets(context.device, context.descriptorPool, 1, &descriptorSet);
-    }
-
     void Texture::destroy() {
-        vkDestroySampler(context.device, textureSampler, nullptr);
-        vkDestroyImageView(context.device, textureImageView, nullptr);
-        vkDestroyImage(context.device, textureImage, nullptr);
-        vkFreeMemory(context.device, textureImageMemory, nullptr);
+        vkDeviceWaitIdle(context.device);
+        if (textureSampler != VK_NULL_HANDLE) {
+            vkDestroySampler(context.device, textureSampler, nullptr);
+            textureSampler = VK_NULL_HANDLE;
+        }
+        if (textureImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(context.device, textureImageView, nullptr);
+            textureImageView = VK_NULL_HANDLE;
+        }
+        if (textureImage != VK_NULL_HANDLE) {
+            vkDestroyImage(context.device, textureImage, nullptr);
+            textureImage = VK_NULL_HANDLE;        
+        }
+        if (textureImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(context.device, textureImageMemory, nullptr);
+            textureImageMemory = VK_NULL_HANDLE;
+        }
+        
+        if (descriptorSet != VK_NULL_HANDLE) {
+            vkFreeDescriptorSets(context.device, context.descriptorPool, 1, &descriptorSet);
+            descriptorSet = VK_NULL_HANDLE;
+        }
     }
 
     void Texture::createTextureImage(const char* path) {
@@ -161,7 +186,16 @@ namespace renderer {
     // Model class implementation
     // ======================================================================================
 
-    Model::Model(RenderEngine& renderer) : context(renderer.getContext()) { }
+    Model::Model(RenderEngine& renderer) : context(renderer.getContext()) {
+        vertexBuffer = VK_NULL_HANDLE;
+        vertexBufferMemory = VK_NULL_HANDLE;
+        indexBuffer = VK_NULL_HANDLE;
+        indexBufferMemory = VK_NULL_HANDLE;
+    }
+
+    Model::~Model() {
+        destroy();
+    }
 
     void Model::load(const char* path, float modelTransparency) {
         loadModel(path);
@@ -172,11 +206,24 @@ namespace renderer {
     }
 
     void Model::destroy() {
-        vkDestroyBuffer(context.device, indexBuffer, nullptr);
-        vkFreeMemory(context.device, indexBufferMemory, nullptr);
+        vkDeviceWaitIdle(context.device);
 
-        vkDestroyBuffer(context.device, vertexBuffer, nullptr);
-        vkFreeMemory(context.device, vertexBufferMemory, nullptr);
+        if (indexBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(context.device, indexBuffer, nullptr);
+            indexBuffer = VK_NULL_HANDLE;
+        }
+        if (indexBufferMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(context.device, indexBufferMemory, nullptr);
+            indexBufferMemory = VK_NULL_HANDLE;
+        }
+        if (vertexBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(context.device, vertexBuffer, nullptr);
+            vertexBuffer = VK_NULL_HANDLE;
+        }
+        if (vertexBufferMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(context.device, vertexBufferMemory, nullptr);
+            vertexBufferMemory = VK_NULL_HANDLE;
+        }
 
         vertices.clear();
         indices.clear();
@@ -297,7 +344,16 @@ namespace renderer {
     // CurveBuffer class implementation
     // ======================================================================================
 
-    CurveBuffer::CurveBuffer(RenderEngine& renderer) : context(renderer.getContext()) { }
+    CurveBuffer::CurveBuffer(RenderEngine& renderer) : context(renderer.getContext()) {
+        vertexBuffer = VK_NULL_HANDLE;
+        vertexBufferMemory = VK_NULL_HANDLE;
+        indexBuffer = VK_NULL_HANDLE;
+        indexBufferMemory = VK_NULL_HANDLE;
+    }
+
+    CurveBuffer::~CurveBuffer() {
+        destroy();
+    }
 
     void CurveBuffer::load(core::Polyline2_5D& polyline, float curveTransparency) {
         loadPolyline(polyline);
@@ -308,11 +364,24 @@ namespace renderer {
     }
 
     void CurveBuffer::destroy() {
-        vkDestroyBuffer(context.device, indexBuffer, nullptr);
-        vkFreeMemory(context.device, indexBufferMemory, nullptr);
+        vkDeviceWaitIdle(context.device);
 
-        vkDestroyBuffer(context.device, vertexBuffer, nullptr);
-        vkFreeMemory(context.device, vertexBufferMemory, nullptr);
+        if (indexBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(context.device, indexBuffer, nullptr);
+            indexBuffer = VK_NULL_HANDLE;
+        }
+        if (indexBufferMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(context.device, indexBufferMemory, nullptr);
+            indexBufferMemory = VK_NULL_HANDLE;
+        }
+        if (vertexBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(context.device, vertexBuffer, nullptr);
+            vertexBuffer = VK_NULL_HANDLE;
+        }
+        if (vertexBufferMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(context.device, vertexBufferMemory, nullptr);
+            vertexBufferMemory = VK_NULL_HANDLE;
+        }
 
         vertices.clear();
         indices.clear();

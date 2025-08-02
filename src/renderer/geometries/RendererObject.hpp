@@ -10,22 +10,28 @@
 namespace renderer {
     class Object {
     public:
-        void remove();
-        void setPose(Matrix4d matrix);
+        bool isObjectRendered;
+        bool isObjectShownInGui;
 
         friend class RenderEngine;
         
         Object(RenderEngine& renderer);
         Object(RenderEngine& renderer, std::string name, bool isObjectRendered = true, bool isObjectShownInGui = true);
-    
+
+        void remove();
+        void setPose(Matrix4d matrix);
+
+        void setName(std::string nameIn);
+        std::string getName() const;
+
+        int getNumberOfVertices() const;
+        int getNumberOfIndices() const;
+        
     private:
         // variables associated with the renderer and how it is rendered and interacts with it
         // ======================================================================================
         
         RenderEngine& renderer;
-        
-        bool isObjectRendered;
-        bool isObjectShownInGui;
 
         std::string name;
 

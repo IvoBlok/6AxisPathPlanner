@@ -1527,7 +1527,9 @@ std::chrono::microseconds RenderEngine::getDeltaTime() {
 }
 
 void RenderEngine::recordGUI() {
-    // TEMP
+    std::vector<std::list<shared_ptr<Object>>::iterator> objectsToDelete;
+    std::vector<std::list<shared_ptr<Curve>>::iterator> curvesToDelete;
+
     if(ImGui::Button("Generate Cube")) {
         createDefaultCube(
                 "cube",                     // name
@@ -1542,58 +1544,7 @@ void RenderEngine::recordGUI() {
                 "plane",                    // name
                 Vector3f{ 1.f, 0.9f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f },  // position
-                Vector3d{ .5f, .5f, .5f }   // scale
-            );
-    }
-
-    if (ImGui::CollapsingHeader("Objects")) {
-        int i = 0;
-        for (auto it = objects.begin(); it != objects.end(); ++it, ++i) {
-            auto& object = *it;
-
-            if (!object->isObjectShownInGui)
-                continue;
-
-            ImGui::PushID(("Objects_" + std::to_string(i)).c_str());
-            object->drawGUI();
-            ImGui::PopID();
-        }
-    }
-
-    if (ImGui::CollapsingHeader("Curves")) {
-        int i = 0;
-        for (auto it = curves.begin(); it != curves.end(); ++it, ++i) {
-            auto& curve = *it;
-
-            if (!curve->isCurveShownInGui)
-                continue;
-
-            ImGui::PushID(("Curve_" + std::to_string(i)).c_str());
-            curve->drawGUI();
-            ImGui::PopID();
-        }
-    }        
-    // TODO replace all the object / curve variables with their new names / getter functions
-    /*
-    std::vector<std::list<shared_ptr<Object>>::iterator> objectsToDelete;
-    std::vector<std::list<shared_ptr<Curve>>::iterator> curvesToDelete;
-
-    if(ImGui::Button("Generate Cube")) {
-        shared_ptr<Object> object = createObject(
-                "../../resources/assets/cube.obj",
-                Vector3d{ 0.f, 0.f, 1.f }, // color
-                Vector3d{ 0.f, 0.f, 0.f }, // position
-                Vector3d{ .25f, .25f, .25f }  // scale
-            );
-        
-        object->name = "cube";
-    }
-    ImGui::SameLine();
-    if(ImGui::Button("Generate Plane")) {
-        createDefaultPlane(
-                Vector3d{ 1.f, 0.9f, 0.f }, // color
-                Vector3d{ 0.f, 0.f, 0.f },  // position
-                Vector3d{ .5f, .5f, .5f }  // scale
+                Vector3d{ 1.f, 1.f, 1.f }   // scale
             );
     }
     ImGui::SameLine();
@@ -1604,15 +1555,12 @@ void RenderEngine::recordGUI() {
         if ( result == NFD_OKAY ) {
             shared_ptr<Object> object = createObject(
                     outPath,
-                    Vector3d{ 0.1f, 0.3f, 0.5f }, // color
-                    Vector3d{ 0.f, 0.f, 0.f }  // position
+                    std::string(outPath),
+                    Vector3d{ 0.1f, 0.3f, 0.5f } // color
                 );
-            
-            object->name = outPath;
             free(outPath);
         }
     }
-
 
     ImGui::SeparatorText("");
     // properties of loaded Objects
@@ -1621,7 +1569,7 @@ void RenderEngine::recordGUI() {
         for (auto it = objects.begin(); it != objects.end(); ++it, ++i) {
             auto& object = *it;
 
-            if (object->hideInGUI)
+            if (!object->isObjectShownInGui)
                 continue;
 
             ImGui::PushID(("Objects_" + std::to_string(i)).c_str());
@@ -1639,9 +1587,9 @@ void RenderEngine::recordGUI() {
             ImGui::SameLine(rowStartX + ImGui::GetTreeNodeToLabelSpacing());
             ImGui::SetNextItemWidth(120);
             char nameBuffer[256];
-            strncpy(nameBuffer, object->name.c_str(), sizeof(nameBuffer));
+            strncpy(nameBuffer, object->getName().c_str(), sizeof(nameBuffer));
             if (ImGui::InputText("##NameEdit", nameBuffer, sizeof(nameBuffer))) {
-                object->name = nameBuffer;
+                object->setName(nameBuffer);
             }
 
             // Calculate positions for right-aligned controls
@@ -1651,7 +1599,7 @@ void RenderEngine::recordGUI() {
             const float totalRightWidth = checkboxWidth + buttonWidth + spacing;
 
             ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - totalRightWidth);
-            ImGui::Checkbox("##RenderToggle", &object->renderObj);
+            ImGui::Checkbox("##RenderToggle", &object->isObjectRendered);
 
             // Delete button (fixed position relative to window edge)
             ImGui::SameLine();
@@ -1661,9 +1609,9 @@ void RenderEngine::recordGUI() {
 
             // Contents when expanded
             if (isOpen) {
-                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Faces: %d", object->model.vertices.size(), object->model.indices.size() / 3);
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Faces: %d", object->getNumberOfVertices(), object->getNumberOfIndices() / 3);
                 object->drawGUI();
-                ImGui::TreePop(); // This must be called for each TreeNodeEx
+                ImGui::TreePop();
             }
             ImGui::PopID();
         }
@@ -1674,7 +1622,7 @@ void RenderEngine::recordGUI() {
         for (auto it = curves.begin(); it != curves.end(); ++it, ++i) {
             auto& line = *it;
 
-            if (line->hideInGUI)
+            if (!line->isCurveShownInGui)
                 continue;
 
             ImGui::PushID(("Lines_" + std::to_string(i)).c_str());
@@ -1692,9 +1640,9 @@ void RenderEngine::recordGUI() {
             ImGui::SameLine(rowStartX + ImGui::GetTreeNodeToLabelSpacing());
             ImGui::SetNextItemWidth(120);
             char nameBuffer[256];
-            strncpy(nameBuffer, line->name.c_str(), sizeof(nameBuffer));
+            strncpy(nameBuffer, line->getName().c_str(), sizeof(nameBuffer));
             if (ImGui::InputText("##NameEdit", nameBuffer, sizeof(nameBuffer))) {
-                line->name = nameBuffer;
+                line->setName(nameBuffer);
             }
 
             // Calculate positions for right-aligned controls
@@ -1704,7 +1652,7 @@ void RenderEngine::recordGUI() {
             const float totalRightWidth = checkboxWidth + buttonWidth + spacing;
 
             ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - totalRightWidth);
-            ImGui::Checkbox("##RenderToggle", &line->renderLine);
+            ImGui::Checkbox("##RenderToggle", &line->isCurveRendered);
 
             // Delete button (fixed position relative to window edge)
             ImGui::SameLine();
@@ -1713,16 +1661,8 @@ void RenderEngine::recordGUI() {
             }
 
             if (isOpen) {
-                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d | Closed: %d", line->getPolyline().vertexes().size(), line->getPolyline().isClosed());
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Vertices: %d", line->getNumberOfVertices());
                 line->drawGUI();
-
-                if (ImGui::Button("Export##LinePolylineExport")) {
-                    core::exportSettings settings;
-                    settings.useArcs = false;
-                    settings.arcReplacementMaxLength = 10.0;
-                    settings.fileName = line->name + ".txt";
-                    core::exportPath(line->getPolyline(), settings);
-                }
 
                 ImGui::TreePop();
             }
@@ -1741,5 +1681,5 @@ void RenderEngine::recordGUI() {
     // add the GUI for all registered modules (i.e. stuff like MeshIntersect, PolylineOffsets, etc)
     for (auto& drawGUI : guiCallbacks) {
         drawGUI(*this);
-    }*/
+    }
 }

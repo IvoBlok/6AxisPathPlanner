@@ -19,6 +19,22 @@ namespace renderer {
         useDefaultColor = true;
     }
 
+    void Curve::remove() {
+        renderer.deleteCurve(this);
+    }
+
+    void Curve::setName(std::string nameIn) {
+        name = nameIn;
+    }
+
+    std::string Curve::getName() const {
+        return name;
+    }
+
+    int Curve::getNumberOfVertices() const {
+        return curveBuffer.vertices.size();
+    }
+
     void Curve::load(core::Polyline2_5D& polyline, Vector3f defaultColorIn, float transparency) {
         curveBuffer.load(polyline);
         curveBuffer.transparency = transparency;   
@@ -68,6 +84,7 @@ namespace renderer {
     }
 
     void Curve::cleanup() {
+        vkDeviceWaitIdle(renderer.getContext().device);
         curveBuffer.destroy();
     }
 }

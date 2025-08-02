@@ -35,19 +35,19 @@ public:
         const char* modelPath,
         const char* texturePath,
         std::string name,
-        Vector3d basePosition,
-        Vector3d baseScale,
-        Vector3d baseRotation,
-        float transparency
+        Vector3d basePosition = Vector3d::Zero(),
+        Vector3d baseScale = Vector3d::Ones(),
+        Vector3d baseRotation = Vector3d::Zero(),
+        float transparency = 1.f
     );
     std::shared_ptr<renderer::Object> createObject(
         const char* modelPath,
         std::string name,
         Vector3f color,
-        Vector3d basePosition,
-        Vector3d baseScale,
-        Vector3d baseRotation,
-        float transparency
+        Vector3d basePosition = Vector3d::Zero(),
+        Vector3d baseScale = Vector3d::Ones(),
+        Vector3d baseRotation = Vector3d::Zero(),
+        float transparency = 1.f
     );
 
     std::shared_ptr<renderer::Object> createDefaultCube(

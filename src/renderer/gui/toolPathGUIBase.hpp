@@ -48,10 +48,10 @@ inline void handleDropdown(std::string ID, std::string title, const std::list<st
     if (!title.empty())
         ImGui::Text(title.c_str());
 
-    const char* preview = (selection) ? selection->getName().c_str() : defaultOptionText.c_str();
+    std::string preview = (selection) ? selection->getName() : defaultOptionText;
     
     std::string comboLabel = "##" + ID + "_combo";
-    if (ImGui::BeginCombo(comboLabel.c_str(), preview)) {
+    if (ImGui::BeginCombo(comboLabel.c_str(), preview.c_str())) {
 
         // retrieve the objects that comply with the input function
         std::vector<std::shared_ptr<T>> validObjects;

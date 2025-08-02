@@ -13,7 +13,6 @@ namespace renderer {
     }
 
     Curve::~Curve() {
-        remove();
         cleanup();
     }
 

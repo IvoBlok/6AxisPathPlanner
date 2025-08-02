@@ -1292,10 +1292,12 @@ void RenderEngine::VulkanInternals::cleanup(std::list<std::shared_ptr<renderer::
     for (auto& object : objects) {
         object->cleanup();
     }
+    objects.clear();
 
     for (auto& curve : curves) {
         curve->cleanup();
     }
+    curves.clear();
 
     vkDestroyDescriptorPool(vulkanContext.device, vulkanContext.descriptorPool, nullptr);
 
@@ -1335,7 +1337,7 @@ void RenderEngine::VulkanInternals::cleanup(std::list<std::shared_ptr<renderer::
 
 RenderEngine::~RenderEngine() = default;
 
-RenderEngine::RenderEngine() : vulkanInternals(std::make_unique<VulkanInternals>()) {}
+RenderEngine::RenderEngine() : vulkanInternals(std::make_unique<VulkanInternals>()) { }
 
 void RenderEngine::initialize() {
     vulkanInternals->initWindow();
@@ -1684,7 +1686,7 @@ void RenderEngine::recordGUI() {
 
             // Calculate positions for right-aligned controls
             const float checkboxWidth = ImGui::GetFrameHeight();
-            const float buttonWidth = 25.0f;
+            const float buttonWidth = 25.f;
             const float spacing = ImGui::GetStyle().ItemSpacing.x;
             const float totalRightWidth = checkboxWidth + buttonWidth + spacing;
 

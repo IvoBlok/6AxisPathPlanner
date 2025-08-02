@@ -19,16 +19,12 @@ public:
         planeObject->isObjectRendered = false;
     }
 
-    ~FacePassGUI() {
+    ~FacePassGUI() override {
         planeObject->remove();
     }
 
-    void draw(std::string ID) override {
-        // TODO add delete button that destructs itself
+    void draw(bool isOpen) override {
         // TODO rewrite 'handleDropdown' so that it can handle not being given all objects, like not showing the 'hideInGui' objects
-        ImGui::PushID(ID.c_str());
-        ImGui::AlignTextToFramePadding();
-        bool isOpen = ImGui::TreeNodeEx((ID + ": Face Pass").c_str(), ImGuiTreeNodeFlags_SpanAvailWidth);
         if (isOpen) {
             planeObject->isObjectRendered = true;
 
@@ -58,11 +54,8 @@ public:
                         renderer.createCurve(result);
                 }
             }
-            ImGui::TreePop();
         } else
             planeObject->isObjectRendered = false;
-
-        ImGui::PopID();
     }
 
     std::string name() const override {
@@ -89,10 +82,7 @@ public:
         selectedIndex3 = -1;
     }
 
-    void draw(std::string ID) override {
-        ImGui::PushID(ID.c_str());
-        ImGui::AlignTextToFramePadding();
-        bool isOpen = ImGui::TreeNodeEx((ID + ": Surface Pass").c_str(), ImGuiTreeNodeFlags_SpanAvailWidth);
+    void draw(bool isOpen) override {
         if (isOpen) {
             auto& objects = renderer.getObjects();
 
@@ -127,9 +117,7 @@ public:
                         renderer.createCurve(result);
                 }
             }
-            ImGui::TreePop();
         }
-        ImGui::PopID();
     }
 
     std::string name() const override {
@@ -157,10 +145,7 @@ public:
         selectedIndex4 = -1;
     }
 
-    void draw(std::string ID) override {
-        ImGui::PushID(ID.c_str());
-        ImGui::AlignTextToFramePadding();
-        bool isOpen = ImGui::TreeNodeEx((ID + ": Clearing Pass").c_str(), ImGuiTreeNodeFlags_SpanAvailWidth);
+    void draw(bool isOpen) override {
         if (isOpen) {
             auto& objects = renderer.getObjects();
 
@@ -200,9 +185,7 @@ public:
                         renderer.createCurve(result);
                 }
             }
-            ImGui::TreePop();
         }
-        ImGui::PopID();
     }
 
     std::string name() const override {

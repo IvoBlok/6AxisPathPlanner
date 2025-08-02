@@ -19,7 +19,6 @@ namespace renderer {
     }
 
     Object::~Object() {
-        remove();
         cleanup();
     }
 

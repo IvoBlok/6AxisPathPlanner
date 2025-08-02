@@ -5,6 +5,7 @@
 #include "toolPath2_5DGUI.hpp"
 
 #include <memory>
+#include <list>
 
 class PathPlannerGUI {
 public:
@@ -31,10 +32,35 @@ public:
                     toolPaths.push_back(toolPathOptions[toolPathSelectionIndex]->clone());
                 }
             }
+            
 
-            for (int i = 0; i < toolPaths.size(); i++) {
-                toolPaths[i]->draw(std::to_string(i));
+            decltype(toolPaths)::iterator toDelete = toolPaths.end();
+            int i = 0;
+            for (auto it = toolPaths.begin(); it != toolPaths.end(); ++it, ++i) {
+                auto& toolPath = *it;
+                std::string treeNodeName = std::to_string(i) + ": " + toolPath->name();
+
+                ImGui::PushID(std::to_string(i).c_str());
+                ImGui::AlignTextToFramePadding();
+                bool isOpen = ImGui::TreeNodeEx(treeNodeName.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap);
+
+                const float buttonWidth = 25.f;
+                ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - buttonWidth);
+                if (ImGui::Button("X##RemoveToolPathOption", ImVec2((int)buttonWidth, ImGui::GetFrameHeight()))) {
+                    toDelete = it;
+                }
+
+                toolPath->draw(isOpen);
+
+                if (isOpen)
+                    ImGui::TreePop();
+
+                ImGui::PopID();
+                i++;
             }
+
+            if (toDelete != toolPaths.end())
+                toolPaths.erase(toDelete);
         }
     }
 
@@ -46,7 +72,7 @@ public:
 
 
 private:
-    std::vector<std::unique_ptr<ToolPathGUIBase>> toolPaths;
+    std::list<std::unique_ptr<ToolPathGUIBase>> toolPaths;
     std::vector<std::unique_ptr<ToolPathGUIBase>> toolPathOptions;
 
     int toolPathSelectionIndex;

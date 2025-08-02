@@ -36,7 +36,8 @@ inline void handleDropdown(std::string ID, std::string dropdownText, std::string
 class ToolPathGUIBase {
 public:
     explicit ToolPathGUIBase(RenderEngine& renderer) : renderer(renderer) {}
-    virtual void draw(std::string ID) = 0;
+    virtual ~ToolPathGUIBase() {}
+    virtual void draw(bool isOpen) = 0;
     virtual std::string name() const = 0;
     virtual std::unique_ptr<ToolPathGUIBase> clone() const = 0;
 

@@ -18,7 +18,6 @@ int main() {
 		meshIntersect::MeshIntersectGUITest meshIntersectGuiTest{renderer};
 		toolPath2_5D::ToolPath2_5DGUITest toolPath2_5DGuiTest{renderer};
 		kinematics::RobotGUITest robotGuiTest{renderer};
-
 		PathPlannerGUI pathPlannerGUI{renderer};
 
 		while (!renderer.shouldWindowClose()) {

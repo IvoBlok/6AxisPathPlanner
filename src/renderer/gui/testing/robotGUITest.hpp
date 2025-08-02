@@ -1,9 +1,13 @@
 #ifndef ROBOT_GUI_TEST_HPP
 #define ROBOT_GUI_TEST_HPP
 
-#include "renderer.hpp"
+#include "renderer/core/RenderEngine.hpp"
+#include "renderer/geometries/RendererObject.hpp"
+#include "renderer/geometries/RendererCurve.hpp"
+
 #include "robotKinematics.hpp"
 #include "core/mathUtils.hpp"
+
 #include <iostream>
 
 using Eigen::VectorXd;
@@ -15,17 +19,17 @@ class RobotGUITest {
 public:
     RobotKinematics robotKinematics;
 
-    std::vector<shared_ptr<LoadedObject>> joints;
-    shared_ptr<LoadedObject> base;
-    shared_ptr<LoadedObject> effector;
+    std::vector<std::shared_ptr<renderer::Object>> joints;
+    std::shared_ptr<renderer::Object> base;
+    std::shared_ptr<renderer::Object> effector;
     
     VectorXd jointStates;
 
     Vector3f endPoint;
     Vector3f endRotation;
-    shared_ptr<LoadedObject> goalObject;
+    std::shared_ptr<renderer::Object> goalObject;
 
-    RobotGUITest(VulkanRenderEngine& renderer) {
+    RobotGUITest(RenderEngine& renderer) {
         registerWithRenderer(renderer);
 
         continuousIK = false;
@@ -33,7 +37,7 @@ public:
         endRotation = Vector3f::Zero();
     }
 
-    void drawGUI(VulkanRenderEngine& renderer) {
+    void drawGUI(RenderEngine& renderer) {
         if (ImGui::CollapsingHeader("Define Robot##robot_GUI")) {
 
             // robot selection dropdown
@@ -118,41 +122,41 @@ public:
                     std::vector<Matrix4d> robotMatrices = robotKinematics.forwardKinematics(jointStates);
 
                     // update the renderer objects
-                    base->locateWithMatrix(robotMatrices.front());
-                    effector->locateWithMatrix(robotMatrices.back());
+                    base->setPose(robotMatrices.front());
+                    effector->setPose(robotMatrices.back());
                     for (int i = 1; i < robotMatrices.size() - 1; i++) {
-                        joints[i - 1]->locateWithMatrix(robotMatrices[i]);
+                        joints[i - 1]->setPose(robotMatrices[i]);
                     }
                 }
             }
-            goalObject->locateWithMatrix(desiredOrientation);
+            goalObject->setPose(desiredOrientation);
 
             // validating a polyline
             // -----------------------------------------------------------------
             ImGui::SeparatorText("Check polyline");
 
-            auto& lines = renderer.loadedLines;
+            auto& curves = renderer.getCurves();
             
             // Safe static storage with proper scoping
             static int selectedIdx = -1;
 
             // Convert list to display vectors
-            std::vector<std::string> lineNames;
-            for (auto& line : lines)
-                lineNames.push_back(line->name);
+            std::vector<std::string> curveNames;
+            for (auto& curve : curves)
+                curveNames.push_back(curve->getName());
 
             // Validate indices
-            selectedIdx = (selectedIdx >= 0 && selectedIdx < (int)lines.size()) ? selectedIdx : -1;
+            selectedIdx = (selectedIdx >= 0 && selectedIdx < (int)curves.size()) ? selectedIdx : -1;
 
             // Polyline selection
             ImGui::PushID("polyline_selection_group");
             ImGui::Text("Select Curve:");
-            preview = (selectedIdx != -1) ? lineNames[selectedIdx].c_str() : "-";
+            preview = (selectedIdx != -1) ? curveNames[selectedIdx].c_str() : "-";
             if (ImGui::BeginCombo("##polyline_select_combo", preview)) {
-                for (int i = 0; i < (int)lines.size(); ++i) {
+                for (int i = 0; i < (int)curves.size(); ++i) {
                     ImGui::PushID(i);
                     bool isSelected = (selectedIdx == i);
-                    if (ImGui::Selectable(lineNames[i].c_str(), isSelected)) {
+                    if (ImGui::Selectable(curveNames[i].c_str(), isSelected)) {
                         selectedIdx = i;
                     }
                     if (isSelected) {
@@ -167,7 +171,7 @@ public:
             if (ImGui::Button("Check Path")) {
                 if (selectedIdx != -1) {
 
-                    auto line = lines.begin();
+                    auto line = curves.begin();
                     std::advance(line, selectedIdx);
                     
                     const core::Polyline2_5D& polyline = (*line)->getPolyline();
@@ -183,18 +187,18 @@ public:
                 std::vector<Matrix4d> robotMatrices = robotKinematics.forwardKinematics(validationResult.states[pathStep - 1]);
 
                 // update the renderer objects
-                base->locateWithMatrix(robotMatrices.front());
-                effector->locateWithMatrix(robotMatrices.back());
+                base->setPose(robotMatrices.front());
+                effector->setPose(robotMatrices.back());
                 for (int i = 1; i < robotMatrices.size() - 1; i++) {
-                    joints[i - 1]->locateWithMatrix(robotMatrices[i]);
+                    joints[i - 1]->setPose(robotMatrices[i]);
                 }
             }
 
         }
     }
 
-    void registerWithRenderer(VulkanRenderEngine& renderer) {
-        renderer.registerGuiModule([this](VulkanRenderEngine& r) {
+    void registerWithRenderer(RenderEngine& renderer) {
+        renderer.registerGuiModule([this](RenderEngine& r) {
             this->drawGUI(r); 
         });
     }
@@ -205,7 +209,7 @@ private:
 
     PathValidationResult validationResult;
 
-    void defineFullRobot(VulkanRenderEngine& renderer, int robotOption) {
+    void defineFullRobot(RenderEngine& renderer, int robotOption) {
         validationResult.type = IKResultType::OutOfReach;
         validationResult.states.clear();
 
@@ -217,14 +221,6 @@ private:
         joints.clear();
 
         robotKinematics = RobotKinematics{};
-        goalObject = renderer.createObject(
-                "../../resources/assets/cube.obj",
-                Vector3d{ 1.f, 0.f, 1.f }, // color
-                Vector3d{ 0.f, 0.f, 0.f }, // position
-                Vector3d{ 0.015f, 0.015f, 0.015f }  // scale
-            );
-        goalObject->name = "goal";
-        
         switch (robotOption) {
             case 0: 
                 define3DRotationRobot(renderer);
@@ -240,7 +236,7 @@ private:
         jointStates = VectorXd::Zero(robotKinematics.joints.size());
     }
 
-    void define3DRotationRobot(VulkanRenderEngine& renderer) {
+    void define3DRotationRobot(RenderEngine& renderer) {
         // This defines a basic 3-axis (3 rotation joints) robot, to test te SQP IK
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -276,48 +272,56 @@ private:
                                                                     {0.0, 0.0, 1.0, 0.0},
                                                                     {0.0, 0.0, 0.0, 1.0}};
 
+        goalObject = renderer.createObject(
+                "../../resources/assets/cube.obj",
+                "goal",
+                Vector3f{ 1.f, 0.f, 1.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 0.015f, 0.015f, 0.015f }  // scale
+            );
+
         base = renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 0.f, 0.f, 1.f }, // color
+                "base",
+                Vector3f{ 0.f, 0.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             );
-        base->name = "base";
 
         effector = renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 0.f, 1.f, 0.f }, // color
+                "effector",
+                Vector3f{ 0.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             );
-        effector->name = "effector";
 
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 1.f, 0.f, 0.f }, // color
+                "joint 1",
+                Vector3f{ 1.f, 0.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 1";
         
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 1.f, 1.f, 0.f }, // color
+                "joint 2",
+                Vector3f{ 1.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 2";
         
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 0.f, 1.f, 1.f }, // color
+                "joint 3",
+                Vector3f{ 0.f, 1.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 3";
     }
 
-    void define3DTranslationRobot(VulkanRenderEngine& renderer) {
+    void define3DTranslationRobot(RenderEngine& renderer) {
         // This defines a basic 3-axis (3 linear joints) cartesian robot, to test te SQP IK
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -353,48 +357,56 @@ private:
                                                                     {0.0, 0.0, 1.0, 0.0},
                                                                     {0.0, 0.0, 0.0, 1.0}};
 
+        goalObject = renderer.createObject(
+                "../../resources/assets/cube.obj",
+                "goal",
+                Vector3f{ 1.f, 0.f, 1.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 0.015f, 0.015f, 0.015f }  // scale
+            );
+            
         base = renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 0.f, 0.f, 1.f }, // color
+                "base",
+                Vector3f{ 0.f, 0.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             );
-        base->name = "base";
 
         effector = renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 0.f, 1.f, 0.f }, // color
+                "effector",
+                Vector3f{ 0.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             );
-        effector->name = "effector";
 
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 1.f, 0.f, 0.f }, // color
+                "joint 1",
+                Vector3f{ 1.f, 0.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 1";
         
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 1.f, 1.f, 0.f }, // color
+                "joint 2",
+                Vector3f{ 1.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 2";
         
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 0.f, 1.f, 1.f }, // color
+                "joint 3",
+                Vector3f{ 0.f, 1.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 3";
     }
 
-    void define7DRobot(VulkanRenderEngine& renderer) {
+    void define7DRobot(RenderEngine& renderer) {
         // Robot axes are aligned with the world axes, and robot zero is located at the world zero
         robotKinematics.transformationMatrix = Matrix4d{{1.0, 0.0, 0.0, 0.0},
                                                         {0.0, 1.0, 0.0, 0.0},
@@ -470,79 +482,86 @@ private:
                                                                     {0.0, 0.0, 1.0, 0.2},
                                                                     {0.0, 0.0, 0.0, 1.0}};
 
+        goalObject = renderer.createObject(
+                "../../resources/assets/cube.obj",
+                "goal",
+                Vector3f{ 1.f, 0.f, 1.f }, // color
+                Vector3d{ 0.f, 0.f, 0.f }, // position
+                Vector3d{ 0.015f, 0.015f, 0.015f }  // scale
+            );
 
         // create an object for each joint, the robot base, and the effector
         base = renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 0.f, 0.f, 1.f }, // color
+                "base",
+                Vector3f{ 0.f, 0.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             );
-        base->name = "base";
 
         effector = renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 0.f, 1.f, 0.f }, // color
+                "effector",
+                Vector3f{ 0.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             );
-        effector->name = "effector";
 
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 1.f, 0.f, 0.f }, // color
+                "joint 1",
+                Vector3f{ 1.f, 0.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 1";
         
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 1.f, 1.f, 0.f }, // color
+                "joint 2",
+                Vector3f{ 1.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 2";
         
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 0.f, 1.f, 1.f }, // color
+                "joint 3",
+                Vector3f{ 0.f, 1.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 3";
         
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 1.f, 0.f, 1.f }, // color
+                "joint 4",
+                Vector3f{ 1.f, 0.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 4";
         
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 0.f, 1.f, 0.f }, // color
+                "joint 5",
+                Vector3f{ 0.f, 1.f, 0.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 5";
         
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ 0.f, 0.f, 1.f }, // color
+                "joint 6",
+                Vector3f{ 0.f, 0.f, 1.f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 6";
         
         joints.emplace_back(renderer.createObject(
                 "../../resources/assets/Gizmo.obj",
-                Vector3d{ .5f, .5f, .5f }, // color
+                "joint 7",
+                Vector3f{ .5f, .5f, .5f }, // color
                 Vector3d{ 0.f, 0.f, 0.f }, // position
                 Vector3d{ 1.5f, 1.5f, 1.5f }  // scale
             ));
-        joints.back()->name = "joint 7";    
     }
 
     void ShowMatrix4dGrid(const Eigen::Matrix4d& matrix) {

@@ -1,20 +1,23 @@
 #ifndef MESH_INTERSECT_GUI_TEST_HPP
 #define MESH_INTERSECT_GUI_TEST_HPP
 
-#include "renderer.hpp"
+#include "renderer/core/RenderEngine.hpp"
+#include "renderer/geometries/RendererObject.hpp"
+#include "renderer/geometries/RendererCurve.hpp"
+
 #include "meshIntersect.hpp"
 
 namespace meshIntersect {
 class MeshIntersectGUITest {
 public:
-    MeshIntersectGUITest(VulkanRenderEngine& renderer) {
+    MeshIntersectGUITest(RenderEngine& renderer) {
         registerWithRenderer(renderer);
     }
 
-    void drawGUI(VulkanRenderEngine& renderer) {
+    void drawGUI(RenderEngine& renderer) {
         if (ImGui::CollapsingHeader("Mesh Intersection##mesh_intersect_header")) 
         {
-            auto& objects = renderer.loadedObjects;
+            auto& objects = renderer.getObjects();
             
             // Safe static storage with proper scoping
             static int selectedIdx1 = -1;
@@ -23,7 +26,7 @@ public:
             // Convert list to display vectors
             std::vector<std::string> objectNames;
             for (auto& obj : objects)
-                objectNames.push_back(obj->name);
+                objectNames.push_back(obj->getName());
 
             // Validate indices
             selectedIdx1 = (selectedIdx1 >= 0 && selectedIdx1 < (int)objects.size()) ? selectedIdx1 : -1;
@@ -84,14 +87,14 @@ public:
                     std::vector<core::Polyline2D> meshPlaneIntersect = getMeshPlaneIntersection(plane, shape);
                     
                     for (auto& curve : meshPlaneIntersect) 
-                        renderer.createLine(curve, plane);
+                        renderer.createCurve(curve, plane);
                 }
             }
         }
     }
 
-    void registerWithRenderer(VulkanRenderEngine& renderer) {
-        renderer.registerGuiModule([this](VulkanRenderEngine& r) {
+    void registerWithRenderer(RenderEngine& renderer) {
+        renderer.registerGuiModule([this](RenderEngine& r) {
             this->drawGUI(r); 
         });
     }

@@ -1,8 +1,11 @@
 #ifndef TOOLPATH_GUI_BASE_HPP
 #define TOOLPATH_GUI_BASE_HPP
 
-#include "renderer.hpp"
+#include "renderer/core/RenderEngine.hpp"
+#include "renderer/geometries/RendererObject.hpp"
+#include "renderer/geometries/RendererCurve.hpp"
 
+// Update handleDropdown so that it returns a reference to to object in question / update it to handle subsets of lists/vectors
 inline void handleDropdown(std::string ID, std::string dropdownText, std::string defaultOptionText, std::vector<std::string>& objectNames, int& selectedIndex) {
     ImGui::PushID(ID.c_str());
 
@@ -32,13 +35,13 @@ inline void handleDropdown(std::string ID, std::string dropdownText, std::string
 
 class ToolPathGUIBase {
 public:
-    explicit ToolPathGUIBase(VulkanRenderEngine& renderer) : renderer(renderer) {}
+    explicit ToolPathGUIBase(RenderEngine& renderer) : renderer(renderer) {}
     virtual void draw(std::string ID) = 0;
     virtual std::string name() const = 0;
     virtual std::unique_ptr<ToolPathGUIBase> clone() const = 0;
 
 protected:
-    VulkanRenderEngine& renderer;
+    RenderEngine& renderer;
 };  
 
 #endif

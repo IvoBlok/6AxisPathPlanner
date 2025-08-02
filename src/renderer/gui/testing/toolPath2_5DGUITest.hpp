@@ -1,17 +1,20 @@
 #ifndef TOOL_PATH_2_5D_GUI_TEST_HPP
 #define TOOL_PATH_2_5D_GUI_TEST_HPP
 
-#include "renderer.hpp"
+#include "renderer/core/RenderEngine.hpp"
+#include "renderer/geometries/RendererObject.hpp"
+#include "renderer/geometries/RendererCurve.hpp"
+
 #include "toolPath2_5D.hpp"
 
 namespace toolPath2_5D {
 class ToolPath2_5DGUITest {
 public:
-    ToolPath2_5DGUITest(VulkanRenderEngine& renderer) {
+    ToolPath2_5DGUITest(RenderEngine& renderer) {
         registerWithRenderer(renderer);
     }
 
-    void drawGUI(VulkanRenderEngine& renderer) {
+    void drawGUI(RenderEngine& renderer) {
         if (ImGui::CollapsingHeader("2.5D Toolpaths##2_5dToolPath")) {
             drawFacePass(renderer);
             drawSurfacePass(renderer);
@@ -19,8 +22,8 @@ public:
         } 
     }
 
-    void registerWithRenderer(VulkanRenderEngine& renderer) {
-        renderer.registerGuiModule([this](VulkanRenderEngine& r) {
+    void registerWithRenderer(RenderEngine& renderer) {
+        renderer.registerGuiModule([this](RenderEngine& r) {
             this->drawGUI(r); 
         });
     }
@@ -30,15 +33,15 @@ private:
     SurfacePass2_5DInfo surfacePassInfo;
     ClearingPass2_5DInfo clearingPassInfo;
 
-    void drawFacePass(VulkanRenderEngine& renderer) {
+    void drawFacePass(RenderEngine& renderer) {
         ImGui::Indent(15.0f);
         if (ImGui::CollapsingHeader("Face Pass##2_5dToolPath")) {
-            auto& objects = renderer.loadedObjects;
+            auto& objects = renderer.getObjects();
 
             // Convert list to display vectors
             std::vector<std::string> objectNames;
             for (auto& obj : objects)
-                objectNames.push_back(obj->name);
+                objectNames.push_back(obj->getName());
             
 
             // Safe static storage with proper scoping
@@ -106,22 +109,22 @@ private:
                     core::Polyline2_5D result = generateFacePass2_5D(facePassInfo);
                     
                     if (!result.isEmpty())
-                        renderer.createLine(result);
+                        renderer.createCurve(result);
                 }
             }
         }
         ImGui::Unindent(15.0f);
     }
 
-    void drawSurfacePass(VulkanRenderEngine& renderer) {
+    void drawSurfacePass(RenderEngine& renderer) {
         ImGui::Indent(15.0f);
         if (ImGui::CollapsingHeader("Surface Pass##2_5dToolPath")) {
-            auto& objects = renderer.loadedObjects;
+            auto& objects = renderer.getObjects();
 
             // Convert list to display vectors
             std::vector<std::string> objectNames;
             for (auto& obj : objects)
-                objectNames.push_back(obj->name);
+                objectNames.push_back(obj->getName());
 
             // Safe static storage with proper scoping
             static int selectedIdx1 = -1;
@@ -214,22 +217,22 @@ private:
                     core::Polyline2_5D result = generateSurfacePass2_5D(surfacePassInfo);
                     
                     if (!result.isEmpty())
-                        renderer.createLine(result);
+                        renderer.createCurve(result);
                 }
             }
         }
         ImGui::Unindent(15.0f);
     }
 
-    void drawClearingPass(VulkanRenderEngine& renderer) {
+    void drawClearingPass(RenderEngine& renderer) {
         ImGui::Indent(15.0f);
         if (ImGui::CollapsingHeader("Clearing Pass##2_5dToolPath")) {
-            auto& objects = renderer.loadedObjects;
+            auto& objects = renderer.getObjects();
 
             // Convert list to display vectors
             std::vector<std::string> objectNames;
             for (auto& obj : objects)
-                objectNames.push_back(obj->name);
+                objectNames.push_back(obj->getName());
 
             // Safe static storage with proper scoping
             static int selectedIdx1 = -1;
@@ -348,7 +351,7 @@ private:
                     core::Polyline2_5D result = generateClearingPass2_5D(clearingPassInfo);
                     
                     if (!result.isEmpty())
-                        renderer.createLine(result);
+                        renderer.createCurve(result);
                 }
             }
         }

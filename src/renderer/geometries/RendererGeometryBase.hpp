@@ -10,8 +10,6 @@
 namespace renderer {
 	class Texture {
 	public:
-		VkDescriptorSet descriptorSet;
-
         Texture(RenderEngine& renderer);
 		~Texture();
 
@@ -19,13 +17,14 @@ namespace renderer {
 		Texture(const Texture&) = delete;
 		Texture& operator=(const Texture&) = delete;
 
-		Texture(Texture&& other) = delete;
-		Texture& operator=(Texture&& other) = delete;
+		Texture(Texture&& other) noexcept;
+		Texture& operator=(Texture&& other) noexcept;
 
 		void load(const char* path);
 		void loadDummy();
 		void destroy();
-
+		const VkDescriptorSet& getDescriptorSet() const;
+		
 	private:
         VulkanContext& context;
 
@@ -33,6 +32,8 @@ namespace renderer {
 		VkDeviceMemory textureImageMemory;
 		VkImageView textureImageView;
 		VkSampler textureSampler;
+
+		VkDescriptorSet descriptorSet;
 
 		void createTextureImage(const char* path);
 		void createTextureImageView();
@@ -53,8 +54,8 @@ namespace renderer {
 		Model(const Model&) = delete;
 		Model& operator=(const Model&) = delete;
 
-		Model(Model&& other) = delete;
-		Model& operator=(Model&& other) = delete;
+		Model(Model&& other) noexcept;
+		Model& operator=(Model&& other) noexcept;
 
 		void load(const char* path, float modelTransparency = 1.f);
 		void destroy();
@@ -86,8 +87,8 @@ namespace renderer {
 		CurveBuffer(const CurveBuffer&) = delete;
 		CurveBuffer& operator=(const CurveBuffer&) = delete;
 
-		CurveBuffer(CurveBuffer&& other) = delete;
-		CurveBuffer& operator=(CurveBuffer&& other) = delete;
+		CurveBuffer(CurveBuffer&& other) noexcept;
+		CurveBuffer& operator=(CurveBuffer&& other) noexcept;
 
 		void load(core::Polyline2_5D& polyline, float curveTransparency = 1.f);
 		

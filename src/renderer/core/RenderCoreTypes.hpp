@@ -23,7 +23,7 @@ namespace renderer {
     const uint32_t HEIGHT = 600;
     const int MAX_FRAMES_IN_FLIGHT = 2;
     const int MAX_OBJECTS = 64;
-    const int MAX_LINES = 1000;
+    const int MAX_CURVES = 1000;
 
     const float DEFAULT_CAMERA_MOVE_VELOCITY = 0.7f;
     const float DEFAULT_CAMERA_ROTATE_VELOCITY = 0.7f;
@@ -41,14 +41,14 @@ namespace renderer {
 
     // define a struct containing all vulkan related context required for rendering
     struct VulkanContext {
-        VkDevice device;
+        VkDevice device = VK_NULL_HANDLE;
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-        VkQueue graphicsQueue;
-        VkQueue presentQueue;
-        VkCommandPool commandPool;
-        VkDescriptorPool descriptorPool;
-        VkDescriptorSetLayout uniformDescriptorSetLayout;
-        VkDescriptorSetLayout textureDescriptorSetLayout;
+        VkQueue graphicsQueue = VK_NULL_HANDLE;
+        VkQueue presentQueue = VK_NULL_HANDLE;
+        VkCommandPool commandPool = VK_NULL_HANDLE;
+        VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+        VkDescriptorSetLayout uniformDescriptorSetLayout = VK_NULL_HANDLE;
+        VkDescriptorSetLayout textureDescriptorSetLayout = VK_NULL_HANDLE;
     };
 
     // define crucial structs that hold data that is exchanged with the shaders

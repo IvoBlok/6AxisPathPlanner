@@ -4,6 +4,15 @@
 #include "RenderCoreTypes.hpp"
 #include "CustomEigen.hpp"
 
+#include "core/polyline.hpp"
+
+#include "imconfig.h"
+#include "imgui_internal.h"
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan_but_better.hpp"	
+#include "implot.h"
+
 #include <memory>
 #include <map>
 #include <unordered_map>
@@ -34,7 +43,7 @@ public:
     std::shared_ptr<renderer::Object> createObject(
         const char* modelPath,
         const char* texturePath,
-        std::string name,
+        std::string name = "object",
         Vector3d basePosition = Vector3d::Zero(),
         Vector3d baseScale = Vector3d::Ones(),
         Vector3d baseRotation = Vector3d::Zero(),
@@ -42,8 +51,8 @@ public:
     );
     std::shared_ptr<renderer::Object> createObject(
         const char* modelPath,
-        std::string name,
-        Vector3f color,
+        std::string name = "object",
+        Vector3f color = Vector3f::UnitX(),
         Vector3d basePosition = Vector3d::Zero(),
         Vector3d baseScale = Vector3d::Ones(),
         Vector3d baseRotation = Vector3d::Zero(),
@@ -68,7 +77,20 @@ public:
         float transparency = 1.f
     );
 
-    // TODO createCurve functions, createDefaultCube, etc...
+    std::shared_ptr<renderer::Curve> createCurve(
+        core::Polyline2_5D& polyline, 
+        std::string name = "curve",
+        Vector3f color = Vector3f::UnitY(),
+        float transparency = 1.f
+    );
+
+    std::shared_ptr<renderer::Curve> createCurve(
+        core::Polyline2D& polyline, 
+        core::Plane& plane,
+        std::string name = "curve",
+        Vector3f color = Vector3f::UnitY(),
+        float transparency = 1.f
+    );
 
     void deleteObject(std::shared_ptr<renderer::Object>& object);
     void deleteObject(renderer::Object* object);
@@ -76,6 +98,9 @@ public:
     void deleteCurve(renderer::Curve* curve);
 
     std::chrono::microseconds getDeltaTime();
+
+    std::list<std::shared_ptr<renderer::Curve>>& getCurves();
+    std::list<std::shared_ptr<renderer::Object>>& getObjects();
 
 private:
     std::list<std::shared_ptr<renderer::Curve>> curves;

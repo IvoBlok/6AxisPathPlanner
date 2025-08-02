@@ -3,6 +3,7 @@
 
 #include "RendererGeometryBase.hpp"
 #include "renderer/core/RenderEngine.hpp"
+#include "core/objectShape.hpp"
 
 #include <optional>
 #include <utility>
@@ -28,12 +29,14 @@ namespace renderer {
         int getNumberOfVertices() const;
         int getNumberOfIndices() const;
         
+        core::ObjectShape getObjectShape();
+        core::Plane getPlane();
+
     private:
         // variables associated with the renderer and how it is rendered and interacts with it
         // ======================================================================================
         
         RenderEngine& renderer;
-
         std::string name;
 
         // variables associated with the objects' shape, position, orientation, etc...

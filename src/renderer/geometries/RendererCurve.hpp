@@ -24,6 +24,8 @@ namespace renderer {
         std::string getName() const;
 
         int getNumberOfVertices() const;
+
+        const core::Polyline2_5D& getPolyline() const;
         
     private:
         // variables associated with the renderer and how it is rendered and interacts with it
@@ -41,8 +43,9 @@ namespace renderer {
         bool useDefaultColor;
 
         CurveBuffer curveBuffer;
-
-        void load(core::Polyline2_5D& polyline, Vector3f defaultColorIn, float transparency);
+        core::Polyline2_5D polyline;
+        
+        void load(core::Polyline2_5D& polylineIn, Vector3f defaultColorIn, float transparency);
 
         void drawGUI();
         void render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);

@@ -4,13 +4,6 @@
 #include "renderer/geometries/RendererCurve.hpp"
 #include "renderer/geometries/RendererObject.hpp"
 
-#include "imconfig.h"
-#include "imgui_internal.h"
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_vulkan_but_better.hpp"	
-#include "implot.h"
-
 #include <nfd.h>
 
 #include <fstream>
@@ -1502,32 +1495,75 @@ std::shared_ptr<renderer::Object> RenderEngine::createDefaultPlane(
     return plane;
 }
 
+std::shared_ptr<renderer::Curve> RenderEngine::createCurve(
+    core::Polyline2_5D& polyline, 
+    std::string name,
+    Vector3f color,
+    float transparency
+) {
+    if (curves.size() >= renderer::MAX_CURVES)
+        throw std::runtime_error("Max curve count has been reached, can't create a new curve!\n");
+
+    std::shared_ptr<renderer::Curve> newCurve = std::make_shared<renderer::Curve>(*this, name);
+    newCurve->load(polyline, color, transparency);
+    curves.push_back(newCurve);
+
+    return newCurve;
+}
+
+std::shared_ptr<renderer::Curve> RenderEngine::createCurve(
+    core::Polyline2D& polyline, 
+    core::Plane& plane,
+    std::string name,
+    Vector3f color,
+    float transparency
+) {
+    core::Polyline2_5D newPolyline(polyline, plane);
+    return createCurve(newPolyline, name, color, transparency);
+}
+
 void RenderEngine::deleteObject(std::shared_ptr<renderer::Object>& object) {
     if (!object) return;
-    objects.remove(object);
+    objectsToDelete.push_back(object);
 }
 
 void RenderEngine::deleteObject(renderer::Object* object) {
     if (!object) return;
-    objects.remove_if([object](const auto& ptr) {
+    auto it = std::find_if(objects.begin(), objects.end(), [object](const std::shared_ptr<renderer::Object>& ptr) {
         return ptr.get() == object;
     });
+
+    if (it != objects.end()) {
+        objectsToDelete.push_back(*it);
+    }
 }
 
 void RenderEngine::deleteCurve(std::shared_ptr<renderer::Curve>& curve) {
     if (!curve) return;
-    curves.remove(curve);
+    curvesToDelete.push_back(curve);
 }
 
 void RenderEngine::deleteCurve(renderer::Curve* curve) {
     if (!curve) return;
-    curves.remove_if([curve](const auto& ptr) {
+    auto it = std::find_if(curves.begin(), curves.end(), [curve](const std::shared_ptr<renderer::Curve>& ptr) {
         return ptr.get() == curve;
     });
+
+    if (it != curves.end()) {
+        curvesToDelete.push_back(*it);
+    }
 }
 
 std::chrono::microseconds RenderEngine::getDeltaTime() {
     return vulkanInternals->deltaTime;
+}
+
+std::list<std::shared_ptr<renderer::Curve>>& RenderEngine::getCurves() {
+    return curves;
+}
+
+std::list<std::shared_ptr<renderer::Object>>& RenderEngine::getObjects() {
+    return objects;
 }
 
 void RenderEngine::recordGUI() {

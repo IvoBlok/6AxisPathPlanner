@@ -1,12 +1,5 @@
 #include "RendererCurve.hpp"
 
-#include "imconfig.h"
-#include "imgui_internal.h"
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_vulkan_but_better.hpp"	
-#include "implot.h"
-
 namespace renderer {
     Curve::Curve(RenderEngine& renderer) : Curve(renderer, "curve") { }    
 
@@ -39,8 +32,14 @@ namespace renderer {
         return curveBuffer.vertices.size();
     }
 
-    void Curve::load(core::Polyline2_5D& polyline, Vector3f defaultColorIn, float transparency) {
-        curveBuffer.load(polyline);
+    const core::Polyline2_5D& Curve::getPolyline() const {
+        return polyline;
+    }
+
+    void Curve::load(core::Polyline2_5D& polylineIn, Vector3f defaultColorIn, float transparency) {
+        polyline = core::Polyline2_5D(polylineIn);
+        
+        curveBuffer.load(polylineIn);
         curveBuffer.transparency = transparency;   
         defaultColor = defaultColorIn;
     }

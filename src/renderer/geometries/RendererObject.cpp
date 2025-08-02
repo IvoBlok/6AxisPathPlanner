@@ -1,12 +1,5 @@
 #include "RendererObject.hpp"
 
-#include "imconfig.h"
-#include "imgui_internal.h"
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_vulkan_but_better.hpp"	
-#include "implot.h"
-
 namespace renderer {
 
     Object::Object(RenderEngine& renderer) : Object(renderer, "obj") { }
@@ -59,6 +52,38 @@ namespace renderer {
 
     int Object::getNumberOfIndices() const {
         return model.indices.size();
+    }
+
+    core::ObjectShape Object::getObjectShape() {
+        glm::mat4 transformationMatrix = rotation.glmMatrix();
+
+        core::ObjectShape objectShape{};
+        
+        objectShape.vertices.reserve(model.vertices.size());
+        objectShape.indices.reserve(model.indices.size());
+        objectShape.normals.reserve(model.vertices.size());
+
+        for (size_t i = 0; i < model.vertices.size(); i++)
+        {
+            glm::vec3 vertexWithAppliedMatrix = transformationMatrix * glm::vec4{ model.vertices[i].pos, 1.f };
+            glm::vec3 normalWithAppliedMatrix = transformationMatrix * glm::vec4{ model.vertices[i].normal, 0.f };
+            objectShape.vertices.push_back(Vector3d{ vertexWithAppliedMatrix.x, vertexWithAppliedMatrix.y, vertexWithAppliedMatrix.z });
+            objectShape.normals.push_back(Vector3d{ normalWithAppliedMatrix.x, normalWithAppliedMatrix.y, normalWithAppliedMatrix.z });
+        }
+
+        for (size_t i = 0; i < model.indices.size(); i++)
+        {
+            objectShape.indices.push_back(model.indices[i]);
+        }
+        return objectShape;
+    }
+
+    core::Plane Object::getPlane() {
+        Vector3d normal = Vector3d::UnitZ();
+        normal = rotation.matrix3d() * normal;
+
+        core::Plane objectPlane{position, normal};
+        return objectPlane;
     }
 
     void Object::load(const char* modelPath, const char* texturePath, Vector3d basePosition, Vector3d baseScale, Vector3d baseRotation, float modelTransparency) {
@@ -150,7 +175,7 @@ namespace renderer {
         pushConstant.isOneColor = !canAndShouldUseTexture;
 
         // bind the right texture
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &texture.first.value().descriptorSet, 0, nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &texture.first.value().getDescriptorSet(), 0, nullptr);
 
         // bind the model matrix, and render the object
         vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ObjectShaderPushConstant), &pushConstant);

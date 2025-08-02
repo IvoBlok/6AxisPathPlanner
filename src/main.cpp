@@ -1,5 +1,9 @@
 #include "renderer/core/RenderEngine.hpp"
 
+#include "renderer/gui/testing/meshIntersectGUITest.hpp"
+#include "renderer/gui/testing/robotGUITest.hpp"
+#include "renderer/gui/testing/toolPath2_5DGUITest.hpp"
+
 #include <stdexcept>
 #include <iostream>
 
@@ -8,6 +12,10 @@ int main() {
 	try {
 		RenderEngine renderer;
 		renderer.initialize();
+
+		meshIntersect::MeshIntersectGUITest meshIntersectGuiTest{renderer};
+		toolPath2_5D::ToolPath2_5DGUITest toolPath2_5DGuiTest{renderer};
+		kinematics::RobotGUITest robotGuiTest{renderer};
 
 		while (!renderer.shouldWindowClose()) {
 			renderer.handleFrame();

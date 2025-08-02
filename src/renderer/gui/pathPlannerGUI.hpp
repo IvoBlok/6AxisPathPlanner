@@ -1,16 +1,14 @@
 #ifndef PATH_PLANNER_GUI_HPP
 #define PATH_PLANNER_GUI_HPP
 
-#include <memory>
-
-#include "renderer.hpp"
-
 #include "toolPath2_5D.hpp"
 #include "toolPath2_5DGUI.hpp"
 
+#include <memory>
+
 class PathPlannerGUI {
 public:
-    PathPlannerGUI(VulkanRenderEngine& renderer) {
+    PathPlannerGUI(RenderEngine& renderer) {
         registerWithRenderer(renderer);
 
         //toolPathOptions.push_back(std::make_unique<toolPath2_5D::FacePassGUI>(renderer));
@@ -20,7 +18,7 @@ public:
         toolPathSelectionIndex = -1;
     }
 
-    void drawGUI(VulkanRenderEngine& renderer) {
+    void drawGUI(RenderEngine& renderer) {
         if (ImGui::CollapsingHeader("path planner##pathPlanner")) {
             std::vector<std::string> toolPathNames;
             for (const auto& option : toolPathOptions)
@@ -40,8 +38,8 @@ public:
         }
     }
 
-    void registerWithRenderer(VulkanRenderEngine& renderer) {
-        renderer.registerGuiModule([this](VulkanRenderEngine& r) {
+    void registerWithRenderer(RenderEngine& renderer) {
+        renderer.registerGuiModule([this](RenderEngine& r) {
             this->drawGUI(r); 
         });
     }    

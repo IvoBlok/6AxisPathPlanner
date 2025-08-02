@@ -26,6 +26,44 @@ namespace renderer {
         destroy();
     }
 
+    Texture::Texture(Texture&& other) noexcept
+        : context(other.context), 
+        descriptorSet(other.descriptorSet),
+        textureImage(other.textureImage),
+        textureImageMemory(other.textureImageMemory),
+        textureImageView(other.textureImageView),
+        textureSampler(other.textureSampler) 
+    {
+        other.textureImage = VK_NULL_HANDLE;
+        other.textureImageMemory = VK_NULL_HANDLE;
+        other.textureImageView = VK_NULL_HANDLE;
+        other.textureSampler = VK_NULL_HANDLE;
+
+        other.descriptorSet = VK_NULL_HANDLE;
+    }
+
+    Texture& Texture::operator=(Texture&& other) noexcept {
+        if (this != &other) {
+            vkDeviceWaitIdle(context.device);
+            destroy();
+
+            context = other.context;
+            descriptorSet = other.descriptorSet;
+            textureImage = other.textureImage;
+            textureImageMemory = other.textureImageMemory;
+            textureImageView = other.textureImageView;
+            textureSampler = other.textureSampler;
+
+            other.textureImage = VK_NULL_HANDLE;
+            other.textureImageMemory = VK_NULL_HANDLE;
+            other.textureImageView = VK_NULL_HANDLE;
+            other.textureSampler = VK_NULL_HANDLE;
+
+            other.descriptorSet = VK_NULL_HANDLE;
+        }
+        return *this;
+    }
+
     void Texture::load(const char* path) {
         createTextureImage(path);
         createTextureImageView();
@@ -84,11 +122,16 @@ namespace renderer {
             textureImageMemory = VK_NULL_HANDLE;
         }
         
-        if (descriptorSet != VK_NULL_HANDLE) {
+        if (descriptorSet != VK_NULL_HANDLE && context.descriptorPool != VK_NULL_HANDLE) {
             vkFreeDescriptorSets(context.device, context.descriptorPool, 1, &descriptorSet);
             descriptorSet = VK_NULL_HANDLE;
         }
     }
+
+    const VkDescriptorSet& Texture::getDescriptorSet() const {
+        return descriptorSet;
+    }
+
 
     void Texture::createTextureImage(const char* path) {
         int texWidth, texHeight, texChannels;
@@ -194,6 +237,43 @@ namespace renderer {
 
     Model::~Model() {
         destroy();
+    }
+
+    Model::Model(Model&& other) noexcept 
+        : context(other.context),
+        vertices(std::move(other.vertices)),
+        indices(std::move(other.indices)),
+        transparency(other.transparency),
+        vertexBuffer(other.vertexBuffer),
+        vertexBufferMemory(other.vertexBufferMemory),
+        indexBuffer(other.indexBuffer),
+        indexBufferMemory(other.indexBufferMemory)
+    {
+        other.vertexBuffer = VK_NULL_HANDLE;
+        other.vertexBufferMemory = VK_NULL_HANDLE;
+        other.indexBuffer = VK_NULL_HANDLE;
+        other.indexBufferMemory = VK_NULL_HANDLE;
+    }
+
+    Model& Model::operator=(Model&& other) noexcept {
+        if (this != &other) {
+            vkDeviceWaitIdle(context.device);
+            destroy();
+
+            vertices = std::move(other.vertices);
+            indices = std::move(other.indices);
+            transparency = other.transparency;
+            vertexBuffer = other.vertexBuffer;
+            vertexBufferMemory = other.vertexBufferMemory;
+            indexBuffer = other.indexBuffer;
+            indexBufferMemory = other.indexBufferMemory;
+
+            other.vertexBuffer = VK_NULL_HANDLE;
+            other.vertexBufferMemory = VK_NULL_HANDLE;
+            other.indexBuffer = VK_NULL_HANDLE;
+            other.indexBufferMemory = VK_NULL_HANDLE;
+        }
+        return *this;
     }
 
     void Model::load(const char* path, float modelTransparency) {
@@ -350,6 +430,43 @@ namespace renderer {
 
     CurveBuffer::~CurveBuffer() {
         destroy();
+    }
+
+    CurveBuffer::CurveBuffer(CurveBuffer&& other) noexcept 
+        : context(other.context),
+        vertices(std::move(other.vertices)),
+        indices(std::move(other.indices)),
+        transparency(other.transparency),
+        vertexBuffer(other.vertexBuffer),
+        vertexBufferMemory(other.vertexBufferMemory),
+        indexBuffer(other.indexBuffer),
+        indexBufferMemory(other.indexBufferMemory)
+    {
+        other.vertexBuffer = VK_NULL_HANDLE;
+        other.vertexBufferMemory = VK_NULL_HANDLE;
+        other.indexBuffer = VK_NULL_HANDLE;
+        other.indexBufferMemory = VK_NULL_HANDLE;
+    }
+
+    CurveBuffer& CurveBuffer::operator=(CurveBuffer&& other) noexcept {
+        if (this != &other) {
+            vkDeviceWaitIdle(context.device);
+            destroy();
+
+            vertices = std::move(other.vertices);
+            indices = std::move(other.indices);
+            transparency = other.transparency;
+            vertexBuffer = other.vertexBuffer;
+            vertexBufferMemory = other.vertexBufferMemory;
+            indexBuffer = other.indexBuffer;
+            indexBufferMemory = other.indexBufferMemory;
+
+            other.vertexBuffer = VK_NULL_HANDLE;
+            other.vertexBufferMemory = VK_NULL_HANDLE;
+            other.indexBuffer = VK_NULL_HANDLE;
+            other.indexBufferMemory = VK_NULL_HANDLE;
+        }
+        return *this;
     }
 
     void CurveBuffer::load(core::Polyline2_5D& polyline, float curveTransparency) {

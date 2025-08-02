@@ -1,24 +1,26 @@
 #ifndef TOOL_PATH_2_5D_GUI_HPP
 #define TOOL_PATH_2_5D_GUI_HPP
 
-#include "renderer.hpp"
 #include "toolPathGUIBase.hpp"
 
 #include "toolPath2_5D.hpp"
 
+// TODO properly rework this with the new renderer
 namespace toolPath2_5D {
 class FacePassGUI : public ToolPathGUIBase {
 public:
     FacePass2_5DInfo info;
     
-    FacePassGUI(VulkanRenderEngine& renderer) : ToolPathGUIBase(renderer) {
+    FacePassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) {
         selectedIndex1 = -1;
 
-        planeObject = renderer.createDefaultPlane(Vector3d{0.1, 0.7, 0.2}, Vector3d{0.0, 0.0, 0.0}, Vector3d{1.0, 1.0, 1.0}, glm::mat4{1.f}, 0.6f, true, false);
+        planeObject = renderer.createDefaultPlane("facePassPlane", Vector3d{0.1, 0.7, 0.2});
+        planeObject->isObjectShownInGui = false;
+        planeObject->isObjectRendered = false;
     }
 
     ~FacePassGUI() {
-        planeObject->deleteObject();
+        planeObject->remove();
     }
 
     void draw(std::string ID) override {
@@ -28,12 +30,12 @@ public:
         ImGui::AlignTextToFramePadding();
         bool isOpen = ImGui::TreeNodeEx((ID + ": Face Pass").c_str(), ImGuiTreeNodeFlags_SpanAvailWidth);
         if (isOpen) {
-            planeObject->renderObj = true;
+            planeObject->isObjectRendered = true;
 
-            auto& objects = renderer.loadedObjects;
+            auto& objects = renderer.getObjects();
             std::vector<std::string> objectNames;
             for (auto& obj : objects)
-                objectNames.push_back(obj->name);
+                objectNames.push_back(obj->getName());
             
             ImGui::SeparatorText("Face Plane");
             planeObject->drawGUI();
@@ -53,12 +55,12 @@ public:
                     core::Polyline2_5D result = generateFacePass2_5D(info);
                     
                     if (!result.isEmpty())
-                        renderer.createLine(result);
+                        renderer.createCurve(result);
                 }
             }
             ImGui::TreePop();
         } else
-            planeObject->renderObj = false;
+            planeObject->isObjectRendered = false;
 
         ImGui::PopID();
     }
@@ -74,14 +76,14 @@ public:
 private:
     int selectedIndex1;
 
-    shared_ptr<LoadedObject> planeObject;
+    std::shared_ptr<renderer::Object> planeObject;
 };
 
 class SurfacePassGUI : public ToolPathGUIBase {
 public:
     SurfacePass2_5DInfo info;
 
-    SurfacePassGUI(VulkanRenderEngine& renderer) : ToolPathGUIBase(renderer) {
+    SurfacePassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) {
         selectedIndex1 = -1;
         selectedIndex2 = -1;
         selectedIndex3 = -1;
@@ -92,11 +94,11 @@ public:
         ImGui::AlignTextToFramePadding();
         bool isOpen = ImGui::TreeNodeEx((ID + ": Surface Pass").c_str(), ImGuiTreeNodeFlags_SpanAvailWidth);
         if (isOpen) {
-            auto& objects = renderer.loadedObjects;
+            auto& objects = renderer.getObjects();
 
             std::vector<std::string> objectNames;
             for (auto& obj : objects)
-                objectNames.push_back(obj->name);
+                objectNames.push_back(obj->getName());
 
             handleDropdown("surfacePassStartPlaneSelectGroup", "Select Start Plane:", "...", objectNames, selectedIndex1);
             handleDropdown("surfacePassEndPlaneSelectGroup", "Select End Plane:", "...", objectNames, selectedIndex2);
@@ -122,7 +124,7 @@ public:
                     core::Polyline2_5D result = generateSurfacePass2_5D(info);
                     
                     if (!result.isEmpty())
-                        renderer.createLine(result);
+                        renderer.createCurve(result);
                 }
             }
             ImGui::TreePop();
@@ -148,7 +150,7 @@ class ClearingPassGUI : public ToolPathGUIBase {
 public:
     ClearingPass2_5DInfo info;
 
-    ClearingPassGUI(VulkanRenderEngine& renderer) : ToolPathGUIBase(renderer) {
+    ClearingPassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) {
         selectedIndex1 = -1;
         selectedIndex2 = -1;
         selectedIndex3 = -1;
@@ -160,11 +162,11 @@ public:
         ImGui::AlignTextToFramePadding();
         bool isOpen = ImGui::TreeNodeEx((ID + ": Clearing Pass").c_str(), ImGuiTreeNodeFlags_SpanAvailWidth);
         if (isOpen) {
-            auto& objects = renderer.loadedObjects;
+            auto& objects = renderer.getObjects();
 
             std::vector<std::string> objectNames;
             for (auto& obj : objects)
-                objectNames.push_back(obj->name);
+                objectNames.push_back(obj->getName());
 
             handleDropdown("clearingPassStartPlaneSelectGroup", "Select Start Plane:", "...", objectNames, selectedIndex1);
             handleDropdown("clearingPassEndPlaneSelectGroup", "Select End Plane:", "...", objectNames, selectedIndex2);
@@ -195,7 +197,7 @@ public:
                     core::Polyline2_5D result = generateClearingPass2_5D(info);
                     
                     if (!result.isEmpty())
-                        renderer.createLine(result);
+                        renderer.createCurve(result);
                 }
             }
             ImGui::TreePop();

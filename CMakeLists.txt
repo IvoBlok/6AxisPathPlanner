@@ -96,7 +96,6 @@ add_executable(robotPathPlanner
     src/renderer/geometries/RendererCurve.cpp
     src/renderer/geometries/RendererObject.cpp
     src/main.cpp
-    src/renderer.cpp
     src/meshIntersect.cpp
     src/toolPath2_5D.cpp
     src/robotKinematics.cpp

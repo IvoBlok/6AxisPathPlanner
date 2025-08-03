@@ -117,16 +117,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_BINARY_DIR}/Release)
 
 set(SHADER_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/shaders)
 
+file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIR})
 add_custom_command(TARGET robotPathPlanner PRE_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders
+        ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/output
         ${SHADER_OUTPUT_DIR}
     COMMENT "Copying shaders to build directory"
 )
-
-file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/
-        DESTINATION ${SHADER_OUTPUT_DIR})
 
 # Include Directories
 # ============================================

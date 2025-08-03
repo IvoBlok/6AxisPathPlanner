@@ -1442,15 +1442,19 @@ std::shared_ptr<renderer::Object> RenderEngine::createObject(
     Vector3d basePosition,
     Vector3d baseScale,
     Vector3d baseRotation,
-    float transparency
+    float transparency,
+    bool isObjectShownInGui,
+    bool isObjectRendered
 ) {
     if (objects.size() + objectsToRemove.size() >= renderer::MAX_OBJECTS)
         throw std::runtime_error("Max object count has been reached, can't create a new object!\n");
     
     std::shared_ptr<renderer::Object> newObject = std::make_shared<renderer::Object>(*this, name);
     newObject->load(modelPath, texturePath, basePosition, baseScale, baseRotation, transparency);
-    objects.push_back(newObject);
+    newObject->isObjectShownInGui = isObjectShownInGui;
+    newObject->isObjectRendered = isObjectRendered;
 
+    objects.push_back(newObject);
     return newObject;
 }
 
@@ -1461,15 +1465,19 @@ std::shared_ptr<renderer::Object> RenderEngine::createObject(
     Vector3d basePosition,
     Vector3d baseScale,
     Vector3d baseRotation,
-    float transparency
+    float transparency,
+    bool isObjectShownInGui,
+    bool isObjectRendered
 ) {
     if (objects.size() + objectsToRemove.size() >= renderer::MAX_OBJECTS)
         throw std::runtime_error("Max object count has been reached, can't create a new object!\n");
     
     std::shared_ptr<renderer::Object> newObject = std::make_shared<renderer::Object>(*this, name);
     newObject->load(modelPath, color, basePosition, baseScale, baseRotation, transparency);
-    objects.push_back(newObject);
+    newObject->isObjectShownInGui = isObjectShownInGui;
+    newObject->isObjectRendered = isObjectRendered;
 
+    objects.push_back(newObject);
     return newObject;
 }
 
@@ -1479,9 +1487,11 @@ std::shared_ptr<renderer::Object> RenderEngine::createDefaultCube(
     Vector3d basePosition,
     Vector3d baseScale,
     Vector3d baseRotation,
-    float transparency
+    float transparency,
+    bool isObjectShownInGui,
+    bool isObjectRendered
 ) {
-    std::shared_ptr<renderer::Object> cube = createObject("../../resources/assets/cube.obj", name, color, basePosition, baseScale, baseRotation, transparency);
+    std::shared_ptr<renderer::Object> cube = createObject("../../resources/assets/cube.obj", name, color, basePosition, baseScale, baseRotation, transparency, isObjectShownInGui, isObjectRendered);
     return cube;
 }
 
@@ -1491,9 +1501,11 @@ std::shared_ptr<renderer::Object> RenderEngine::createDefaultPlane(
     Vector3d basePosition,
     Vector3d baseScale,
     Vector3d baseRotation,
-    float transparency
+    float transparency,
+    bool isObjectShownInGui,
+    bool isObjectRendered
 ) {
-    std::shared_ptr<renderer::Object> plane = createObject("../../resources/assets/plane.obj", name, color, basePosition, baseScale, baseRotation, transparency);
+    std::shared_ptr<renderer::Object> plane = createObject("../../resources/assets/plane.obj", name, color, basePosition, baseScale, baseRotation, transparency, isObjectShownInGui, isObjectRendered);
     return plane;
 }
 
@@ -1501,15 +1513,19 @@ std::shared_ptr<renderer::Curve> RenderEngine::createCurve(
     core::Polyline2_5D& polyline, 
     std::string name,
     Vector3f color,
-    float transparency
+    float transparency,
+    bool isCurveShownInGui,
+    bool isCurveRendered
 ) {
     if (curves.size() + curvesToRemove.size() >= renderer::MAX_CURVES)
         throw std::runtime_error("Max curve count has been reached, can't create a new curve!\n");
 
     std::shared_ptr<renderer::Curve> newCurve = std::make_shared<renderer::Curve>(*this, name);
     newCurve->load(polyline, color, transparency);
-    curves.push_back(newCurve);
+    newCurve->isCurveShownInGui = isCurveShownInGui;
+    newCurve->isCurveRendered = isCurveRendered;
 
+    curves.push_back(newCurve);
     return newCurve;
 }
 
@@ -1518,10 +1534,12 @@ std::shared_ptr<renderer::Curve> RenderEngine::createCurve(
     core::Plane& plane,
     std::string name,
     Vector3f color,
-    float transparency
+    float transparency,
+    bool isCurveShownInGui,
+    bool isCurveRendered
 ) {
     core::Polyline2_5D newPolyline(polyline, plane);
-    return createCurve(newPolyline, name, color, transparency);
+    return createCurve(newPolyline, name, color, transparency, isCurveShownInGui, isCurveRendered);
 }
 
 void RenderEngine::removeObject(std::shared_ptr<renderer::Object>& object) {

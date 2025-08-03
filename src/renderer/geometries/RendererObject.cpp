@@ -98,7 +98,9 @@ namespace renderer {
         return objectPlane;
     }
 
-    void Object::drawGUI() {
+    void Object::drawGUI(std::string ID, bool showColor, bool showTransparency) {
+        ImGui::PushID(ID.c_str());
+        
         float positionArray[3] = { (float)position.x(), (float)position.y(), (float)position.z() };
         if (ImGui::InputFloat3("Position", positionArray)) {
             position.x() = positionArray[0];
@@ -122,27 +124,32 @@ namespace renderer {
             rotation = eulerAngles;
         }
         
-        float colorArray[3] = { color.x(), color.y(), color.z() };
-        ImGui::Text("Color ");
-        ImGui::SameLine();
-        ImVec4 colVec4 = ImVec4(colorArray[0], colorArray[1], colorArray[2], 1.0f);
-        if (ImGui::ColorButton("MyColor##3", colVec4, ImGuiColorEditFlags_NoTooltip)) {
-            ImGui::OpenPopup("colorPicker");
-        }
-        if (ImGui::BeginPopup("colorPicker")) {
-            if (ImGui::ColorPicker3("##picker", colorArray, 
-                ImGuiColorEditFlags_DisplayRGB | 
-                ImGuiColorEditFlags_NoSidePreview |
-                ImGuiColorEditFlags_NoSmallPreview)) 
-            {
-                color.x() = colorArray[0];
-                color.y() = colorArray[1];
-                color.z() = colorArray[2];
+        if (showColor) {
+            float colorArray[3] = { color.x(), color.y(), color.z() };
+            ImGui::Text("Color ");
+            ImGui::SameLine();
+            ImVec4 colVec4 = ImVec4(colorArray[0], colorArray[1], colorArray[2], 1.0f);
+            if (ImGui::ColorButton("MyColor##3", colVec4, ImGuiColorEditFlags_NoTooltip)) {
+                ImGui::OpenPopup("colorPicker");
             }
-            ImGui::EndPopup();
+            if (ImGui::BeginPopup("colorPicker")) {
+                if (ImGui::ColorPicker3("##picker", colorArray, 
+                    ImGuiColorEditFlags_DisplayRGB | 
+                    ImGuiColorEditFlags_NoSidePreview |
+                    ImGuiColorEditFlags_NoSmallPreview)) 
+                {
+                    color.x() = colorArray[0];
+                    color.y() = colorArray[1];
+                    color.z() = colorArray[2];
+                }
+                ImGui::EndPopup();
+            }
         }
         
-        ImGui::SliderFloat("Transparency", &model.transparency, 0.0f, 1.0f);
+        if (showTransparency)
+            ImGui::SliderFloat("Transparency", &model.transparency, 0.0f, 1.0f);
+
+        ImGui::PopID();
     }
     
     void Object::load(const char* modelPath, const char* texturePath, Vector3d basePosition, Vector3d baseScale, Vector3d baseRotation, float modelTransparency) {

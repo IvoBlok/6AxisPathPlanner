@@ -28,7 +28,7 @@ namespace renderer {
 
         const core::Polyline2_5D& getPolyline() const;
         
-        void drawGUI();
+        void drawGUI(std::string ID = "");
         
     private:
         // variables associated with the renderer and how it is rendered and interacts with it

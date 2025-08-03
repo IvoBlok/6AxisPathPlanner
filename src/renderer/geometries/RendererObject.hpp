@@ -33,7 +33,7 @@ namespace renderer {
         core::ObjectShape getObjectShape();
         core::Plane getPlane();
 
-        void drawGUI();
+        void drawGUI(std::string ID = "", bool showColor = true, bool showTransparency = true);
 
     private:
         // variables associated with the renderer and how it is rendered and interacts with it

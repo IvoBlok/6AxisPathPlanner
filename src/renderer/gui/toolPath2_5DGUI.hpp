@@ -12,9 +12,7 @@ public:
     FacePass2_5DInfo info;
     
     FacePassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) {
-        planeObject = renderer.createDefaultPlane("facePassPlane", Vector3f{0.1, 0.7, 0.2});
-        planeObject->isObjectShownInGui = false;
-        planeObject->isObjectRendered = false;
+        planeObject = renderer.createDefaultPlane("facePassPlane", Vector3f{0.1, 0.7, 0.2}, Vector3d::Zero(), Vector3d::Ones(), Vector3d::Zero(), 0.6f, false, false);
     }
 
     ~FacePassGUI() override {
@@ -23,15 +21,20 @@ public:
 
     void draw(bool isOpen) override {
         if (isOpen) {
-            planeObject->isObjectRendered = true;
+            if (stockObject)
+                planeObject->isObjectRendered = true;
 
             auto& objects = renderer.getObjects();
             
-            ImGui::SeparatorText("Face Plane");
-            planeObject->drawGUI();
-            
             handleDropdown("facePassStockSelectGroup", "Select Stock:", objects, stockObject, [](const auto& obj) { return obj->isObjectShownInGui; });
             
+            ImGui::AlignTextToFramePadding();
+            if (ImGui::TreeNodeEx("Face Plane", ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                if (stockObject)
+                    planeObject->drawGUI("planeObject", false, false);
+                ImGui::TreePop();
+            }
+
             ImGui::InputDouble("Traverse height [mm]##facePass", &info.safeTraverseHeight);
             ImGui::InputDouble("Stepover [mm]##facePass", &info.stepOver);
 
@@ -68,16 +71,40 @@ class SurfacePassGUI : public ToolPathGUIBase {
 public:
     SurfacePass2_5DInfo info;
 
-    SurfacePassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) { }
+    SurfacePassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) {
+        startPlane = renderer.createDefaultPlane("surfacePassStartPlane", Vector3f{0.1, 0.7, 0.2}, Vector3d::Zero(), Vector3d::Ones(), Vector3d::Zero(), 0.5f, false, false);
+        endPlane = renderer.createDefaultPlane("surfacePassEndPlane", Vector3f{0.7, 0.7, 0.1}, Vector3d::Zero(), Vector3d::Ones(), Vector3d::Zero(), 0.5f, false, false);
+    }
+
+    ~SurfacePassGUI() override {
+        startPlane->remove();
+        endPlane->remove();
+    }
 
     void draw(bool isOpen) override {
         if (isOpen) {
+            if (shapeObject) {
+                startPlane->isObjectRendered = true;
+                endPlane->isObjectRendered = true;
+            }
+
             auto& objects = renderer.getObjects();
 
-            handleDropdown("surfacePassStartPlaneSelectGroup", "Select Start Plane:", objects, startPlane, [](const auto& obj) {return obj->isObjectShownInGui; });
-            handleDropdown("surfacePassEndPlaneSelectGroup", "Select End Plane:", objects, endPlane, [](const auto& obj) {return obj->isObjectShownInGui; });
             handleDropdown("surfacePassShapeSelectGroup", "Select Shape:", objects, shapeObject, [](const auto& obj) {return obj->isObjectShownInGui; });
 
+            ImGui::AlignTextToFramePadding();
+            if (ImGui::TreeNodeEx("Start Plane", ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                if (shapeObject)
+                    startPlane->drawGUI("startPlane", false, false);
+                ImGui::TreePop();
+            }
+            ImGui::AlignTextToFramePadding();
+            if (ImGui::TreeNodeEx("End Plane", ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                if (shapeObject)
+                    endPlane->drawGUI("endPlane", false, false);
+                ImGui::TreePop();
+            }
+    
             ImGui::InputDouble("Traverse height [mm]##surfacePass", &info.safeTraverseHeight);
             ImGui::InputDouble("Tool radius [mm]##surfacePass", &info.toolRadius);
             ImGui::InputDouble("Depth of Cut [mm]##surfacePass", &info.depthOfCut);
@@ -95,6 +122,9 @@ public:
                         renderer.createCurve(result);
                 }
             }
+        } else {
+            startPlane->isObjectRendered = false;
+            endPlane->isObjectRendered = false;
         }
     }
 
@@ -116,16 +146,35 @@ class ClearingPassGUI : public ToolPathGUIBase {
 public:
     ClearingPass2_5DInfo info;
 
-    ClearingPassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) { }
+    ClearingPassGUI(RenderEngine& renderer) : ToolPathGUIBase(renderer) {
+        startPlane = renderer.createDefaultPlane("clearingPassStartPlane", Vector3f{0.1, 0.7, 0.2}, Vector3d::Zero(), Vector3d::Ones(), Vector3d::Zero(), 0.5f, false, false);
+        endPlane = renderer.createDefaultPlane("clearingPassEndPlane", Vector3f{0.7, 0.7, 0.1}, Vector3d::Zero(), Vector3d::Ones(), Vector3d::Zero(), 0.5f, false, false);
+    }
 
     void draw(bool isOpen) override {
         if (isOpen) {
+            if (shapeObject && stockObject) {
+                startPlane->isObjectRendered = true;
+                endPlane->isObjectRendered = true;
+            }
+
             auto& objects = renderer.getObjects();
 
-            handleDropdown("clearingPassStartPlaneSelectGroup", "Select Start Plane:", objects, startPlane, [](const auto& obj) {return obj->isObjectShownInGui; });
-            handleDropdown("clearingPassEndPlaneSelectGroup", "Select End Plane:", objects, endPlane, [](const auto& obj) {return obj->isObjectShownInGui; });
             handleDropdown("clearingPassShapeSelectGroup", "Select Shape:", objects, shapeObject, [](const auto& obj) {return obj->isObjectShownInGui; });
             handleDropdown("clearingPassStockSelectGroup", "Select Stock:", objects, stockObject, [](const auto& obj) {return obj->isObjectShownInGui; });
+            
+            ImGui::AlignTextToFramePadding();
+            if (ImGui::TreeNodeEx("Start Plane", ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                if (shapeObject && stockObject)
+                    startPlane->drawGUI("startPlane", false, false);
+                ImGui::TreePop();
+            }
+            ImGui::AlignTextToFramePadding();
+            if (ImGui::TreeNodeEx("End Plane", ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                if (shapeObject && stockObject)
+                    endPlane->drawGUI("endPlane", false, false);
+                ImGui::TreePop();
+            }
 
             ImGui::InputDouble("Traverse height [mm]##clearingPass", &info.safeTraverseHeight);
             ImGui::InputDouble("Tool radius [mm]##clearingPass", &info.toolRadius);
@@ -145,6 +194,9 @@ public:
                         renderer.createCurve(result);
                 }
             }
+        } else {
+            startPlane->isObjectRendered = false;
+            endPlane->isObjectRendered = false;
         }
     }
 

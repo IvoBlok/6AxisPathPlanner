@@ -41,7 +41,9 @@ namespace renderer {
         return polyline;
     }
 
-    void Curve::drawGUI() {
+    void Curve::drawGUI(std::string ID) {
+        ImGui::PushID(ID.c_str());
+
         float colorArray[3] = { defaultColor.x(), defaultColor.y(), defaultColor.z() };
         ImGui::Text("Color ");
         ImGui::SameLine();
@@ -68,6 +70,8 @@ namespace renderer {
         
         ImGui::SliderFloat("Transparency", &curveBuffer.transparency, 0.0f, 1.0f);
         ImGui::SliderFloat("Line Width", &lineWidth, 0.0f, 10.0f);
+        
+        ImGui::PopID();
     }
 
     void Curve::load(core::Polyline2_5D& polylineIn, Vector3f defaultColorIn, float transparency) {

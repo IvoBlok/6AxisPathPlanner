@@ -47,8 +47,11 @@ public:
         Vector3d basePosition = Vector3d::Zero(),
         Vector3d baseScale = Vector3d::Ones(),
         Vector3d baseRotation = Vector3d::Zero(),
-        float transparency = 1.f
+        float transparency = 1.f,
+        bool isObjectShownInGui = true,
+        bool isObjectRendered = true
     );
+
     std::shared_ptr<renderer::Object> createObject(
         const char* modelPath,
         std::string name = "object",
@@ -56,7 +59,9 @@ public:
         Vector3d basePosition = Vector3d::Zero(),
         Vector3d baseScale = Vector3d::Ones(),
         Vector3d baseRotation = Vector3d::Zero(),
-        float transparency = 1.f
+        float transparency = 1.f,
+        bool isObjectShownInGui = true,
+        bool isObjectRendered = true
     );
 
     std::shared_ptr<renderer::Object> createDefaultCube(
@@ -65,7 +70,9 @@ public:
         Vector3d basePosition = Vector3d::Zero(),
         Vector3d baseScale = Vector3d::Ones(),
         Vector3d baseRotation = Vector3d::Zero(),
-        float transparency = 1.f
+        float transparency = 1.f,
+        bool isObjectShownInGui = true,
+        bool isObjectRendered = true
     );
 
     std::shared_ptr<renderer::Object> createDefaultPlane(
@@ -74,14 +81,18 @@ public:
         Vector3d basePosition = Vector3d::Zero(),
         Vector3d baseScale = Vector3d::Ones(),
         Vector3d baseRotation = Vector3d::Zero(),
-        float transparency = 1.f
+        float transparency = 1.f,
+        bool isObjectShownInGui = true,
+        bool isObjectRendered = true
     );
 
     std::shared_ptr<renderer::Curve> createCurve(
         core::Polyline2_5D& polyline, 
         std::string name = "curve",
         Vector3f color = Vector3f::UnitY(),
-        float transparency = 1.f
+        float transparency = 1.f,
+        bool isCurveShownInGui = true,
+        bool isCurveRendered = true
     );
 
     std::shared_ptr<renderer::Curve> createCurve(
@@ -89,7 +100,9 @@ public:
         core::Plane& plane,
         std::string name = "curve",
         Vector3f color = Vector3f::UnitY(),
-        float transparency = 1.f
+        float transparency = 1.f,
+        bool isCurveShownInGui = true,
+        bool isCurveRendered = true
     );
 
     void removeObject(std::shared_ptr<renderer::Object>& object);

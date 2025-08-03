@@ -5,7 +5,6 @@
 
 #include "toolPath2_5D.hpp"
 
-// TODO properly rework this with the new renderer
 namespace toolPath2_5D {
 class FacePassGUI : public ToolPathGUIBase {
 public:

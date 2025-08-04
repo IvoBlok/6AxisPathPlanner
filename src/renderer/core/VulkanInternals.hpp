@@ -25,10 +25,12 @@ struct RenderEngine::VulkanInternals {
 
 	VkRenderPass renderPass;
 
-	std::vector<VkDescriptorSet> descriptorSets;
-
-	VkPipelineLayout triangleBasedPipelineLayout;
-	VkPipeline triangleBasedPipeline;
+	VkPipelineLayout objectOpaquePipelineLayout;
+	VkPipelineLayout objectTransparentPipelineLayout;
+	VkPipelineLayout objectCompositePipelineLayout;
+	VkPipeline objectOpaquePipeline;
+	VkPipeline objectTransparentPipeline;
+	VkPipeline objectCompositePipeline;
 
 	VkPipelineLayout lineBasedPipelineLayout;
 	VkPipeline lineBasedPipeline;
@@ -38,6 +40,7 @@ struct RenderEngine::VulkanInternals {
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
+	VkSampler OITSampler;
 	// buffer for usage in subpasses for order-independent transparency
 	VkImage accumulationBuffer;
 	VkDeviceMemory accumulationBufferMemory;
@@ -52,6 +55,9 @@ struct RenderEngine::VulkanInternals {
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void*> uniformBuffersMapped;
+
+	std::vector<VkDescriptorSet> UBODescriptorSets;
+	VkDescriptorSet compositeDescriptorSet;
 
 	// holds the command buffer for each 'frame in flight'
 	std::vector<VkCommandBuffer> commandBuffers;
@@ -101,8 +107,12 @@ struct RenderEngine::VulkanInternals {
     void cleanupSwapChain();
     void createImageViews();
     void createRenderPass();
-    void createDescriptorSetLayout();
-    void createTriangleBasedPipeline();
+    void createDescriptorSetLayouts();
+
+	void createObjectPipelines();
+	void createObjectOpaquePipeline();
+	void createObjectTransparentPipeline();
+	void createObjectCompositePipeline();
     void createLineBasedPipeline();
 
 	void createFrameBuffers();
@@ -111,11 +121,13 @@ struct RenderEngine::VulkanInternals {
 	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	VkFormat findDepthFormat();
 	void createDepthResources();
+	void createOITImageSampler();
 	void createExtraRenderBuffers();
 	void createUniformBuffers();
 	void updateUniformBuffer(uint32_t currentImage);
 	void createDescriptorPool();
 	void createDescriptorSets();
+	void updateCompositeDescriptorSet();
 	void createCommandBuffers();
 	void createSyncObjects();
 	void recordCommandBuffer(std::list<std::shared_ptr<renderer::Curve>>& curves, std::list<std::shared_ptr<renderer::Object>>& objects, std::function<void()> drawGUIFunction, VkCommandBuffer commandBuffer, uint32_t imageIndex);

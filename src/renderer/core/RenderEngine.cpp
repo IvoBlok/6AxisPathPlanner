@@ -76,11 +76,12 @@ void RenderEngine::VulkanInternals::initVulkan() {
     createSwapChain();
     createImageViews();
     createRenderPass();
-    createDescriptorSetLayout();
-    createTriangleBasedPipeline();
+    createDescriptorSetLayouts();
+    createObjectPipelines();
     createLineBasedPipeline();
     createCommandPool();
     createDepthResources();
+    createOITImageSampler();
     createExtraRenderBuffers();
     createFrameBuffers();
     createUniformBuffers();
@@ -389,8 +390,10 @@ void RenderEngine::VulkanInternals::recreateSwapChain() {
     createSwapChain();
     createImageViews();
     createDepthResources();
-    createExtraRenderBuffers();
     createFrameBuffers();
+
+    createExtraRenderBuffers();
+    updateCompositeDescriptorSet();
 }
 
 void RenderEngine::VulkanInternals::createImageViews() {
@@ -488,6 +491,7 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     dependency0.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependency0.srcAccessMask = 0;
     dependency0.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    //dependency0.dependencyFlags = 0;
 
     // Transition from subpass 0 (opaque) to subpass 1 (transparent)
     VkSubpassDependency dependency1 {};
@@ -497,6 +501,7 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     dependency1.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
     dependency1.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     dependency1.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+    //dependency0.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     // Transition from subpass 1 (transparent) to subpass 2 (composite)
     VkSubpassDependency dependency2 {};
@@ -506,6 +511,7 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     dependency2.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     dependency2.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     dependency2.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    //dependency0.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     std::array<VkSubpassDependency, 3> dependencies = { dependency0, dependency1, dependency2 };
 
@@ -523,7 +529,7 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     }
 }
 
-void RenderEngine::VulkanInternals::createDescriptorSetLayout() {
+void RenderEngine::VulkanInternals::createDescriptorSetLayouts() {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
     uboLayoutBinding.binding = 0;
     uboLayoutBinding.descriptorCount = 1;
@@ -536,6 +542,19 @@ void RenderEngine::VulkanInternals::createDescriptorSetLayout() {
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    
+    VkDescriptorSetLayoutBinding accumulationLayoutBinding{};
+    accumulationLayoutBinding.binding = 0;
+    accumulationLayoutBinding.descriptorCount = 1;
+    accumulationLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    accumulationLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorSetLayoutBinding revealageLayoutBinding{};
+    revealageLayoutBinding.binding = 1;
+    revealageLayoutBinding.descriptorCount = 1;
+    revealageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    revealageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -551,12 +570,27 @@ void RenderEngine::VulkanInternals::createDescriptorSetLayout() {
     if (vkCreateDescriptorSetLayout(vulkanContext.device, &layoutInfo, nullptr, &vulkanContext.textureDescriptorSetLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture descriptor set layout!");
     }
+
+    std::array<VkDescriptorSetLayoutBinding, 2> OITBindings = { accumulationLayoutBinding, revealageLayoutBinding };
+
+    layoutInfo.bindingCount = 2;
+    layoutInfo.pBindings = OITBindings.data();
+
+    if (vkCreateDescriptorSetLayout(vulkanContext.device, &layoutInfo, nullptr, &vulkanContext.compositeDescriptorSetLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create composite descriptor set layout!");
+    }
 }
 
-void RenderEngine::VulkanInternals::createTriangleBasedPipeline() {
+void RenderEngine::VulkanInternals::createObjectPipelines() {
+    createObjectOpaquePipeline();
+    createObjectTransparentPipeline();
+    createObjectCompositePipeline();
+}
+
+void RenderEngine::VulkanInternals::createObjectOpaquePipeline() {
     // read the shaders into their respective buffers
-    auto vertShaderCode = readShaderFile("opaqueShaderVert.spv");
-    auto fragShaderCode = readShaderFile("opaqueShaderFrag.spv");
+    auto vertShaderCode = readShaderFile("opaqueObjectShaderVert.spv");
+    auto fragShaderCode = readShaderFile("opaqueObjectShaderFrag.spv");
 
     // wrap them in the appropriate Vulkan struct
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -651,7 +685,7 @@ void RenderEngine::VulkanInternals::createTriangleBasedPipeline() {
     // Declare color blending settings
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_TRUE;
+    colorBlendAttachment.blendEnable = VK_FALSE;
     colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
     colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
@@ -681,7 +715,328 @@ void RenderEngine::VulkanInternals::createTriangleBasedPipeline() {
     pipelineLayoutInfo.pushConstantRangeCount = 1;
     pipelineLayoutInfo.pPushConstantRanges = &psRange;
 
-    if (vkCreatePipelineLayout(vulkanContext.device, &pipelineLayoutInfo, nullptr, &triangleBasedPipelineLayout) != VK_SUCCESS) {
+    if (vkCreatePipelineLayout(vulkanContext.device, &pipelineLayoutInfo, nullptr, &objectOpaquePipelineLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create object opaque pipeline layout!");
+    }
+
+    // Finally declare the actual create info struct
+    VkGraphicsPipelineCreateInfo pipelineInfo{};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = shaderStages;
+
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState = &multisampling;
+    pipelineInfo.pDepthStencilState = &depthStencil;
+    pipelineInfo.pColorBlendState = &colorBlending;
+    pipelineInfo.pDynamicState = &dynamicState;
+    pipelineInfo.layout = objectOpaquePipelineLayout;
+    pipelineInfo.renderPass = renderPass;
+    pipelineInfo.subpass = 0;
+
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+    pipelineInfo.basePipelineIndex = -1; // Optional
+
+    // Actually create the VkPipeline
+    if (vkCreateGraphicsPipelines(vulkanContext.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &objectOpaquePipeline) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create object opaque graphics pipeline!");
+    }
+
+    // clean up the local Vulkan variables
+    vkDestroyShaderModule(vulkanContext.device, vertShaderModule, nullptr);
+    vkDestroyShaderModule(vulkanContext.device, fragShaderModule, nullptr);
+}
+
+void RenderEngine::VulkanInternals::createObjectTransparentPipeline() {
+    // read the shaders into their respective buffers
+    auto vertShaderCode = readShaderFile("transparentObjectShaderVert.spv");
+    auto fragShaderCode = readShaderFile("transparentObjectShaderFrag.spv");
+
+    // wrap them in the appropriate Vulkan struct
+    VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+    VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+    // assign the vertex shader to its spot in the pipeline
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.pName = "main";
+
+    // put the two info structs in a basic array
+    VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+    // Enable the dynamic bit of the pipeline state
+    std::vector<VkDynamicState> dynamicStates = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+    };
+
+    VkPipelineDynamicStateCreateInfo dynamicState{};
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+    dynamicState.pDynamicStates = dynamicStates.data();
+
+    // Declare the format of the vertex data sent to the vertex shader
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+    auto bindingDescription = RendererVertex::getBindingDescription();
+    auto attributeDescriptions = RendererVertex::getAttributeDescriptions();
+
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+    // Declare the way and what type of primitives are made from the vertex data
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+    // Declare the viewport settings
+    VkPipelineViewportStateCreateInfo viewportState{};
+    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.viewportCount = 1;
+    viewportState.scissorCount = 1;
+
+    // Declare rasterizer settings
+    VkPipelineRasterizationStateCreateInfo rasterizer{};
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.lineWidth = 1.0f;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
+    rasterizer.depthBiasEnable = VK_FALSE;
+    rasterizer.depthBiasConstantFactor = 0.0f; // Optional
+    rasterizer.depthBiasClamp = 0.0f; // Optional
+    rasterizer.depthBiasSlopeFactor = 0.0f; // Optional
+
+    // Declare multisampling settings
+    VkPipelineMultisampleStateCreateInfo multisampling{};
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling.minSampleShading = 1.0f; // Optional
+    multisampling.pSampleMask = nullptr; // Optional
+    multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
+    multisampling.alphaToOneEnable = VK_FALSE; // Optional
+
+    VkPipelineDepthStencilStateCreateInfo depthStencil{};
+    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.depthTestEnable = VK_TRUE;
+    depthStencil.depthWriteEnable = VK_FALSE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.stencilTestEnable = VK_FALSE;
+
+    // Declare color blending settings
+    // since this pipeline will be writing to 2 buffers, we need 2 blendAttachments
+    VkPipelineColorBlendAttachmentState colorBlendAttachmentAccumulation{};
+    colorBlendAttachmentAccumulation.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachmentAccumulation.blendEnable = VK_TRUE;
+    colorBlendAttachmentAccumulation.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachmentAccumulation.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachmentAccumulation.colorBlendOp = VK_BLEND_OP_ADD;
+    colorBlendAttachmentAccumulation.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachmentAccumulation.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachmentAccumulation.alphaBlendOp = VK_BLEND_OP_ADD;
+
+    VkPipelineColorBlendAttachmentState colorBlendAttachmentRevealage{};
+    colorBlendAttachmentRevealage.colorWriteMask = VK_COLOR_COMPONENT_R_BIT;
+    colorBlendAttachmentRevealage.blendEnable = VK_TRUE;
+    colorBlendAttachmentRevealage.srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachmentRevealage.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+    colorBlendAttachmentRevealage.colorBlendOp = VK_BLEND_OP_ADD;
+
+    std::array<VkPipelineColorBlendAttachmentState, 2> colorBlendAttachments = { colorBlendAttachmentAccumulation, colorBlendAttachmentRevealage };
+
+    VkPipelineColorBlendStateCreateInfo colorBlending{};
+    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
+    colorBlending.attachmentCount = 2;
+    colorBlending.pAttachments = colorBlendAttachments.data();
+
+    VkDescriptorSetLayout setLayouts[] = { vulkanContext.uniformDescriptorSetLayout, vulkanContext.textureDescriptorSetLayout };
+
+    VkPushConstantRange psRange;
+    psRange.offset = 0;
+    psRange.size = sizeof(ObjectShaderPushConstant);
+    psRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    // Declare the pipeline layout (mainly what uniforms are sent to the vertex shader)
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 2;
+    pipelineLayoutInfo.pSetLayouts = setLayouts;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &psRange;
+
+    if (vkCreatePipelineLayout(vulkanContext.device, &pipelineLayoutInfo, nullptr, &objectTransparentPipelineLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create object transparent pipeline layout!");
+    }
+
+    // Finally declare the actual create info struct
+    VkGraphicsPipelineCreateInfo pipelineInfo{};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = shaderStages;
+
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState = &multisampling;
+    pipelineInfo.pDepthStencilState = &depthStencil;
+    pipelineInfo.pColorBlendState = &colorBlending;
+    pipelineInfo.pDynamicState = &dynamicState;
+    pipelineInfo.layout = objectTransparentPipelineLayout;
+    pipelineInfo.renderPass = renderPass;
+    pipelineInfo.subpass = 1;
+
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+    pipelineInfo.basePipelineIndex = -1; // Optional
+
+    // Actually create the VkPipeline
+    if (vkCreateGraphicsPipelines(vulkanContext.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &objectTransparentPipeline) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create object transparent graphics pipeline!");
+    }
+
+    // clean up the local Vulkan variables
+    vkDestroyShaderModule(vulkanContext.device, vertShaderModule, nullptr);
+    vkDestroyShaderModule(vulkanContext.device, fragShaderModule, nullptr);
+}
+
+void RenderEngine::VulkanInternals::createObjectCompositePipeline() {
+    // read the shaders into their respective buffers
+    auto vertShaderCode = readShaderFile("compositeObjectShaderVert.spv");
+    auto fragShaderCode = readShaderFile("compositeObjectShaderFrag.spv");
+
+    // wrap them in the appropriate Vulkan struct
+    VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+    VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+    // assign the vertex shader to its spot in the pipeline
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.pName = "main";
+
+    // put the two info structs in a basic array
+    VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+    // Enable the dynamic bit of the pipeline state
+    std::vector<VkDynamicState> dynamicStates = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+    };
+
+    VkPipelineDynamicStateCreateInfo dynamicState{};
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+    dynamicState.pDynamicStates = dynamicStates.data();
+
+    // Since the composite shader only combines the results from earlier subpasses, no vertex data is needed
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfo.vertexBindingDescriptionCount = 0;
+    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+
+    // Declare the way and what type of primitives are made from the vertex data
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+    // Declare the viewport settings
+    VkPipelineViewportStateCreateInfo viewportState{};
+    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.viewportCount = 1;
+    viewportState.scissorCount = 1;
+
+    // Declare rasterizer settings
+    VkPipelineRasterizationStateCreateInfo rasterizer{};
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.lineWidth = 1.0f;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
+    rasterizer.depthBiasEnable = VK_FALSE;
+    rasterizer.depthBiasConstantFactor = 0.0f; // Optional
+    rasterizer.depthBiasClamp = 0.0f; // Optional
+    rasterizer.depthBiasSlopeFactor = 0.0f; // Optional
+
+    // Declare multisampling settings
+    VkPipelineMultisampleStateCreateInfo multisampling{};
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling.minSampleShading = 1.0f; // Optional
+    multisampling.pSampleMask = nullptr; // Optional
+    multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
+    multisampling.alphaToOneEnable = VK_FALSE; // Optional
+
+    VkPipelineDepthStencilStateCreateInfo depthStencil{};
+    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.depthTestEnable = VK_FALSE;
+    depthStencil.depthWriteEnable = VK_FALSE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.stencilTestEnable = VK_FALSE;
+
+    // Declare color blending settings
+    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+    VkPipelineColorBlendStateCreateInfo colorBlending{};
+    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
+    colorBlending.attachmentCount = 1;
+    colorBlending.pAttachments = &colorBlendAttachment;
+
+    // Declare the pipeline layout (mainly what uniforms are sent to the vertex shader)
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &vulkanContext.compositeDescriptorSetLayout;
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+
+    if (vkCreatePipelineLayout(vulkanContext.device, &pipelineLayoutInfo, nullptr, &objectCompositePipelineLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create pipeline layout!");
     }
 
@@ -699,15 +1054,15 @@ void RenderEngine::VulkanInternals::createTriangleBasedPipeline() {
     pipelineInfo.pDepthStencilState = &depthStencil;
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = &dynamicState;
-    pipelineInfo.layout = triangleBasedPipelineLayout;
+    pipelineInfo.layout = objectCompositePipelineLayout;
     pipelineInfo.renderPass = renderPass;
-    pipelineInfo.subpass = 0;
+    pipelineInfo.subpass = 2;
 
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
     pipelineInfo.basePipelineIndex = -1; // Optional
 
     // Actually create the VkPipeline
-    if (vkCreateGraphicsPipelines(vulkanContext.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &triangleBasedPipeline) != VK_SUCCESS) {
+    if (vkCreateGraphicsPipelines(vulkanContext.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &objectCompositePipeline) != VK_SUCCESS) {
         throw std::runtime_error("failed to create graphics pipeline!");
     }
 
@@ -886,9 +1241,11 @@ void RenderEngine::VulkanInternals::createFrameBuffers() {
     swapChainFramebuffers.resize(swapChainImageViews.size());
 
     for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-        std::array<VkImageView, 2> attachments = {
+        std::array<VkImageView, 4> attachments = {
                 swapChainImageViews[i],
-                depthImageView
+                depthImageView,
+                accumulationBufferView,
+                revealageBufferView
         };
 
         VkFramebufferCreateInfo framebufferInfo{};
@@ -952,6 +1309,20 @@ void RenderEngine::VulkanInternals::createDepthResources() {
     transitionImageLayout(vulkanContext, depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
+void RenderEngine::VulkanInternals::createOITImageSampler() {
+    VkSamplerCreateInfo samplerInfo = {};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+    if (vkCreateSampler(vulkanContext.device, &samplerInfo, nullptr, &OITSampler) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create OIT sampler!");
+    }
+}
+
 void RenderEngine::VulkanInternals::createExtraRenderBuffers() {
     createImage(vulkanContext, swapChainExtent.width, swapChainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, accumulationBuffer, accumulationBufferMemory);
     accumulationBufferView = createImageView(vulkanContext, accumulationBuffer, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -1010,15 +1381,15 @@ void RenderEngine::VulkanInternals::createDescriptorPool() {
 
 void RenderEngine::VulkanInternals::createDescriptorSets() {
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, vulkanContext.uniformDescriptorSetLayout);
-    VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = vulkanContext.descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-    allocInfo.pSetLayouts = layouts.data();
+    VkDescriptorSetAllocateInfo UBOAllocInfo{};
+    UBOAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    UBOAllocInfo.descriptorPool = vulkanContext.descriptorPool;
+    UBOAllocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    UBOAllocInfo.pSetLayouts = layouts.data();
 
-    descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    if (vkAllocateDescriptorSets(vulkanContext.device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate descriptor sets!");
+    UBODescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    if (vkAllocateDescriptorSets(vulkanContext.device, &UBOAllocInfo, UBODescriptorSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate UBO descriptor sets!");
     }
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -1029,7 +1400,7 @@ void RenderEngine::VulkanInternals::createDescriptorSets() {
 
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = descriptorSets[i];
+        descriptorWrite.dstSet = UBODescriptorSets[i];
         descriptorWrite.dstBinding = 0;
         descriptorWrite.dstArrayElement = 0;
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1038,6 +1409,50 @@ void RenderEngine::VulkanInternals::createDescriptorSets() {
 
         vkUpdateDescriptorSets(vulkanContext.device, 1, &descriptorWrite, 0, nullptr);
     }
+
+    VkDescriptorSetAllocateInfo compositeAllocInfo{};
+    compositeAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    compositeAllocInfo.descriptorPool = vulkanContext.descriptorPool;
+    compositeAllocInfo.descriptorSetCount = 1;
+    compositeAllocInfo.pSetLayouts = &vulkanContext.compositeDescriptorSetLayout;
+
+    if (vkAllocateDescriptorSets(vulkanContext.device, &compositeAllocInfo, &compositeDescriptorSet) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate composite descriptor sets!");
+    }
+
+    updateCompositeDescriptorSet();
+}
+
+void RenderEngine::VulkanInternals::updateCompositeDescriptorSet() {
+    VkDescriptorImageInfo accumulationImageInfo{};
+    accumulationImageInfo.sampler = OITSampler;
+    accumulationImageInfo.imageView = accumulationBufferView;
+    accumulationImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkDescriptorImageInfo revealageImageInfo{};
+    revealageImageInfo.sampler = OITSampler;
+    revealageImageInfo.imageView = revealageBufferView;
+    revealageImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkWriteDescriptorSet accumulationDescriptorWrite{};
+    accumulationDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    accumulationDescriptorWrite.dstSet = compositeDescriptorSet;
+    accumulationDescriptorWrite.dstBinding = 0;
+    accumulationDescriptorWrite.descriptorCount = 1;
+    accumulationDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    accumulationDescriptorWrite.pImageInfo = &accumulationImageInfo;
+
+    VkWriteDescriptorSet revealageDescriptorWrite{};
+    revealageDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    revealageDescriptorWrite.dstSet = compositeDescriptorSet;
+    revealageDescriptorWrite.dstBinding = 1;
+    revealageDescriptorWrite.descriptorCount = 1;
+    revealageDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    revealageDescriptorWrite.pImageInfo = &revealageImageInfo;
+
+    std::array<VkWriteDescriptorSet, 2> descriptorWrites = { accumulationDescriptorWrite, revealageDescriptorWrite };
+
+    vkUpdateDescriptorSets(vulkanContext.device, 2, descriptorWrites.data(), 0, nullptr);
 }
 
 void RenderEngine::VulkanInternals::createCommandBuffers() {
@@ -1086,9 +1501,11 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
         throw std::runtime_error("failed to begin recording command buffer!");
     }
 
-    std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color = { {CLEAR_COLOR.x, CLEAR_COLOR.y, CLEAR_COLOR.z, 1.f} };
-    clearValues[1].depthStencil = { 1.0f, 0 };
+    std::array<VkClearValue, 4> clearValues{};
+    clearValues[0].color = { {CLEAR_COLOR.x, CLEAR_COLOR.y, CLEAR_COLOR.z, 1.f} };  // swapchain
+    clearValues[1].depthStencil = { 1.0f, 0 };                                      // depth
+    clearValues[2].color = { {0.f, 0.f, 0.f, 0.f} };                                // accumulation
+    clearValues[2].color = { {1.f, 0.f, 0.f, 0.f} };                                // revealage
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1123,7 +1540,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
     // bind the UBO
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, lineBasedPipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, lineBasedPipelineLayout, 0, 1, &UBODescriptorSets[currentFrame], 0, nullptr);
 
     for (auto& curve : curves) {
         if (curve->isCurveRendered)
@@ -1131,21 +1548,65 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     }
     */
     // ========================================
-    // Render triangles 
+    // Render objects
     // ========================================
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, triangleBasedPipeline);
+    // Subpass 0: opaque objects
+    // ========================================
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectOpaquePipeline);
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectOpaquePipelineLayout, 0, 1, &UBODescriptorSets[currentFrame], 0, nullptr);
 
-    // bind the UBO
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, triangleBasedPipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
-
-    // render all objects one after the other...
     for (auto& object : objects)
     {
-        if (object->isObjectRendered)
-            object->render(commandBuffer, triangleBasedPipelineLayout);
+        if (object->isObjectRendered && object->getTransparency() >= 0.99f)
+            object->render(commandBuffer, objectOpaquePipelineLayout);
     }
+
+    // Subpass 1: transparent objects
+    // ========================================
+    vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectTransparentPipeline);
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectTransparentPipelineLayout, 0, 1, &UBODescriptorSets[currentFrame], 0, nullptr);
+
+    for (auto& object : objects)
+    {
+        if (object->isObjectRendered && object->getTransparency() < 0.99f)
+            object->render(commandBuffer, objectOpaquePipelineLayout);
+    }
+
+    VkImageMemoryBarrier accumulationBarrier{};
+    accumulationBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    accumulationBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    accumulationBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    accumulationBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    accumulationBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    accumulationBarrier.image = accumulationBuffer;
+    accumulationBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+    VkImageMemoryBarrier revealageBarrier{};
+    revealageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    revealageBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    revealageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    revealageBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    revealageBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    revealageBarrier.image = revealageBuffer;
+    revealageBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+    std::array<VkImageMemoryBarrier, 2> OITBarriers = { accumulationBarrier, revealageBarrier };
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 2, OITBarriers.data());
+
+    // Subpass 2: composite
+    // ========================================
+    vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectCompositePipeline);
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectCompositePipelineLayout, 0, 1, &compositeDescriptorSet, 0, nullptr);
+
+    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
     // ========================================
     // Render UI
@@ -1388,9 +1849,14 @@ void RenderEngine::VulkanInternals::cleanup(std::list<std::shared_ptr<renderer::
 
     vkDestroyDescriptorSetLayout(vulkanContext.device, vulkanContext.uniformDescriptorSetLayout, nullptr);
     vkDestroyDescriptorSetLayout(vulkanContext.device, vulkanContext.textureDescriptorSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(vulkanContext.device, vulkanContext.compositeDescriptorSetLayout, nullptr);
 
-    vkDestroyPipeline(vulkanContext.device, triangleBasedPipeline, nullptr);
-    vkDestroyPipelineLayout(vulkanContext.device, triangleBasedPipelineLayout, nullptr);
+    vkDestroyPipeline(vulkanContext.device, objectOpaquePipeline, nullptr);
+    vkDestroyPipeline(vulkanContext.device, objectTransparentPipeline, nullptr);
+    vkDestroyPipeline(vulkanContext.device, objectCompositePipeline, nullptr);
+    vkDestroyPipelineLayout(vulkanContext.device, objectOpaquePipelineLayout, nullptr);
+    vkDestroyPipelineLayout(vulkanContext.device, objectTransparentPipelineLayout, nullptr);
+    vkDestroyPipelineLayout(vulkanContext.device, objectCompositePipelineLayout, nullptr);
 
     vkDestroyPipeline(vulkanContext.device, lineBasedPipeline, nullptr);
     vkDestroyPipelineLayout(vulkanContext.device, lineBasedPipelineLayout, nullptr);

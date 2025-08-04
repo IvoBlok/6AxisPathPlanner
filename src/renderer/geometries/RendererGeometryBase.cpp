@@ -190,7 +190,7 @@ namespace renderer {
         samplerInfo.maxLod = 0.0f;
 
         if (vkCreateSampler(context.device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create texture sampler!");
+            throw std::runtime_error("failed to create object texture sampler!");
         }
     }
 

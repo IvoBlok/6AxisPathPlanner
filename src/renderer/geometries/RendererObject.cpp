@@ -52,6 +52,10 @@ namespace renderer {
         return name;
     }
 
+    float Object::getTransparency() const {
+        return model.transparency;
+    }
+
     int Object::getNumberOfVertices() const {
         if(!alive) return 0;
         return model.vertices.size();

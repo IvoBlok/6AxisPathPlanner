@@ -49,6 +49,7 @@ namespace renderer {
         VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout uniformDescriptorSetLayout = VK_NULL_HANDLE;
         VkDescriptorSetLayout textureDescriptorSetLayout = VK_NULL_HANDLE;
+        VkDescriptorSetLayout compositeDescriptorSetLayout = VK_NULL_HANDLE;
     };
 
     // define crucial structs that hold data that is exchanged with the shaders

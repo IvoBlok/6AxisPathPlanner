@@ -39,11 +39,13 @@ std::vector<char> readShaderFile(const std::string& relativePath) {
     throw std::runtime_error("Failed to find shader: " + relativePath + " : " + std::filesystem::current_path().generic_string());
 }
 
+
+
 // RenderEngine::VulkanInternals implementation
 // ================================================================
 
 RenderEngine::VulkanInternals::VulkanInternals() {
-    cameraPosition = glm::vec3{ 0.f };
+    cameraPosition = glm::vec3{ 0.f, -2.f, 0.f };
 	cameraFront = glm::vec3{ 0.f, 1.f, 0.f };
 	cameraRight = glm::vec3{ 1.f, 0.f, 0.f };
     
@@ -79,6 +81,7 @@ void RenderEngine::VulkanInternals::initVulkan() {
     createLineBasedPipeline();
     createCommandPool();
     createDepthResources();
+    createExtraRenderBuffers();
     createFrameBuffers();
     createUniformBuffers();
     createDescriptorPool();
@@ -350,6 +353,14 @@ void RenderEngine::VulkanInternals::createSwapChain() {
 }
 
 void RenderEngine::VulkanInternals::cleanupSwapChain() {
+    vkDestroyImageView(vulkanContext.device, accumulationBufferView, nullptr);
+    vkDestroyImage(vulkanContext.device, accumulationBuffer, nullptr);
+    vkFreeMemory(vulkanContext.device, accumulationBufferMemory, nullptr);
+
+    vkDestroyImageView(vulkanContext.device, revealageBufferView, nullptr);
+    vkDestroyImage(vulkanContext.device, revealageBuffer, nullptr);
+    vkFreeMemory(vulkanContext.device, revealageBufferMemory, nullptr);
+
     vkDestroyImageView(vulkanContext.device, depthImageView, nullptr);
     vkDestroyImage(vulkanContext.device, depthImage, nullptr);
     vkFreeMemory(vulkanContext.device, depthImageMemory, nullptr);
@@ -378,6 +389,7 @@ void RenderEngine::VulkanInternals::recreateSwapChain() {
     createSwapChain();
     createImageViews();
     createDepthResources();
+    createExtraRenderBuffers();
     createFrameBuffers();
 }
 
@@ -409,6 +421,28 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+    VkAttachmentDescription accumulationAttachment{};
+    accumulationAttachment.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    accumulationAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    accumulationAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    accumulationAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    accumulationAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    accumulationAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    accumulationAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    accumulationAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkAttachmentDescription revealageAttachment{};
+    revealageAttachment.format = VK_FORMAT_R8_UNORM;
+    revealageAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    revealageAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    revealageAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    revealageAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    revealageAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    revealageAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    revealageAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    std::array<VkAttachmentDescription, 4> attachments = { colorAttachment, depthAttachment, accumulationAttachment, revealageAttachment };
+
     VkAttachmentReference colorAttachmentRef{};
     colorAttachmentRef.attachment = 0;
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -417,29 +451,72 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     depthAttachmentRef.attachment = 1;
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkSubpassDependency dependency{};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    dependency.srcAccessMask = 0;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    VkAttachmentReference accumulationAttachmentRef{};
+    accumulationAttachmentRef.attachment = 2;
+    accumulationAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    VkSubpassDescription subpass{};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments = &colorAttachmentRef;
-    subpass.pDepthStencilAttachment = &depthAttachmentRef;
+    VkAttachmentReference revealageAttachmentRef{};
+    revealageAttachmentRef.attachment = 3;
+    revealageAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
+    VkSubpassDescription subpassOpaque {};
+    subpassOpaque.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpassOpaque.colorAttachmentCount = 1;
+    subpassOpaque.pColorAttachments = &colorAttachmentRef;
+    subpassOpaque.pDepthStencilAttachment = &depthAttachmentRef;
+
+    std::array<VkAttachmentReference, 2> transparentAttachementRefs = { accumulationAttachmentRef, revealageAttachmentRef };
+    VkSubpassDescription subpassTransparent {};
+    subpassTransparent.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpassTransparent.colorAttachmentCount = 2;
+    subpassTransparent.pColorAttachments = transparentAttachementRefs.data();
+    subpassTransparent.pDepthStencilAttachment = &depthAttachmentRef;
+
+    VkSubpassDescription subpassComposite {};
+    subpassComposite.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpassComposite.colorAttachmentCount = 1;
+    subpassComposite.pColorAttachments = &colorAttachmentRef;
+    subpassComposite.pDepthStencilAttachment = nullptr;
+
+    std::array<VkSubpassDescription, 3> subpasses = { subpassOpaque, subpassTransparent, subpassComposite };
+
+    // Transition from external to subpass 0 (opaque)
+    VkSubpassDependency dependency0 {};
+    dependency0.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency0.dstSubpass = 0;
+    dependency0.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency0.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency0.srcAccessMask = 0;
+    dependency0.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+    // Transition from subpass 0 (opaque) to subpass 1 (transparent)
+    VkSubpassDependency dependency1 {};
+    dependency1.srcSubpass = 0;
+    dependency1.dstSubpass = 1;
+    dependency1.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    dependency1.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    dependency1.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    dependency1.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+
+    // Transition from subpass 1 (transparent) to subpass 2 (composite)
+    VkSubpassDependency dependency2 {};
+    dependency2.srcSubpass = 1;
+    dependency2.dstSubpass = 2;
+    dependency2.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency2.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    dependency2.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency2.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    std::array<VkSubpassDependency, 3> dependencies = { dependency0, dependency1, dependency2 };
+
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
     renderPassInfo.pAttachments = attachments.data();
-    renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpass;
-    renderPassInfo.dependencyCount = 1;
-    renderPassInfo.pDependencies = &dependency;
+    renderPassInfo.subpassCount = static_cast<uint32_t>(subpasses.size());
+    renderPassInfo.pSubpasses = subpasses.data();
+    renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+    renderPassInfo.pDependencies = dependencies.data();
 
     if (vkCreateRenderPass(vulkanContext.device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
         throw std::runtime_error("failed to create render pass!");
@@ -478,8 +555,8 @@ void RenderEngine::VulkanInternals::createDescriptorSetLayout() {
 
 void RenderEngine::VulkanInternals::createTriangleBasedPipeline() {
     // read the shaders into their respective buffers
-    auto vertShaderCode = readShaderFile("vert.spv");
-    auto fragShaderCode = readShaderFile("frag.spv");
+    auto vertShaderCode = readShaderFile("opaqueShaderVert.spv");
+    auto fragShaderCode = readShaderFile("opaqueShaderFrag.spv");
 
     // wrap them in the appropriate Vulkan struct
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -641,8 +718,8 @@ void RenderEngine::VulkanInternals::createTriangleBasedPipeline() {
 
 void RenderEngine::VulkanInternals::createLineBasedPipeline() {
     // read the shaders into their respective buffers
-    auto vertShaderCode = readShaderFile("shaders/lineVert.spv");
-    auto fragShaderCode = readShaderFile("shaders/lineFrag.spv");
+    auto vertShaderCode = readShaderFile("shaders/lineShaderVert.spv");
+    auto fragShaderCode = readShaderFile("shaders/lineShaderFrag.spv");
 
     // wrap them in the appropriate Vulkan struct
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -875,6 +952,14 @@ void RenderEngine::VulkanInternals::createDepthResources() {
     transitionImageLayout(vulkanContext, depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
+void RenderEngine::VulkanInternals::createExtraRenderBuffers() {
+    createImage(vulkanContext, swapChainExtent.width, swapChainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, accumulationBuffer, accumulationBufferMemory);
+    accumulationBufferView = createImageView(vulkanContext, accumulationBuffer, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT);
+
+    createImage(vulkanContext, swapChainExtent.width, swapChainExtent.height, VK_FORMAT_R8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, revealageBuffer, revealageBufferMemory);
+    revealageBufferView = createImageView(vulkanContext, revealageBuffer, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+}
+
 void RenderEngine::VulkanInternals::createUniformBuffers() {
     VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
@@ -1032,6 +1117,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     // ========================================
     // Render lines 
     // ========================================
+    /* TODO for now, during development of the Weight blended, order-independent transparency, I'll keep the lines off, and focus on the objects
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, lineBasedPipeline);
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
@@ -1043,7 +1129,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
         if (curve->isCurveRendered)
             curve->render(commandBuffer, lineBasedPipelineLayout);
     }
-
+    */
     // ========================================
     // Render triangles 
     // ========================================
@@ -1329,6 +1415,7 @@ void RenderEngine::VulkanInternals::cleanup(std::list<std::shared_ptr<renderer::
 
     vulkanContext.device = VK_NULL_HANDLE;
 }
+
 
 
 // RenderEngine implementation

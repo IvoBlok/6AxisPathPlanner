@@ -20,7 +20,7 @@ void main() {
     float diffuse = max(dot(normalize(fragNormal), sunDirection), 0.0);
     vec3 lighting = vec3(0.3) + vec3(0.7) * diffuse; // 30% ambient light
     
-    outColor = vec4(baseColor * lighting, transparency);
+    outColor = vec4(baseColor * lighting, 1.0);
 
     gl_FragDepth = gl_FragCoord.z;
 }

@@ -12,11 +12,6 @@ struct RenderEngine::VulkanInternals {
 
     GLFWwindow* window;
 
-    glm::vec3 cameraPosition;
-    glm::vec3 cameraFront;
-    glm::vec3 cameraRight;
-    std::chrono::microseconds deltaTime;
-
 	VkInstance instance;
 	VkSurfaceKHR surface;
 
@@ -38,24 +33,47 @@ struct RenderEngine::VulkanInternals {
 	VkPipelineLayout lineBasedPipelineLayout;
 	VkPipeline lineBasedPipeline;
 
+	// buffer for usage by a pipeline as its depth buffer, for depth testing etc
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
+	// buffer for usage in subpasses for order-independent transparency
+	VkImage accumulationBuffer;
+	VkDeviceMemory accumulationBufferMemory;
+	VkImageView accumulationBufferView;
+
+	// buffer for usage in subpasses for order-independent transparency
+	VkImage revealageBuffer;
+	VkDeviceMemory revealageBufferMemory;
+	VkImageView revealageBufferView;
+
+	// holds the uniform buffer for each 'frame in flight'
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 	std::vector<void*> uniformBuffersMapped;
 
+	// holds the command buffer for each 'frame in flight'
 	std::vector<VkCommandBuffer> commandBuffers;
 
+	// various variables for syncing when memory is safe to be used
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
 
+	// 'frameBufferResized' describes if the user resized the window, triggering an update of internal buffers
+	bool frameBufferResized;
+
+	// 'currentFrame' stores which of the 'frames in flight' is currently being used
 	uint32_t currentFrame;
+	// 'oldCurrentTime' is used to calculate the delta time
 	std::chrono::time_point<std::chrono::high_resolution_clock> oldCurrentTime;
 
-	bool frameBufferResized;
+    glm::vec3 cameraPosition;
+    glm::vec3 cameraFront;
+    glm::vec3 cameraRight;
+    std::chrono::microseconds deltaTime;
+
 
 	struct QueueFamilyIndices {
 		std::optional<uint32_t> graphicsFamily;
@@ -93,6 +111,7 @@ struct RenderEngine::VulkanInternals {
 	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	VkFormat findDepthFormat();
 	void createDepthResources();
+	void createExtraRenderBuffers();
 	void createUniformBuffers();
 	void updateUniformBuffer(uint32_t currentImage);
 	void createDescriptorPool();

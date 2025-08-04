@@ -1,5 +1,5 @@
-C:/VulkanSDK/1.4.321.1/Bin/glslc.exe shader.vert -o output/vert.spv
-C:/VulkanSDK/1.4.321.1/Bin/glslc.exe shader.frag -o output/frag.spv
-C:/VulkanSDK/1.4.321.1/Bin/glslc.exe lineShader.vert -o output/lineVert.spv
-C:/VulkanSDK/1.4.321.1/Bin/glslc.exe lineShader.frag -o output/lineFrag.spv
+C:/VulkanSDK/1.4.321.1/Bin/glslc.exe objectShaders/opaqueShader.vert -o output/opaqueShaderVert.spv
+C:/VulkanSDK/1.4.321.1/Bin/glslc.exe objectShaders/opaqueShader.frag -o output/opaqueShaderFrag.spv
+C:/VulkanSDK/1.4.321.1/Bin/glslc.exe curveShaders/lineShader.vert -o output/lineShaderVert.spv
+C:/VulkanSDK/1.4.321.1/Bin/glslc.exe curveShaders/lineShader.frag -o output/lineShaderFrag.spv
 pause

@@ -43,13 +43,13 @@ struct RenderEngine::VulkanInternals {
 	VkSampler OITSampler;
 	// buffer for usage in subpasses for order-independent transparency
 	VkImage accumulationBuffer;
-	VkDeviceMemory accumulationBufferMemory;
 	VkImageView accumulationBufferView;
+	VkDeviceMemory accumulationBufferMemory;
 
 	// buffer for usage in subpasses for order-independent transparency
 	VkImage revealageBuffer;
-	VkDeviceMemory revealageBufferMemory;
 	VkImageView revealageBufferView;
+	VkDeviceMemory revealageBufferMemory;
 
 	// holds the uniform buffer for each 'frame in flight'
 	std::vector<VkBuffer> uniformBuffers;

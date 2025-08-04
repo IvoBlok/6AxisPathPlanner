@@ -106,6 +106,7 @@ void RenderEngine::VulkanInternals::initImgui() {
     info.PhysicalDevice = vulkanContext.physicalDevice;
     info.ImageCount = MAX_FRAMES_IN_FLIGHT;
     info.MsaaSamples = (VkSampleCountFlagBits)0x00000001;
+    info.Subpass = 2;
     ImGui_ImplVulkan_Init(&info);
 
     VkCommandBuffer ImCommandBuffer = beginSingleTimeCommands(vulkanContext);
@@ -160,6 +161,7 @@ void RenderEngine::VulkanInternals::createLogicalDevice() {
     VkPhysicalDeviceFeatures deviceFeatures{};
     deviceFeatures.samplerAnisotropy = VK_TRUE;
     deviceFeatures.wideLines = VK_TRUE;
+    deviceFeatures.independentBlend = VK_TRUE;
 
     // Create the logical device
     VkDeviceCreateInfo createInfo{};
@@ -390,10 +392,11 @@ void RenderEngine::VulkanInternals::recreateSwapChain() {
     createSwapChain();
     createImageViews();
     createDepthResources();
-    createFrameBuffers();
 
     createExtraRenderBuffers();
     updateCompositeDescriptorSet();
+
+    createFrameBuffers();
 }
 
 void RenderEngine::VulkanInternals::createImageViews() {
@@ -443,7 +446,7 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     revealageAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     revealageAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     revealageAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
+    
     std::array<VkAttachmentDescription, 4> attachments = { colorAttachment, depthAttachment, accumulationAttachment, revealageAttachment };
 
     VkAttachmentReference colorAttachmentRef{};
@@ -491,7 +494,7 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     dependency0.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependency0.srcAccessMask = 0;
     dependency0.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    //dependency0.dependencyFlags = 0;
+    dependency0.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     // Transition from subpass 0 (opaque) to subpass 1 (transparent)
     VkSubpassDependency dependency1 {};
@@ -501,7 +504,7 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     dependency1.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
     dependency1.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     dependency1.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-    //dependency0.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    dependency1.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     // Transition from subpass 1 (transparent) to subpass 2 (composite)
     VkSubpassDependency dependency2 {};
@@ -511,7 +514,7 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     dependency2.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     dependency2.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     dependency2.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    //dependency0.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    dependency2.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     std::array<VkSubpassDependency, 3> dependencies = { dependency0, dependency1, dependency2 };
 
@@ -1555,6 +1558,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectOpaquePipeline);
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    /*
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectOpaquePipelineLayout, 0, 1, &UBODescriptorSets[currentFrame], 0, nullptr);
 
     for (auto& object : objects)
@@ -1562,13 +1566,15 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
         if (object->isObjectRendered && object->getTransparency() >= 0.99f)
             object->render(commandBuffer, objectOpaquePipelineLayout);
     }
-
+    */
+    
     // Subpass 1: transparent objects
     // ========================================
     vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectTransparentPipeline);
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    /*
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectTransparentPipelineLayout, 0, 1, &UBODescriptorSets[currentFrame], 0, nullptr);
 
     for (auto& object : objects)
@@ -1576,27 +1582,37 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
         if (object->isObjectRendered && object->getTransparency() < 0.99f)
             object->render(commandBuffer, objectOpaquePipelineLayout);
     }
+    */
+    /*
+    VkImageMemoryBarrier barrierAccum{};
+    barrierAccum.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrierAccum.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    barrierAccum.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    barrierAccum.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    barrierAccum.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrierAccum.image = accumulationBuffer;
+    barrierAccum.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
-    VkImageMemoryBarrier accumulationBarrier{};
-    accumulationBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    accumulationBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    accumulationBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    accumulationBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    accumulationBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    accumulationBarrier.image = accumulationBuffer;
-    accumulationBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    VkImageMemoryBarrier barrierReveal{};
+    barrierReveal.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrierReveal.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    barrierReveal.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    barrierReveal.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    barrierReveal.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrierReveal.image = revealageBuffer;
+    barrierReveal.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
-    VkImageMemoryBarrier revealageBarrier{};
-    revealageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    revealageBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    revealageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    revealageBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    revealageBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    revealageBarrier.image = revealageBuffer;
-    revealageBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    std::array<VkImageMemoryBarrier, 2> barriers = { barrierAccum, barrierReveal };
 
-    std::array<VkImageMemoryBarrier, 2> OITBarriers = { accumulationBarrier, revealageBarrier };
-    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 2, OITBarriers.data());
+    vkCmdPipelineBarrier(
+        commandBuffer,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_DEPENDENCY_BY_REGION_BIT,
+        0, nullptr,
+        0, nullptr,
+        2, barriers.data()
+    );*/
 
     // Subpass 2: composite
     // ========================================
@@ -1828,7 +1844,8 @@ void RenderEngine::VulkanInternals::cleanup(std::list<std::shared_ptr<renderer::
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
-    cleanupSwapChain();
+    vkDestroySampler(vulkanContext.device, OITSampler, nullptr);
+    cleanupSwapChain(); // the other buffers from createExtraBuffers() are already cleaned up in the cleanupSwapchain() function, because they need to always have identical size as the frame buffer
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyBuffer(vulkanContext.device, uniformBuffers[i], nullptr);

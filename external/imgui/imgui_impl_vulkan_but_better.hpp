@@ -120,6 +120,7 @@ typedef struct
 	VkPhysicalDevice PhysicalDevice;
 	uint32_t ImageCount;
 	VkSampleCountFlagBits MsaaSamples;
+	uint32_t Subpass;
 } ImGui_ImplVulkan_InitInfo;
 
 typedef struct
@@ -140,6 +141,7 @@ inline struct
 	VkPhysicalDevice PhysicalDevice;
 	uint32_t ImageCount;
 	VkSampleCountFlagBits MsaaSamples;
+	uint32_t Subpass;
 
 	VkPipeline Pipeline;
 	VkPipeline OpaquePipeline;
@@ -898,7 +900,7 @@ inline bool ImGui_CreateGraphicsPipeline()
 	PipelineCreateInfo.pDynamicState = &DynamicStateCreateInfo;
 	PipelineCreateInfo.layout = ImGui_ImplVulkan_Renderer_Info.PipelineLayout;
 	PipelineCreateInfo.renderPass = ImGui_ImplVulkan_Renderer_Info.RenderPass;
-	PipelineCreateInfo.subpass = NULL;
+	PipelineCreateInfo.subpass = ImGui_ImplVulkan_Renderer_Info.Subpass;
 	PipelineCreateInfo.basePipelineHandle = NULL;
 	PipelineCreateInfo.basePipelineIndex = 0;
 
@@ -921,6 +923,7 @@ inline void ImGui_ImplVulkan_Init(ImGui_ImplVulkan_InitInfo* InitInfo)
 	ImGui_ImplVulkan_Renderer_Info.PhysicalDevice = InitInfo->PhysicalDevice;
 	ImGui_ImplVulkan_Renderer_Info.ImageCount = InitInfo->ImageCount;
 	ImGui_ImplVulkan_Renderer_Info.MsaaSamples = InitInfo->MsaaSamples;
+	ImGui_ImplVulkan_Renderer_Info.Subpass = InitInfo->Subpass;
 	ImGui_ImplVulkan_Renderer_Info.LastPipeline = false;
 	ImGui_ImplVulkan_Renderer_Info.LastDescriptorSet = false;
 

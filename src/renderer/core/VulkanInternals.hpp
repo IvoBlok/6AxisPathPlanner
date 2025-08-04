@@ -40,7 +40,6 @@ struct RenderEngine::VulkanInternals {
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
-	VkSampler OITSampler;
 	// buffer for usage in subpasses for order-independent transparency
 	VkImage accumulationBuffer;
 	VkImageView accumulationBufferView;
@@ -121,7 +120,6 @@ struct RenderEngine::VulkanInternals {
 	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	VkFormat findDepthFormat();
 	void createDepthResources();
-	void createOITImageSampler();
 	void createExtraRenderBuffers();
 	void createUniformBuffers();
 	void updateUniformBuffer(uint32_t currentImage);

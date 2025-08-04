@@ -81,7 +81,6 @@ void RenderEngine::VulkanInternals::initVulkan() {
     createLineBasedPipeline();
     createCommandPool();
     createDepthResources();
-    createOITImageSampler();
     createExtraRenderBuffers();
     createFrameBuffers();
     createUniformBuffers();
@@ -457,13 +456,21 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     depthAttachmentRef.attachment = 1;
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentReference accumulationAttachmentRef{};
-    accumulationAttachmentRef.attachment = 2;
-    accumulationAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference accumulationWriteAttachmentRef{};
+    accumulationWriteAttachmentRef.attachment = 2;
+    accumulationWriteAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentReference revealageAttachmentRef{};
-    revealageAttachmentRef.attachment = 3;
-    revealageAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference accumulationReadAttachmentRef{};
+    accumulationReadAttachmentRef.attachment = 2;
+    accumulationReadAttachmentRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkAttachmentReference revealageWriteAttachmentRef{};
+    revealageWriteAttachmentRef.attachment = 3;
+    revealageWriteAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference revealageReadAttachmentRef{};
+    revealageReadAttachmentRef.attachment = 3;
+    revealageReadAttachmentRef.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkSubpassDescription subpassOpaque {};
     subpassOpaque.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -471,17 +478,20 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     subpassOpaque.pColorAttachments = &colorAttachmentRef;
     subpassOpaque.pDepthStencilAttachment = &depthAttachmentRef;
 
-    std::array<VkAttachmentReference, 2> transparentAttachementRefs = { accumulationAttachmentRef, revealageAttachmentRef };
+    std::array<VkAttachmentReference, 2> transparentAttachmentRefs = { accumulationWriteAttachmentRef, revealageWriteAttachmentRef };
     VkSubpassDescription subpassTransparent {};
     subpassTransparent.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpassTransparent.colorAttachmentCount = 2;
-    subpassTransparent.pColorAttachments = transparentAttachementRefs.data();
+    subpassTransparent.pColorAttachments = transparentAttachmentRefs.data();
     subpassTransparent.pDepthStencilAttachment = &depthAttachmentRef;
 
+    std::array<VkAttachmentReference, 2> compositeAttachmentRefs = { accumulationReadAttachmentRef, revealageReadAttachmentRef };
     VkSubpassDescription subpassComposite {};
     subpassComposite.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpassComposite.colorAttachmentCount = 1;
     subpassComposite.pColorAttachments = &colorAttachmentRef;
+    subpassComposite.inputAttachmentCount = 2;
+    subpassComposite.pInputAttachments = compositeAttachmentRefs.data();
     subpassComposite.pDepthStencilAttachment = nullptr;
 
     std::array<VkSubpassDescription, 3> subpasses = { subpassOpaque, subpassTransparent, subpassComposite };
@@ -548,16 +558,17 @@ void RenderEngine::VulkanInternals::createDescriptorSetLayouts() {
     
     VkDescriptorSetLayoutBinding accumulationLayoutBinding{};
     accumulationLayoutBinding.binding = 0;
+    accumulationLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
     accumulationLayoutBinding.descriptorCount = 1;
-    accumulationLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     accumulationLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     VkDescriptorSetLayoutBinding revealageLayoutBinding{};
     revealageLayoutBinding.binding = 1;
+    revealageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
     revealageLayoutBinding.descriptorCount = 1;
-    revealageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     revealageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+    std::array<VkDescriptorSetLayoutBinding, 2> inputAttachmentBindings = { accumulationLayoutBinding, revealageLayoutBinding };
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -574,10 +585,8 @@ void RenderEngine::VulkanInternals::createDescriptorSetLayouts() {
         throw std::runtime_error("failed to create texture descriptor set layout!");
     }
 
-    std::array<VkDescriptorSetLayoutBinding, 2> OITBindings = { accumulationLayoutBinding, revealageLayoutBinding };
-
     layoutInfo.bindingCount = 2;
-    layoutInfo.pBindings = OITBindings.data();
+    layoutInfo.pBindings = inputAttachmentBindings.data();
 
     if (vkCreateDescriptorSetLayout(vulkanContext.device, &layoutInfo, nullptr, &vulkanContext.compositeDescriptorSetLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create composite descriptor set layout!");
@@ -1312,25 +1321,11 @@ void RenderEngine::VulkanInternals::createDepthResources() {
     transitionImageLayout(vulkanContext, depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-void RenderEngine::VulkanInternals::createOITImageSampler() {
-    VkSamplerCreateInfo samplerInfo = {};
-    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.magFilter = VK_FILTER_LINEAR;
-    samplerInfo.minFilter = VK_FILTER_LINEAR;
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-
-    if (vkCreateSampler(vulkanContext.device, &samplerInfo, nullptr, &OITSampler) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create OIT sampler!");
-    }
-}
-
 void RenderEngine::VulkanInternals::createExtraRenderBuffers() {
-    createImage(vulkanContext, swapChainExtent.width, swapChainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, accumulationBuffer, accumulationBufferMemory);
+    createImage(vulkanContext, swapChainExtent.width, swapChainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, accumulationBuffer, accumulationBufferMemory);
     accumulationBufferView = createImageView(vulkanContext, accumulationBuffer, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    createImage(vulkanContext, swapChainExtent.width, swapChainExtent.height, VK_FORMAT_R8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, revealageBuffer, revealageBufferMemory);
+    createImage(vulkanContext, swapChainExtent.width, swapChainExtent.height, VK_FORMAT_R8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, revealageBuffer, revealageBufferMemory);
     revealageBufferView = createImageView(vulkanContext, revealageBuffer, VK_FORMAT_R8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
@@ -1364,18 +1359,20 @@ void RenderEngine::VulkanInternals::updateUniformBuffer(uint32_t currentImage) {
 }
 
 void RenderEngine::VulkanInternals::createDescriptorPool() {
-    std::array<VkDescriptorPoolSize, 2> poolSizes{};
+    std::array<VkDescriptorPoolSize, 3> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[1].descriptorCount = renderer::MAX_OBJECTS;
+    poolSizes[2].type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+    poolSizes[2].descriptorCount = 2;
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) + renderer::MAX_OBJECTS;
+    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) + renderer::MAX_OBJECTS + 2;
 
     if (vkCreateDescriptorPool(vulkanContext.device, &poolInfo, nullptr, &vulkanContext.descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
@@ -1420,7 +1417,7 @@ void RenderEngine::VulkanInternals::createDescriptorSets() {
     compositeAllocInfo.pSetLayouts = &vulkanContext.compositeDescriptorSetLayout;
 
     if (vkAllocateDescriptorSets(vulkanContext.device, &compositeAllocInfo, &compositeDescriptorSet) != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate composite descriptor sets!");
+        throw std::runtime_error("failed to allocate composite descriptor set!");
     }
 
     updateCompositeDescriptorSet();
@@ -1428,12 +1425,12 @@ void RenderEngine::VulkanInternals::createDescriptorSets() {
 
 void RenderEngine::VulkanInternals::updateCompositeDescriptorSet() {
     VkDescriptorImageInfo accumulationImageInfo{};
-    accumulationImageInfo.sampler = OITSampler;
+    accumulationImageInfo.sampler = VK_NULL_HANDLE;
     accumulationImageInfo.imageView = accumulationBufferView;
     accumulationImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkDescriptorImageInfo revealageImageInfo{};
-    revealageImageInfo.sampler = OITSampler;
+    revealageImageInfo.sampler = VK_NULL_HANDLE;
     revealageImageInfo.imageView = revealageBufferView;
     revealageImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -1442,7 +1439,7 @@ void RenderEngine::VulkanInternals::updateCompositeDescriptorSet() {
     accumulationDescriptorWrite.dstSet = compositeDescriptorSet;
     accumulationDescriptorWrite.dstBinding = 0;
     accumulationDescriptorWrite.descriptorCount = 1;
-    accumulationDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    accumulationDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
     accumulationDescriptorWrite.pImageInfo = &accumulationImageInfo;
 
     VkWriteDescriptorSet revealageDescriptorWrite{};
@@ -1450,7 +1447,7 @@ void RenderEngine::VulkanInternals::updateCompositeDescriptorSet() {
     revealageDescriptorWrite.dstSet = compositeDescriptorSet;
     revealageDescriptorWrite.dstBinding = 1;
     revealageDescriptorWrite.descriptorCount = 1;
-    revealageDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    revealageDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
     revealageDescriptorWrite.pImageInfo = &revealageImageInfo;
 
     std::array<VkWriteDescriptorSet, 2> descriptorWrites = { accumulationDescriptorWrite, revealageDescriptorWrite };
@@ -1558,7 +1555,6 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectOpaquePipeline);
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-    /*
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectOpaquePipelineLayout, 0, 1, &UBODescriptorSets[currentFrame], 0, nullptr);
 
     for (auto& object : objects)
@@ -1566,7 +1562,6 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
         if (object->isObjectRendered && object->getTransparency() >= 0.99f)
             object->render(commandBuffer, objectOpaquePipelineLayout);
     }
-    */
     
     // Subpass 1: transparent objects
     // ========================================
@@ -1574,7 +1569,6 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectTransparentPipeline);
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-    /*
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectTransparentPipelineLayout, 0, 1, &UBODescriptorSets[currentFrame], 0, nullptr);
 
     for (auto& object : objects)
@@ -1582,7 +1576,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
         if (object->isObjectRendered && object->getTransparency() < 0.99f)
             object->render(commandBuffer, objectOpaquePipelineLayout);
     }
-    */
+
     /*
     VkImageMemoryBarrier barrierAccum{};
     barrierAccum.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1621,7 +1615,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectCompositePipelineLayout, 0, 1, &compositeDescriptorSet, 0, nullptr);
-
+    
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
     // ========================================
@@ -1844,7 +1838,6 @@ void RenderEngine::VulkanInternals::cleanup(std::list<std::shared_ptr<renderer::
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
-    vkDestroySampler(vulkanContext.device, OITSampler, nullptr);
     cleanupSwapChain(); // the other buffers from createExtraBuffers() are already cleaned up in the cleanupSwapchain() function, because they need to always have identical size as the frame buffer
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -1864,9 +1857,9 @@ void RenderEngine::VulkanInternals::cleanup(std::list<std::shared_ptr<renderer::
 
     vkDestroyDescriptorPool(vulkanContext.device, vulkanContext.descriptorPool, nullptr);
 
+    vkDestroyDescriptorSetLayout(vulkanContext.device, vulkanContext.compositeDescriptorSetLayout, nullptr);
     vkDestroyDescriptorSetLayout(vulkanContext.device, vulkanContext.uniformDescriptorSetLayout, nullptr);
     vkDestroyDescriptorSetLayout(vulkanContext.device, vulkanContext.textureDescriptorSetLayout, nullptr);
-    vkDestroyDescriptorSetLayout(vulkanContext.device, vulkanContext.compositeDescriptorSetLayout, nullptr);
 
     vkDestroyPipeline(vulkanContext.device, objectOpaquePipeline, nullptr);
     vkDestroyPipeline(vulkanContext.device, objectTransparentPipeline, nullptr);

@@ -1,14 +1,12 @@
 #version 450
 
-layout(binding = 0) uniform sampler2D accumTexture;
-layout(binding = 1) uniform sampler2D revealageTexture;
-
-layout(location = 0) in vec2 uv;
+layout(input_attachment_index = 0, binding = 0) uniform subpassInput accumulationBuffer;
+layout(input_attachment_index = 1, binding = 1) uniform subpassInput revealageBuffer;
 
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    vec4 accum = texture(accumTexture, uv);
-    float reveal = texture(revealageTexture, uv).r;
+    vec4 accum = subpassLoad(accumulationBuffer);
+    float reveal = subpassLoad(revealageBuffer).r;
     outColor = vec4(accum.rgb / max(accum.a, 1e-5), 1.0 - reveal);
 }

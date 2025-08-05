@@ -21,10 +21,12 @@ void main() {
     float diffuse = max(dot(normalize(fragNormal), sunDirection), 0.0);
     vec3 lighting = vec3(0.3) + vec3(0.7) * diffuse; // 30% ambient light
     
-    vec4 color = vec4(baseColor * lighting, transparency);
-    float weight = clamp(pow(min(1.0, color.a * 10) + 0.01, 3.0) * 1e8, 1e-2, 3e3);
-    outAccumulation = vec4(color.rgb * color.a * weight, color.a * weight);
-    outRevealage = color.a;
+    vec3 color = baseColor * lighting;
+
+    float weight = clamp(pow(min(1.0, transparency * 10) + 0.01, 3.0) * 1e8, 1e-2, 3e3);
+
+    outAccumulation = transparency * weight * vec4(color, 1.0);
+    outRevealage = transparency;
     
     // gl_FragDepth = gl_FragCoord.z; // should be redundant? pretty sure if you don't write to gl_FragDepth, it defaults to gl_FragCoord.z anyway
 }

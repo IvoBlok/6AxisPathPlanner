@@ -504,7 +504,7 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     dependency0.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependency0.srcAccessMask = 0;
     dependency0.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependency0.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+    dependency0.dependencyFlags = 0;
 
     // Transition from subpass 0 (opaque) to subpass 1 (transparent)
     VkSubpassDependency dependency1 {};
@@ -535,8 +535,9 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     dependency2.dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
     dependency2.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     dependency2.dstAccessMask = 0;
-    dependency2.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;*/
+    dependency2.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
+    std::array<VkSubpassDependency, 4> dependencies = { dependency0, dependency1, dependency2, dependency3 };*/
     std::array<VkSubpassDependency, 3> dependencies = { dependency0, dependency1, dependency2 };
 
     VkRenderPassCreateInfo renderPassInfo{};
@@ -709,12 +710,6 @@ void RenderEngine::VulkanInternals::createObjectOpaquePipeline() {
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     colorBlendAttachment.blendEnable = VK_FALSE;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
     VkPipelineColorBlendStateCreateInfo colorBlending{};
     colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -1008,7 +1003,7 @@ void RenderEngine::VulkanInternals::createObjectCompositePipeline() {
 
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.cullMode = VK_CULL_MODE_NONE;
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
     rasterizer.depthBiasEnable = VK_FALSE;
@@ -1037,9 +1032,9 @@ void RenderEngine::VulkanInternals::createObjectCompositePipeline() {
     // Declare color blending settings
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendAttachment.blendEnable = VK_TRUE;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
     colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
     colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
     colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
@@ -1588,7 +1583,6 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
             object->render(commandBuffer, objectTransparentPipelineLayout);
     }
 
-
     // Subpass 2: composite
     // ========================================
     vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
@@ -1598,7 +1592,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectCompositePipelineLayout, 0, 1, &compositeDescriptorSet, 0, nullptr);
     
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
-    
+
     // ========================================
     // Render UI
     // ========================================
@@ -1629,7 +1623,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
 
     ImGui::Render();
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer, 0, NULL);
-
+    
     // ========================================
 
     vkCmdEndRenderPass(commandBuffer);

@@ -31,7 +31,7 @@ struct RenderEngine::VulkanInternals {
 	VkPipeline objectTransparentPipeline;
 
 	VkPipelineLayout curveOpaquePipelineLayout;
-	VkPipelineLayout curveTransparentipelineLayout;
+	VkPipelineLayout curveTransparentPipelineLayout;
 	VkPipeline curveOpaquePipeline;
 	VkPipeline curveTransparentPipeline;
 

@@ -880,7 +880,7 @@ void RenderEngine::VulkanInternals::createObjectTransparentPipeline() {
     colorBlendAttachmentRevealage.colorWriteMask = VK_COLOR_COMPONENT_R_BIT;
     colorBlendAttachmentRevealage.blendEnable = VK_TRUE;
     colorBlendAttachmentRevealage.srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-    colorBlendAttachmentRevealage.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+    colorBlendAttachmentRevealage.dstColorBlendFactor = VK_BLEND_FACTOR_SRC_COLOR;
     colorBlendAttachmentRevealage.colorBlendOp = VK_BLEND_OP_ADD;
 
     std::array<VkPipelineColorBlendAttachmentState, 2> colorBlendAttachments = { colorBlendAttachmentAccumulation, colorBlendAttachmentRevealage };
@@ -944,8 +944,8 @@ void RenderEngine::VulkanInternals::createObjectTransparentPipeline() {
 
 void RenderEngine::VulkanInternals::createCurveOpaquePipeline() {
     // read the shaders into their respective buffers
-    auto vertShaderCode = readShaderFile("shaders/lineShaderVert.spv");
-    auto fragShaderCode = readShaderFile("shaders/lineShaderFrag.spv");
+    auto vertShaderCode = readShaderFile("shaders/opaqueCurveShaderVert.spv");
+    auto fragShaderCode = readShaderFile("shaders/opaqueCurveShaderFrag.spv");
 
     // wrap them in the appropriate Vulkan struct
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -1204,11 +1204,11 @@ void RenderEngine::VulkanInternals::createCompositePipeline() {
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     colorBlendAttachment.blendEnable = VK_TRUE;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
     colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
     colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
     VkPipelineColorBlendStateCreateInfo colorBlending{};
@@ -1559,6 +1559,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     }
 
     // curves
+    /*
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, curveOpaquePipeline);
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
@@ -1568,7 +1569,8 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
         if (curve->isCurveRendered)
             curve->render(commandBuffer, curveOpaquePipelineLayout);
     }
-    
+    */
+   
     // ===============================================================
     // Subpass 1: transparent objects & curves
     // ===============================================================

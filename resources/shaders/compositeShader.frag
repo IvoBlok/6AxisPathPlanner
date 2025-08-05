@@ -9,5 +9,7 @@ void main() {
     vec4 accum = subpassLoad(accumulationBuffer);
     float reveal = subpassLoad(revealageBuffer).r;
     
-    outColor = vec4(accum.rgb / max(accum.a, 1e-5), 1.0 - reveal);
+    vec3 color = (accum.rgb / clamp(accum.a, 1e-5, 5e4)) * (1 - reveal);
+    
+    outColor = vec4(color, 1 - reveal);
 }

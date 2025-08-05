@@ -7,7 +7,6 @@ layout(location = 0) out vec4 outAccumulation;
 layout(location = 1) out float outRevealage;
 
 void main() {
-    float weightParam = 3.0;
     float depthScale = 1.0;
 
     if (transparency < 0.001) discard;
@@ -18,7 +17,7 @@ void main() {
     float weight = clamp(max(maxChannel, transparency) * 10.0 + 0.01, 1e-2, 1.0);
 
     // depth weighting
-    weight *= pow(1.0 - gl_FragCoord.z * depthScale, weightParam);
+    weight *= pow(1.0 - gl_FragCoord.z * depthScale, 3);
 
     outAccumulation = vec4(color * weight, weight);
     outRevealage = 1.0 - transparency;

@@ -6,7 +6,8 @@ layout(input_attachment_index = 1, binding = 1) uniform subpassInput revealageBu
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    vec4 accum = subpassLoad(accumulationBuffer);
-    float reveal = subpassLoad(revealageBuffer).r;
-    outColor = vec4(accum.rgb / max(accum.a, 1e-5), 1.0 - reveal);
+    //vec4 accum = subpassLoad(accumulationBuffer);
+    //float reveal = subpassLoad(revealageBuffer).r;
+    outColor = vec4(0.0, 1.0, 0.0, 1.0);
+    //outColor = vec4(accum.rgb / max(accum.a, 1e-5), 1.0 - reveal);
 }

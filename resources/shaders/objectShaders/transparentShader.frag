@@ -26,5 +26,5 @@ void main() {
     outAccumulation = vec4(color.rgb * color.a * weight, color.a * weight);
     outRevealage = color.a;
     
-    gl_FragDepth = gl_FragCoord.z; // should be redundant? pretty sure if you don't write to gl_FragDepth, it defaults to gl_FragCoord.z anyway
+    // gl_FragDepth = gl_FragCoord.z; // should be redundant? pretty sure if you don't write to gl_FragDepth, it defaults to gl_FragCoord.z anyway
 }

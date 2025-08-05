@@ -523,8 +523,19 @@ void RenderEngine::VulkanInternals::createRenderPass() {
     dependency2.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dependency2.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     dependency2.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    dependency2.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    dependency2.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
     dependency2.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+    /*
+    // Transition from subpass 2 (composite) to external (presentation)
+    VkSubpassDependency dependency3 {};
+    dependency2.srcSubpass = 2;
+    dependency2.dstSubpass = VK_SUBPASS_EXTERNAL;
+    dependency2.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency2.dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    dependency2.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency2.dstAccessMask = 0;
+    dependency2.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;*/
 
     std::array<VkSubpassDependency, 3> dependencies = { dependency0, dependency1, dependency2 };
 
@@ -1505,7 +1516,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     clearValues[0].color = { {CLEAR_COLOR.x, CLEAR_COLOR.y, CLEAR_COLOR.z, 1.f} };  // swapchain
     clearValues[1].depthStencil = { 1.0f, 0 };                                      // depth
     clearValues[2].color = { {0.f, 0.f, 0.f, 0.f} };                                // accumulation
-    clearValues[2].color = { {1.f, 0.f, 0.f, 0.f} };                                // revealage
+    clearValues[3].color = { {1.f, 0.f, 0.f, 0.f} };                                // revealage
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1574,39 +1585,9 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     for (auto& object : objects)
     {
         if (object->isObjectRendered && object->getTransparency() < 0.99f)
-            object->render(commandBuffer, objectOpaquePipelineLayout);
+            object->render(commandBuffer, objectTransparentPipelineLayout);
     }
 
-    /*
-    VkImageMemoryBarrier barrierAccum{};
-    barrierAccum.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrierAccum.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    barrierAccum.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    barrierAccum.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    barrierAccum.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrierAccum.image = accumulationBuffer;
-    barrierAccum.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-
-    VkImageMemoryBarrier barrierReveal{};
-    barrierReveal.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrierReveal.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    barrierReveal.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    barrierReveal.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    barrierReveal.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrierReveal.image = revealageBuffer;
-    barrierReveal.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-
-    std::array<VkImageMemoryBarrier, 2> barriers = { barrierAccum, barrierReveal };
-
-    vkCmdPipelineBarrier(
-        commandBuffer,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_DEPENDENCY_BY_REGION_BIT,
-        0, nullptr,
-        0, nullptr,
-        2, barriers.data()
-    );*/
 
     // Subpass 2: composite
     // ========================================
@@ -1617,7 +1598,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectCompositePipelineLayout, 0, 1, &compositeDescriptorSet, 0, nullptr);
     
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
-
+    
     // ========================================
     // Render UI
     // ========================================

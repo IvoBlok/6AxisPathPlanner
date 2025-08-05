@@ -20,5 +20,5 @@ void main() {
     
     outColor = vec4(baseColor * lighting, 1.0);
 
-    gl_FragDepth = gl_FragCoord.z; // should be redundant? pretty sure if you don't write to gl_FragDepth, it defaults to gl_FragCoord.z anyway
+    //gl_FragDepth = gl_FragCoord.z; // should be redundant? pretty sure if you don't write to gl_FragDepth, it defaults to gl_FragCoord.z anyway
 }

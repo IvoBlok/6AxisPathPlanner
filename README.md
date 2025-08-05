@@ -11,7 +11,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-This project is concerned with calculation of 6+ axis toolpaths for large robotarms. The original aim was to mill large foam molds with a KR125. This repository contains separate code for the pathplanning, robot controller and external PC. It is mostly set up for my specific situtation, i.e. an (old) KRC1 controller, KR125 arm, used for milling mesh-based shapes. See below for some example outputs. For now this focusses on 'mesh' based geometries. I.e. it operates on large triangle-based geometries, in contrast to the standard within CAD programs where geometries are defined by the geometric operations that produced it. This has some crucial limitations, like the algorithm speed and the viability of some ease-of-use functionalities, but allows for a wider range of geometries to be used. 
+This project is concerned with calculation of 6+ axis toolpaths for large robotarms. The original aim was to mill large foam molds with a KR125. This repository contains separate code for the pathplanning, robot controller and external PC. It is mostly set up for my specific situtation, i.e. an (old) KRC1 controller, KR125 arm, used for milling mesh-based shapes. It also contains some inverse kinematics tools to validate a toolpath for a given set of robot joints. See below for some example outputs. For now this focusses on 'mesh' based geometries. I.e. it operates on large triangle-based geometries, in contrast to the standard within CAD programs where geometries are defined by the geometric operations that produced it. This has some crucial limitations, like the algorithm speed and the viability of some ease-of-use functionalities, but allows for a wider range of geometries to be used. 
 
 ![cubeTest1](screenshots/cubeTestShapeOrientation.png)
 ![cubeTest2](screenshots/cubeTestPlaneOrientation.png)
@@ -93,8 +93,6 @@ In rough order of what I plan to do:
 - [ ] Add non-planar pathing
 - [ ] Add collision control for path validation
 - [ ] Update CMakeFile to create a release executable with proper Eigen (and proxsuite) optimization
-
-
 
 
 <!-- IDEAS -->

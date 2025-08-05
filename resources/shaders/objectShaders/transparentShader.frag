@@ -15,18 +15,23 @@ layout(location = 1) out float outRevealage;
 const vec3 sunDirection = normalize(vec3(0.5, 1.0, 0.5));
 
 void main() {
+    float weightParam = 3.0;
+    
     if (transparency < 0.01) discard;
 
     vec3 baseColor = (isOneColor > 0.5) ? fragColor : vec3(texture(texSampler, fragTexCoord));
     float diffuse = max(dot(normalize(fragNormal), sunDirection), 0.0);
     vec3 lighting = vec3(0.3) + vec3(0.7) * diffuse; // 30% ambient light
     
-    vec3 color = baseColor * lighting;
+    vec3 opaqueColor = baseColor * lighting;
+    vec3 color = opaqueColor * transparency;
 
-    float weight = clamp(pow(min(1.0, transparency * 10) + 0.01, 3.0) * 1e8, 1e-2, 3e3);
+    float maxChannel = max(max(opaqueColor.r, opaqueColor.g), opaqueColor.b);
+    float weight = clamp(max(maxChannel, transparency) * 10.0 + 0.01, 1e-2, 1.0);
 
-    outAccumulation = transparency * weight * vec4(color, 1.0);
-    outRevealage = transparency;
-    
-    // gl_FragDepth = gl_FragCoord.z; // should be redundant? pretty sure if you don't write to gl_FragDepth, it defaults to gl_FragCoord.z anyway
+    // depth weighting
+    weight *= pow(1.0 - gl_FragCoord.z * depthScale, weightParam);
+
+    outAccumulation = vec4(opaqueColor * weight, weight);
+    outRevealage = 1.0 - transparency;
 }

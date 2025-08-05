@@ -20,9 +20,6 @@ int main() {
 		kinematics::RobotGUITest robotGuiTest{renderer};
 		PathPlannerGUI pathPlannerGUI{renderer};
 
-		renderer.createDefaultCube("cube", Vector3f{0.f, 1.f, 1.f}, Vector3d{-0.6f, 0.f, 0.f}, Vector3d{.5f, .5f, .5f}, Vector3d{0.f, 0.f, 0.f}, 1.f);
-		renderer.createDefaultCube("cube", Vector3f{1.f, 1.f, 0.f}, Vector3d{0.6f, 0.f, 0.f}, Vector3d{.5f, .5f, .5f}, Vector3d{0.f, 0.f, 0.f}, 0.5f);
-
 		while (!renderer.shouldWindowClose()) {
 			renderer.handleFrame();
 		}

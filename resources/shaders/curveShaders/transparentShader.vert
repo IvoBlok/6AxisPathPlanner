@@ -5,7 +5,8 @@ layout(location = 1) in vec3 inColor;
 layout(location = 2) in vec3 normal;
 layout(location = 3) in vec2 inTexCoord;
 
-layout(location = 0) flat out vec4 fragColor;
+layout(location = 0) flat out vec3 fragColor;
+layout(location = 1) out float fragTransparency;
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
 	mat4 notUsed;
@@ -23,9 +24,10 @@ layout(push_constant) uniform pushConstant {
 void main() {
 	gl_Position = ubo.proj * ubo.view * vec4(inPosition, 1.0);
 
+    fragTransparency = ps.transparency;
 	if (ps.isOneColor) {
-		fragColor = vec4(ps.color, ps.transparency);
+		fragColor = ps.color;
 	} else {
-		fragColor = vec4(inColor, ps.transparency);
+		fragColor = inColor;
 	}
 }

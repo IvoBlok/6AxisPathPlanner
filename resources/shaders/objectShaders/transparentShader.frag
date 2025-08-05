@@ -12,12 +12,13 @@ layout(location = 0) out vec4 outAccumulation;
 layout(location = 1) out float outRevealage;
 
 // Hardcoded sun direction (normalized, coming from top-right)
-const vec3 sunDirection = normalize(vec3(0.5, 1.0, 0.5));
+const vec3 sunDirection = normalize(vec3(0.62, 0.91, 0.5));
 
 void main() {
     float weightParam = 3.0;
+    float depthScale = 1.0;
     
-    if (transparency < 0.01) discard;
+    if (transparency < 0.001) discard;
 
     vec3 baseColor = (isOneColor > 0.5) ? fragColor : vec3(texture(texSampler, fragTexCoord));
     float diffuse = max(dot(normalize(fragNormal), sunDirection), 0.0);

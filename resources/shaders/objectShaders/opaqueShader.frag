@@ -11,7 +11,7 @@ layout(set = 1, binding = 0) uniform sampler2D texSampler;
 layout(location = 0) out vec4 outColor;
 
 // Hardcoded sun direction (normalized, coming from top-right)
-const vec3 sunDirection = normalize(vec3(0.5, 1.0, 0.5));
+const vec3 sunDirection = normalize(vec3(0.62, 0.91, 0.5));
 
 void main() {
     vec3 baseColor = (isOneColor > 0.5) ? fragColor : vec3(texture(texSampler, fragTexCoord));
@@ -19,6 +19,4 @@ void main() {
     vec3 lighting = vec3(0.3) + vec3(0.7) * diffuse; // 30% ambient light
     
     outColor = vec4(baseColor * lighting, 1.0);
-
-    //gl_FragDepth = gl_FragCoord.z; // should be redundant? pretty sure if you don't write to gl_FragDepth, it defaults to gl_FragCoord.z anyway
 }

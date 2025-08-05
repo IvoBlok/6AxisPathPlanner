@@ -27,13 +27,16 @@ struct RenderEngine::VulkanInternals {
 
 	VkPipelineLayout objectOpaquePipelineLayout;
 	VkPipelineLayout objectTransparentPipelineLayout;
-	VkPipelineLayout objectCompositePipelineLayout;
 	VkPipeline objectOpaquePipeline;
 	VkPipeline objectTransparentPipeline;
-	VkPipeline objectCompositePipeline;
 
-	VkPipelineLayout lineBasedPipelineLayout;
-	VkPipeline lineBasedPipeline;
+	VkPipelineLayout curveOpaquePipelineLayout;
+	VkPipelineLayout curveTransparentipelineLayout;
+	VkPipeline curveOpaquePipeline;
+	VkPipeline curveTransparentPipeline;
+
+	VkPipelineLayout compositePipelineLayout;
+	VkPipeline objectCompositePipeline;
 
 	// buffer for usage by a pipeline as its depth buffer, for depth testing etc
 	VkImage depthImage;
@@ -108,11 +111,12 @@ struct RenderEngine::VulkanInternals {
     void createRenderPass();
     void createDescriptorSetLayouts();
 
-	void createObjectPipelines();
+	void createPipelines();
 	void createObjectOpaquePipeline();
 	void createObjectTransparentPipeline();
-	void createObjectCompositePipeline();
-    void createLineBasedPipeline();
+    void createCurveOpaquePipeline();
+	void createCurveTransparentPipeline();
+	void createCompositePipeline();
 
 	void createFrameBuffers();
 	void createCommandPool();

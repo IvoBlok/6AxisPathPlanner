@@ -24,6 +24,7 @@ namespace renderer {
         void setName(std::string nameIn);
         std::string getName() const;
 
+        float getTransparency() const;
         int getNumberOfVertices() const;
 
         const core::Polyline2_5D& getPolyline() const;

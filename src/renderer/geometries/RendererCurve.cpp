@@ -32,6 +32,10 @@ namespace renderer {
         return name;
     }
 
+    float Curve::getTransparency() const {
+        return curveBuffer.transparency;
+    }
+    
     int Curve::getNumberOfVertices() const {
         if(!alive) return 0;
         return curveBuffer.vertices.size();
@@ -85,12 +89,12 @@ namespace renderer {
     void Curve::render(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) {
         vkCmdSetLineWidth(commandBuffer, lineWidth);
 
-        LineShaderPushConstant pushConstant{};
+        CurveShadersPushConstant pushConstant{};
         pushConstant.color = glm::vec3{ defaultColor.x(), defaultColor.y(), defaultColor.z() };;
         pushConstant.isOneColor = useDefaultColor;
         pushConstant.transparency = curveBuffer.transparency;
 
-        vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(LineShaderPushConstant), &pushConstant);
+        vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(CurveShadersPushConstant), &pushConstant);
 
         curveBuffer.render(commandBuffer);
     }

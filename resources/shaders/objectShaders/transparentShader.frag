@@ -15,8 +15,6 @@ layout(location = 1) out float outRevealage;
 const vec3 sunDirection = normalize(vec3(0.62, 0.91, 0.5));
 
 void main() {
-    float depthScale = 1.0;
-
     if (transparency < 0.001) discard;
 
     vec3 baseColor = (isOneColor > 0.5) ? fragColor : vec3(texture(texSampler, fragTexCoord));
@@ -24,14 +22,12 @@ void main() {
     vec3 lighting = vec3(0.3) + vec3(0.7) * diffuse; // 30% ambient light
     
     vec3 opaqueColor = baseColor * lighting;
+    // using pre-multiplied colors for easier brightness-maintaining color blending
     vec3 color = opaqueColor * transparency;
 
-    //float maxChannel = max(max(color.r, color.g), color.b);
-    //float weight = clamp(max(maxChannel, transparency) * 10.0 + 0.01, 1e-2, 1.0);
-    //weight *= pow(1.0 - gl_FragCoord.z * depthScale, 3);
-
+    // WB-OIT buffer values
     float weight = transparency * max(1e-2, 1e3 * pow(1 - gl_FragCoord.z, 3));
 
-    outAccumulation = vec4(color * weight, transparency * weight);//outAccumulation = vec4(color * weight, transparency * weight);//vec4(opaqueColor * weight, weight);
+    outAccumulation = vec4(color * weight, transparency * weight);
     outRevealage = 1.0 - transparency;
 }

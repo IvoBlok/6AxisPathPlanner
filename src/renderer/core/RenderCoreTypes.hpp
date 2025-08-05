@@ -66,7 +66,7 @@ namespace renderer {
         float transparency;
     };
 
-    struct LineShaderPushConstant {
+    struct CurveShadersPushConstant {
         glm::vec3 color;
         bool isOneColor;
         float transparency;

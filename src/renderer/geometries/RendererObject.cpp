@@ -1,5 +1,7 @@
 #include "RendererObject.hpp"
 
+#include <glm/gtx/string_cast.hpp>
+
 namespace renderer {
 
     Object::Object(RenderEngine& renderer) : Object(renderer, "obj") { }
@@ -69,8 +71,8 @@ namespace renderer {
     core::ObjectShape Object::getObjectShape() {
         if(!alive) return core::ObjectShape{};
 
-        glm::mat4 transformationMatrix = rotation.glmMatrix();
-
+        glm::mat4 transformationMatrix = getPoseGLM();
+        //std::cout << glm::to_string(transformationMatrix);
         core::ObjectShape objectShape{};
         
         objectShape.vertices.reserve(model.vertices.size());

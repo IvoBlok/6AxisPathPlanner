@@ -7,10 +7,10 @@
 namespace renderer {
     class Curve {
     public:
+        friend class ::RenderEngine;
+
         bool isCurveRendered;
         bool isCurveShownInGui;
-        
-        friend class RenderEngine;
 
         Curve(RenderEngine& renderer);        
         Curve(RenderEngine& renderer, std::string name, bool isCurveRendered = true, bool isCurveShownInGui = true);

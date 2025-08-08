@@ -21,7 +21,7 @@ using namespace renderer;
 
 std::vector<char> readShaderFile(const std::string& relativePath) {
     const std::vector<std::filesystem::path> searchPaths = {
-        std::filesystem::current_path() / "../" / relativePath,
+        std::filesystem::current_path() / "shaders" / relativePath,
         std::filesystem::current_path() / "../shaders" / relativePath
     };
 
@@ -944,8 +944,8 @@ void RenderEngine::VulkanInternals::createObjectTransparentPipeline() {
 
 void RenderEngine::VulkanInternals::createCurveOpaquePipeline() {
     // read the shaders into their respective buffers
-    auto vertShaderCode = readShaderFile("shaders/opaqueCurveShaderVert.spv");
-    auto fragShaderCode = readShaderFile("shaders/opaqueCurveShaderFrag.spv");
+    auto vertShaderCode = readShaderFile("opaqueCurveShaderVert.spv");
+    auto fragShaderCode = readShaderFile("opaqueCurveShaderFrag.spv");
 
     // wrap them in the appropriate Vulkan struct
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -1104,8 +1104,8 @@ void RenderEngine::VulkanInternals::createCurveOpaquePipeline() {
 
 void RenderEngine::VulkanInternals::createCurveTransparentPipeline() {
     // read the shaders into their respective buffers
-    auto vertShaderCode = readShaderFile("shaders/transparentCurveShaderVert.spv");
-    auto fragShaderCode = readShaderFile("shaders/transparentCurveShaderFrag.spv");
+    auto vertShaderCode = readShaderFile("transparentCurveShaderVert.spv");
+    auto fragShaderCode = readShaderFile("transparentCurveShaderFrag.spv");
 
     // wrap them in the appropriate Vulkan struct
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -2210,7 +2210,7 @@ std::shared_ptr<renderer::Object> RenderEngine::createDefaultCube(
     bool isObjectShownInGui,
     bool isObjectRendered
 ) {
-    std::shared_ptr<renderer::Object> cube = createObject("../../resources/assets/cube.obj", name, color, basePosition, baseScale, baseRotation, transparency, isObjectShownInGui, isObjectRendered);
+    std::shared_ptr<renderer::Object> cube = createObject("../resources/assets/cube.obj", name, color, basePosition, baseScale, baseRotation, transparency, isObjectShownInGui, isObjectRendered);
     return cube;
 }
 
@@ -2224,7 +2224,7 @@ std::shared_ptr<renderer::Object> RenderEngine::createDefaultPlane(
     bool isObjectShownInGui,
     bool isObjectRendered
 ) {
-    std::shared_ptr<renderer::Object> plane = createObject("../../resources/assets/plane.obj", name, color, basePosition, baseScale, baseRotation, transparency, isObjectShownInGui, isObjectRendered);
+    std::shared_ptr<renderer::Object> plane = createObject("../resources/assets/plane.obj", name, color, basePosition, baseScale, baseRotation, transparency, isObjectShownInGui, isObjectRendered);
     return plane;
 }
 

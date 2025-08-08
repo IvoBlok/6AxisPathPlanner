@@ -185,7 +185,7 @@ inline uint32_t ImGui_ImplVulkan_MemoryType(VkMemoryPropertyFlags PropertyFlags,
 
 inline bool ImGui_ImplVulkanPrintError(const char* Msg)
 {
-	printf(Msg);
+	printf(Msg, stdout);
 	return false;
 }
 

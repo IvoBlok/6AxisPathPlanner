@@ -128,15 +128,15 @@ add_custom_command(TARGET robotPathPlanner PRE_BUILD
 # Include Directories
 # ============================================
 target_include_directories(robotPathPlanner PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/external  
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/Eigen
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${Vulkan_INCLUDE_DIRS}
     ${glm_SOURCE_DIR}
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
     ${implot_SOURCE_DIR}      
-    external  
-    external/imgui
-    external/eigen
     ${stb_SOURCE_DIR}
     ${tinyobjloader_SOURCE_DIR}
     ${nfd_SOURCE_DIR}/src/include

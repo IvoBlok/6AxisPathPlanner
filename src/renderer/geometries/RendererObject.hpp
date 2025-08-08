@@ -11,10 +11,10 @@
 namespace renderer {
     class Object {
     public:
+        friend class ::RenderEngine;
+
         bool isObjectRendered;
         bool isObjectShownInGui;
-
-        friend class RenderEngine;
         
         Object(RenderEngine& renderer);
         Object(RenderEngine& renderer, std::string name, bool isObjectRendered = true, bool isObjectShownInGui = true);

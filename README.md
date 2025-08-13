@@ -16,6 +16,7 @@ This project is concerned with calculation of 6+ axis toolpaths for large robota
 ![cubeTest1](screenshots/cubeTestShapeOrientation.png)
 ![cubeTest2](screenshots/cubeTestPlaneOrientation.png)
 
+
 <!-- GETTING STARTED -->
 ## Getting Started
 ### Dependencies
@@ -42,6 +43,7 @@ Additionally, large chunks of the following repositories have been copied and mo
 * https://github.com/intents-software/mesh-plane-intersection/tree/master
 * https://github.com/jbuckmccready/CavalierContours
 
+
 ### Installation
 
 1. Clone the repository.
@@ -66,7 +68,7 @@ Additionally, large chunks of the following repositories have been copied and mo
    cd resources
    g++ -g -o PCodeSender PCodeSender.cpp
    ```
-5. Transfer `KRLExternalControl.src` to the robot controller. Either by copying it line by line (safest), inserting some external media into the controller, or removing the primary harddrive and copying the file over in some external system (risky). The controller itself compiles the KRL code when needed. 
+5. Transfer `KRLExternalControl.src` to the robot controller. Either by copying it line by line (safest), inserting some external media into the controller, or removing the primary harddrive and copying the file over in some external system (risky). The controller itself interprets the KRL code when needed. 
 
 
 <!-- USAGE EXAMPLES -->
@@ -82,6 +84,7 @@ Start PCodeSender with the supplied PCode text file, which waits untill the cont
 
 <!-- TO DO -->
 ## To Do
+
 In rough order of what I plan to do:
 - [ ] Update CurveData renderer code so that it doesn't use an indexBuffer
 - [ ] Update Renderer Object / shader so it doesn't require a texture when it doesn't use it / doesn't use a dummy texture. Also probably look into alternative ways of storing this potentially large group of descriptorSets, vulkan might not be happy with preparing for potentially NUM_OBJECTS descriptor sets.
@@ -107,7 +110,7 @@ To keep note, one 'future works' idea might be to integrate collisions into the 
 <!-- LICENSE -->
 ## License
 
-You're ofcourse free to use this code in any noncommercial way you want, though crediting the sources I did is probably appropriate. Tadie License section!
+You're of course free to use this code in any noncommercial way you want, though crediting the sources I did is probably appropriate.
 
 
 <!-- CONTACT -->

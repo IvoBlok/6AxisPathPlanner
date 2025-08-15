@@ -2210,7 +2210,7 @@ std::shared_ptr<renderer::Object> RenderEngine::createDefaultCube(
     bool isObjectShownInGui,
     bool isObjectRendered
 ) {
-    std::shared_ptr<renderer::Object> cube = createObject("../resources/assets/cube.obj", name, color, basePosition, baseScale, baseRotation, transparency, isObjectShownInGui, isObjectRendered);
+    std::shared_ptr<renderer::Object> cube = createObject("../../resources/assets/cube.obj", name, color, basePosition, baseScale, baseRotation, transparency, isObjectShownInGui, isObjectRendered);
     return cube;
 }
 
@@ -2224,7 +2224,7 @@ std::shared_ptr<renderer::Object> RenderEngine::createDefaultPlane(
     bool isObjectShownInGui,
     bool isObjectRendered
 ) {
-    std::shared_ptr<renderer::Object> plane = createObject("../resources/assets/plane.obj", name, color, basePosition, baseScale, baseRotation, transparency, isObjectShownInGui, isObjectRendered);
+    std::shared_ptr<renderer::Object> plane = createObject("../../resources/assets/plane.obj", name, color, basePosition, baseScale, baseRotation, transparency, isObjectShownInGui, isObjectRendered);
     return plane;
 }
 

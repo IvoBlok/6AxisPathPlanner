@@ -1,13 +1,28 @@
-cmake_minimum_required(VERSION 3.25)  # Must be at least 3.22 for ProxSuite
+cmake_minimum_required(VERSION 3.25)
 project(RobotPathPlanner)
+
+# Force Debug if no config specified
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Set default build type to Debug if not specified
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose build type" FORCE)
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release")
+if(MSVC)
+    # Windows/MSVC settings
+    add_compile_options(/W4 /WX-)
+    add_link_options(/DEBUG:FULL)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    # Linux/GCC settings
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+if(CMAKE_CONFIGURATION_TYPES)  # Multi-config
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/Debug)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release)
+else()  # Single-config
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE})
 endif()
 
 # ============================================
@@ -86,6 +101,7 @@ FetchContent_MakeAvailable(
     nfd
 )
 
+
 # Executable
 # ============================================
 
@@ -107,24 +123,6 @@ target_compile_definitions(robotPathPlanner PRIVATE
     GLM_ENABLE_EXPERIMENTAL 
 )
 
-# Set different output directories for Debug and Release builds
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_BINARY_DIR}/Debug)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_BINARY_DIR}/Release)
-
-# Copy shaders to build folder
-# ============================================
-# For single-config generators (Make, Ninja)
-
-set(SHADER_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/shaders)
-
-file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIR})
-add_custom_command(TARGET robotPathPlanner PRE_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/output
-        ${SHADER_OUTPUT_DIR}
-    COMMENT "Copying shaders to build directory"
-)
-
 # Include Directories
 # ============================================
 target_include_directories(robotPathPlanner PRIVATE
@@ -142,6 +140,20 @@ target_include_directories(robotPathPlanner PRIVATE
     ${nfd_SOURCE_DIR}/src/include
 )
 
+# Copy shaders to build folder
+# ============================================
+# For single-config generators (Make, Ninja)
+
+set(SHADER_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/shaders)
+
+file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIR})
+add_custom_command(TARGET robotPathPlanner PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/output
+        ${SHADER_OUTPUT_DIR}
+    COMMENT "Copying shaders to build directory"
+)
+
 # Link Libraries
 # ============================================
 target_link_libraries(robotPathPlanner PRIVATE 
@@ -149,7 +161,7 @@ target_link_libraries(robotPathPlanner PRIVATE
     ${Vulkan_LIBRARIES}
 )
 
-# Add Imgui Sources
+# Add Sources for the various libraries
 # ============================================
 target_sources(robotPathPlanner PRIVATE
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -160,16 +172,12 @@ target_sources(robotPathPlanner PRIVATE
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
 )
 
-# Add ImPlot Sources
-# ============================================
 target_sources(robotPathPlanner PRIVATE
     ${implot_SOURCE_DIR}/implot.cpp
     ${implot_SOURCE_DIR}/implot_items.cpp
     ${implot_SOURCE_DIR}/implot_demo.cpp
 )
 
-# Add NFD Sources
-# ============================================
 if(WIN32) # Windows
     target_sources(robotPathPlanner PRIVATE
         ${nfd_SOURCE_DIR}/src/nfd_common.c
@@ -188,28 +196,17 @@ else()  # Linux/Unix
 endif()
 
 # Set compiler flags for different build types
+# ============================================
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_compile_definitions(robotPathPlanner PRIVATE 
-        NDEBUG
-        )
+    target_compile_definitions(robotPathPlanner PRIVATE NDEBUG)
     if(MSVC)
-        target_compile_options(robotPathPlanner PRIVATE 
-            /O2      # Optimize for speed
-            /WX-     # Don't treat warnings as errors
-        )
-        target_link_options(robotPathPlanner PRIVATE /LTCG)  # Link-time code generation
+        target_compile_options(robotPathPlanner PRIVATE /O2)
     else()
-        target_compile_options(robotPathPlanner PRIVATE -O3 -DNDEBUG)
+        target_compile_options(robotPathPlanner PRIVATE -O3)
     endif()
-else()  # Debug build
+else()
     if(MSVC)
-        target_compile_options(robotPathPlanner PRIVATE 
-            /Zi      # Debug information
-            /Od      # Disable optimizations
-            #/W4     # Warning level 4
-            #/WX-    # Don't treat warnings as errors
-            /MDd     # Debug multithreaded DLL runtime
-        )
+        target_compile_options(robotPathPlanner PRIVATE /Zi /Od /MDd)
     else()
         target_compile_options(robotPathPlanner PRIVATE -g -O0)
     endif()

@@ -91,7 +91,7 @@ namespace renderer {
 		CurveBuffer& operator=(CurveBuffer&& other) noexcept;
 
 		void load(core::Polyline2_5D& polyline, float curveTransparency = 1.f);
-		
+
 		void destroy();
 		void render(VkCommandBuffer commandBuffer);
 
@@ -118,7 +118,7 @@ namespace renderer {
         glm::mat4 glmMatrix() const;
         Matrix4d matrix4d() const;
         Matrix3d matrix3d() const;
-        
+
         Vector3d angles() const;
 
     private:

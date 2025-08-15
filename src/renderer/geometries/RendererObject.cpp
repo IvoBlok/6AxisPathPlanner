@@ -7,7 +7,7 @@ namespace renderer {
     Object::Object(RenderEngine& renderer) : Object(renderer, "obj") { }
 
     Object::Object(RenderEngine& renderer, std::string name, bool isObjectRendered, bool isObjectShownInGui) 
-        : model(renderer), renderer(renderer), name(name), isObjectRendered(isObjectRendered), isObjectShownInGui(isObjectShownInGui) 
+        : alive(true), renderer(renderer), model(renderer), name(name), isObjectRendered(isObjectRendered), isObjectShownInGui(isObjectShownInGui) 
     {
         texture.first.emplace(renderer);
         texture.second = false;

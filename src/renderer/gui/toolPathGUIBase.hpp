@@ -12,7 +12,7 @@ inline void handleDropdown(std::string ID, std::string title, const std::vector<
     ImGui::PushID(ID.c_str());
 
     if (!title.empty())
-        ImGui::Text(title.c_str());
+        ImGui::Text("%s", title.c_str());
 
     std::string preview = defaultOptionText;
     if (selectionIndex >= 0 && selectionIndex < (int)objects.size()) {
@@ -46,7 +46,7 @@ inline void handleDropdown(std::string ID, std::string title, const std::list<st
     ImGui::PushID(ID.c_str());
 
     if (!title.empty())
-        ImGui::Text(title.c_str());
+        ImGui::Text("%s", title.c_str());
 
     std::string preview = (selection) ? selection->getName() : defaultOptionText;
     

@@ -124,7 +124,7 @@ public:
                     // update the renderer objects
                     base->setPose(robotMatrices.front());
                     effector->setPose(robotMatrices.back());
-                    for (int i = 1; i < robotMatrices.size() - 1; i++) {
+                    for (int i = 1; i < (int)robotMatrices.size() - 1; i++) {
                         joints[i - 1]->setPose(robotMatrices[i]);
                     }
                 }
@@ -189,7 +189,7 @@ public:
                 // update the renderer objects
                 base->setPose(robotMatrices.front());
                 effector->setPose(robotMatrices.back());
-                for (int i = 1; i < robotMatrices.size() - 1; i++) {
+                for (int i = 1; i < (int)robotMatrices.size() - 1; i++) {
                     joints[i - 1]->setPose(robotMatrices[i]);
                 }
             }

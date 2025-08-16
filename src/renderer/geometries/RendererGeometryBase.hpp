@@ -26,14 +26,14 @@ namespace renderer {
 		const VkDescriptorSet& getDescriptorSet() const;
 		
 	private:
-        VulkanContext& context;
-
 		VkImage textureImage;
 		VkDeviceMemory textureImageMemory;
 		VkImageView textureImageView;
 		VkSampler textureSampler;
 
 		VkDescriptorSet descriptorSet;
+
+        VulkanContext& context;
 
 		void createTextureImage(const char* path);
 		void createTextureImageView();
@@ -62,12 +62,12 @@ namespace renderer {
 		void render(VkCommandBuffer commandBuffer);
 
 	private:
-        VulkanContext& context;
-
 		VkBuffer vertexBuffer;
 		VkDeviceMemory vertexBufferMemory;
 		VkBuffer indexBuffer;
 		VkDeviceMemory indexBufferMemory;
+
+        VulkanContext& context;
 
 		void loadModel(const char* path);
 		void createVertexBuffer();
@@ -77,7 +77,6 @@ namespace renderer {
 	class CurveBuffer {
 	public:
 		std::vector<RendererVertex> vertices;
-		std::vector<uint32_t> indices;
 		float transparency;
 
 		CurveBuffer(RenderEngine& renderer);
@@ -96,16 +95,13 @@ namespace renderer {
 		void render(VkCommandBuffer commandBuffer);
 
 	private:
-        VulkanContext& context;
-
 		VkBuffer vertexBuffer;
 		VkDeviceMemory vertexBufferMemory;
-		VkBuffer indexBuffer;
-		VkDeviceMemory indexBufferMemory;
+
+        VulkanContext& context;
 
 		void loadPolyline(core::Polyline2_5D& polyline);
 		void createVertexBuffer();
-		void createIndexBuffer();
 	};
 
     class Rotation {

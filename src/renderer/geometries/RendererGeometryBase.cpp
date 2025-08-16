@@ -222,7 +222,7 @@ namespace renderer {
         vkUpdateDescriptorSets(context.device, 1, &descriptorWrite, 0, nullptr);
     }
 
-    
+
 
     // Model class implementation
     // ======================================================================================
@@ -423,8 +423,6 @@ namespace renderer {
     CurveBuffer::CurveBuffer(RenderEngine& renderer) : context(renderer.getContext()) {
         vertexBuffer = VK_NULL_HANDLE;
         vertexBufferMemory = VK_NULL_HANDLE;
-        indexBuffer = VK_NULL_HANDLE;
-        indexBufferMemory = VK_NULL_HANDLE;
     }
 
     CurveBuffer::~CurveBuffer() {
@@ -434,17 +432,12 @@ namespace renderer {
     CurveBuffer::CurveBuffer(CurveBuffer&& other) noexcept 
         : context(other.context),
         vertices(std::move(other.vertices)),
-        indices(std::move(other.indices)),
         transparency(other.transparency),
         vertexBuffer(other.vertexBuffer),
-        vertexBufferMemory(other.vertexBufferMemory),
-        indexBuffer(other.indexBuffer),
-        indexBufferMemory(other.indexBufferMemory)
+        vertexBufferMemory(other.vertexBufferMemory)
     {
         other.vertexBuffer = VK_NULL_HANDLE;
         other.vertexBufferMemory = VK_NULL_HANDLE;
-        other.indexBuffer = VK_NULL_HANDLE;
-        other.indexBufferMemory = VK_NULL_HANDLE;
     }
 
     CurveBuffer& CurveBuffer::operator=(CurveBuffer&& other) noexcept {
@@ -453,17 +446,12 @@ namespace renderer {
             destroy();
 
             vertices = std::move(other.vertices);
-            indices = std::move(other.indices);
             transparency = other.transparency;
             vertexBuffer = other.vertexBuffer;
             vertexBufferMemory = other.vertexBufferMemory;
-            indexBuffer = other.indexBuffer;
-            indexBufferMemory = other.indexBufferMemory;
 
             other.vertexBuffer = VK_NULL_HANDLE;
             other.vertexBufferMemory = VK_NULL_HANDLE;
-            other.indexBuffer = VK_NULL_HANDLE;
-            other.indexBufferMemory = VK_NULL_HANDLE;
         }
         return *this;
     }
@@ -471,20 +459,11 @@ namespace renderer {
     void CurveBuffer::load(core::Polyline2_5D& polyline, float curveTransparency) {
         loadPolyline(polyline);
         createVertexBuffer();
-        createIndexBuffer();
 
         transparency = curveTransparency;
     }
 
     void CurveBuffer::destroy() {
-        if (indexBuffer != VK_NULL_HANDLE) {
-            vkDestroyBuffer(context.device, indexBuffer, nullptr);
-            indexBuffer = VK_NULL_HANDLE;
-        }
-        if (indexBufferMemory != VK_NULL_HANDLE) {
-            vkFreeMemory(context.device, indexBufferMemory, nullptr);
-            indexBufferMemory = VK_NULL_HANDLE;
-        }
         if (vertexBuffer != VK_NULL_HANDLE) {
             vkDestroyBuffer(context.device, vertexBuffer, nullptr);
             vertexBuffer = VK_NULL_HANDLE;
@@ -495,15 +474,12 @@ namespace renderer {
         }
 
         vertices.clear();
-        indices.clear();
     }
 
     void CurveBuffer::render(VkCommandBuffer commandBuffer) {
         VkBuffer vertexBuffers[] = { vertexBuffer };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
         vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
     }
@@ -522,7 +498,6 @@ namespace renderer {
             vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
 
             vertices.push_back(vertex);
-            indices.push_back(indices.size());
         };
 
         auto addArcVertex = [&](core::PlineVertex2_5D& currentVertex, core::PlineVertex2_5D& nextVertex) {
@@ -549,7 +524,6 @@ namespace renderer {
                 vertex.texCoord = glm::vec2{ 0.0f, 0.0f };
 
                 vertices.push_back(vertex);
-                indices.push_back(indices.size());
             }
         };
 
@@ -600,31 +574,6 @@ namespace renderer {
 
         // send the copy buffer command buffer to the GPU
         copyBuffer(context, stagingBuffer, vertexBuffer, bufferSize);
-
-        // Clean up used local resources
-        vkDestroyBuffer(context.device, stagingBuffer, nullptr);
-        vkFreeMemory(context.device, stagingBufferMemory, nullptr);
-    }
-
-    void CurveBuffer::createIndexBuffer() {
-        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-        // Create the staging buffer
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-        // Load the data into the staging buffer
-        void* data;
-        vkMapMemory(context.device, stagingBufferMemory, 0, bufferSize, 0, &data);
-        memcpy(data, indices.data(), (size_t)bufferSize);
-        vkUnmapMemory(context.device, stagingBufferMemory);
-
-        // Create the index buffer locally on the GPU
-        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-
-        // send the copy buffer command buffer to the GPU
-        copyBuffer(context, stagingBuffer, indexBuffer, bufferSize);
 
         // Clean up used local resources
         vkDestroyBuffer(context.device, stagingBuffer, nullptr);

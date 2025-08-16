@@ -670,7 +670,7 @@ inline Polyline2_5D replacePolylineArcs(const Polyline2_5D& polyline, double rep
 
     int index = 0;
     for (const auto& currentVertex : polyline.vertexes()) {
-        if (currentVertex.bulgeIsZero() || (index + 1 == polyline.size() && !polyline.isClosed() && !currentVertex.bulgeIsZero())) {
+        if (currentVertex.bulgeIsZero() || (index + 1 == (int)polyline.size() && !polyline.isClosed() && !currentVertex.bulgeIsZero())) {
             result.addVertex(currentVertex, 0.0);
         } else {
             Plane plane{currentVertex.plane};
@@ -688,7 +688,7 @@ inline Polyline2_5D replacePolylineArcs(const Polyline2_5D& polyline, double rep
             double arcLength = std::abs(deltaAngle * arcInfo.radius);
             int segmentCount = std::ceil((arcLength * 1000.0) / replaceLength);
             
-            for (size_t k = 0; k < segmentCount; k++) {
+            for (int k = 0; k < segmentCount; k++) {
                 Vector2d localPosition;
                 localPosition.x() = arcInfo.center.x() + arcInfo.radius * std::cos(startAngle + (deltaAngle / segmentCount) * k);
                 localPosition.y() = arcInfo.center.y() + arcInfo.radius * std::sin(startAngle + (deltaAngle / segmentCount) * k);

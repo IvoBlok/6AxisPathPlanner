@@ -1765,6 +1765,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     // ===============================================================
     // Subpass 2: composite transparent and opaque results together
     // ===============================================================
+
     vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, objectCompositePipeline);
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
@@ -1776,6 +1777,7 @@ void RenderEngine::VulkanInternals::recordCommandBuffer(std::list<std::shared_pt
     // ========================================
     // Render UI
     // ========================================
+    
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();

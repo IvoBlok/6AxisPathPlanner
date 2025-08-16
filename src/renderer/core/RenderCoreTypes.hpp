@@ -25,6 +25,9 @@ namespace renderer {
     const int MAX_OBJECTS = 64;
     const int MAX_CURVES = 1000;
 
+    const float NEAR_PLANE = 0.01f;
+    const float FAR_PLANE = 10.f;
+
     const float DEFAULT_CAMERA_MOVE_VELOCITY = 0.7f;
     const float DEFAULT_CAMERA_ROTATE_VELOCITY = 0.7f;
     const glm::vec4 CLEAR_COLOR = glm::vec4{ 0.7f, 0.7f, 0.7f, 1.f };

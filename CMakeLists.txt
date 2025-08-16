@@ -142,17 +142,45 @@ target_include_directories(robotPathPlanner PRIVATE
 
 # Copy shaders to build folder
 # ============================================
-# For single-config generators (Make, Ninja)
+
+find_program(GLSLC_EXECUTABLE glslc 
+    HINTS "$ENV{VULKAN_SDK}/bin" "/usr/bin" "/usr/local/bin"
+    REQUIRED
+)
 
 set(SHADER_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/shaders)
-
 file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIR})
-add_custom_command(TARGET robotPathPlanner PRE_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/output
-        ${SHADER_OUTPUT_DIR}
-    COMMENT "Copying shaders to build directory"
+
+function(compile_shader shader_path)
+    get_filename_component(shader_name ${shader_path} NAME)
+    set(output_path ${SHADER_OUTPUT_DIR}/${shader_name}.spv)
+    
+    # Generate unique target name
+    string(MAKE_C_IDENTIFIER "shader_${shader_name}" target_name)
+    
+    add_custom_command(
+        OUTPUT ${output_path}
+        COMMAND ${GLSLC_EXECUTABLE} ${shader_path} -o ${output_path}
+        DEPENDS ${shader_path}
+        COMMENT "Compiling ${shader_name}"
+        VERBATIM
+    )
+    
+    add_custom_target(${target_name} ALL DEPENDS ${output_path})
+    add_dependencies(robotPathPlanner ${target_name})
+endfunction()
+
+# Process all shaders
+file(GLOB_RECURSE SHADER_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/*.vert"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/*.frag"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/*.comp"
 )
+
+foreach(shader ${SHADER_FILES})
+    compile_shader(${shader})
+endforeach()
+
 
 # Link Libraries
 # ============================================

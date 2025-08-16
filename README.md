@@ -86,7 +86,6 @@ Start PCodeSender with the supplied PCode text file, which waits untill the cont
 ## To Do
 
 In rough order of what I plan to do:
-- [ ] Update CurveData renderer code so that it doesn't use an indexBuffer
 - [ ] Update Renderer Object / shader so it doesn't require a texture when it doesn't use it / doesn't use a dummy texture. Also probably look into alternative ways of storing this potentially large group of descriptorSets, vulkan might not be happy with preparing for potentially NUM_OBJECTS descriptor sets.
 - [ ] Split off computational code into separate threads
 - [ ] Add full 3D polylines (and clean up polyline code)

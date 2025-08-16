@@ -7,9 +7,9 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
     vec4 accum = subpassLoad(accumulationBuffer);
-    float reveal = subpassLoad(revealageBuffer).r;
+    float totalTransparency = 1 - subpassLoad(revealageBuffer).r;
     
-    vec3 color = (accum.rgb / clamp(accum.a, 1e-5, 5e4)) * (1 - reveal);
+    vec3 color = (accum.rgb / clamp(accum.a, 1e-5, 5e4)) * totalTransparency;
     
-    outColor = vec4(color, 1 - reveal);
+    outColor = vec4(color, totalTransparency);
 }

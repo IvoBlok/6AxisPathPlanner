@@ -614,8 +614,8 @@ void RenderEngine::VulkanInternals::createPipelines() {
 
 void RenderEngine::VulkanInternals::createObjectOpaquePipeline() {
     // read the shaders into their respective buffers
-    auto vertShaderCode = readShaderFile("opaqueObjectShaderVert.spv");
-    auto fragShaderCode = readShaderFile("opaqueObjectShaderFrag.spv");
+    auto vertShaderCode = readShaderFile("objectOpaqueShader.vert.spv");
+    auto fragShaderCode = readShaderFile("objectOpaqueShader.frag.spv");
 
     // wrap them in the appropriate Vulkan struct
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -771,8 +771,8 @@ void RenderEngine::VulkanInternals::createObjectOpaquePipeline() {
 
 void RenderEngine::VulkanInternals::createObjectTransparentPipeline() {
     // read the shaders into their respective buffers
-    auto vertShaderCode = readShaderFile("transparentObjectShaderVert.spv");
-    auto fragShaderCode = readShaderFile("transparentObjectShaderFrag.spv");
+    auto vertShaderCode = readShaderFile("objectTransparentShader.vert.spv");
+    auto fragShaderCode = readShaderFile("objectTransparentShader.frag.spv");
 
     // wrap them in the appropriate Vulkan struct
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -944,8 +944,8 @@ void RenderEngine::VulkanInternals::createObjectTransparentPipeline() {
 
 void RenderEngine::VulkanInternals::createCurveOpaquePipeline() {
     // read the shaders into their respective buffers
-    auto vertShaderCode = readShaderFile("opaqueCurveShaderVert.spv");
-    auto fragShaderCode = readShaderFile("opaqueCurveShaderFrag.spv");
+    auto vertShaderCode = readShaderFile("curveOpaqueShader.vert.spv");
+    auto fragShaderCode = readShaderFile("curveOpaqueShader.frag.spv");
 
     // wrap them in the appropriate Vulkan struct
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -1104,8 +1104,8 @@ void RenderEngine::VulkanInternals::createCurveOpaquePipeline() {
 
 void RenderEngine::VulkanInternals::createCurveTransparentPipeline() {
     // read the shaders into their respective buffers
-    auto vertShaderCode = readShaderFile("transparentCurveShaderVert.spv");
-    auto fragShaderCode = readShaderFile("transparentCurveShaderFrag.spv");
+    auto vertShaderCode = readShaderFile("curveTransparentShader.vert.spv");
+    auto fragShaderCode = readShaderFile("curveTransparentShader.frag.spv");
 
     // wrap them in the appropriate Vulkan struct
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -1279,8 +1279,8 @@ void RenderEngine::VulkanInternals::createCurveTransparentPipeline() {
 
 void RenderEngine::VulkanInternals::createCompositePipeline() {
     // read the shaders into their respective buffers
-    auto vertShaderCode = readShaderFile("compositeShaderVert.spv");
-    auto fragShaderCode = readShaderFile("compositeShaderFrag.spv");
+    auto vertShaderCode = readShaderFile("compositeShader.vert.spv");
+    auto fragShaderCode = readShaderFile("compositeShader.frag.spv");
 
     // wrap them in the appropriate Vulkan struct
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -1528,7 +1528,7 @@ void RenderEngine::VulkanInternals::updateUniformBuffer(uint32_t currentImage) {
     UniformBufferObject ubo{};
     ubo.model = glm::mat4(1.0); // this model matrix has become obsolete, since the model matrix is now updated for every object in a single frame through a uniform buffer
     ubo.view = glm::lookAt(cameraPosition, cameraPosition + cameraFront, glm::vec3{ 0.f, 0.f, 1.f });
-    ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.001f, 10000.0f);
+    ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, NEAR_PLANE, FAR_PLANE);
     ubo.proj[1][1] *= -1;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));

@@ -58,10 +58,10 @@ Additionally, large chunks of the following repositories have been copied and mo
 3. Compile the path planner using your prefered compiler.
    ```sh
    cd build
-   cmake ../
+   cmake -DCMAKE_BUILD_TYPE=Debug/Release ..
    cmake --build .
    ```
-   The resulting executable is located in `build/Debug/`.
+   The resulting executable is located in `build/Debug/` or `build/Release/` respectively.
    
 4. Compile the PCodeSender using g++ (on some linux variant).
    ```sh
@@ -86,7 +86,6 @@ Start PCodeSender with the supplied PCode text file, which waits untill the cont
 ## To Do
 
 In rough order of what I plan to do:
-- [ ] Update Renderer Object / shader so it doesn't require a texture when it doesn't use it / doesn't use a dummy texture. Also probably look into alternative ways of storing this potentially large group of descriptorSets, vulkan might not be happy with preparing for potentially NUM_OBJECTS descriptor sets.
 - [ ] Split off computational code into separate threads
 - [ ] Add full 3D polylines (and clean up polyline code)
 - [ ] Add basic collision checks to toolPath planning, using a union of all triangles onto the milling plane, probably optional
@@ -95,7 +94,7 @@ In rough order of what I plan to do:
 - [ ] Add non-planar pathing
 - [ ] Add collision control for path validation
 - [ ] Update CMakeFile to create a release executable with proper Eigen (and proxsuite) optimization
-
+- [ ] Update Renderer Object / shader so it doesn't require a texture when it doesn't use it / doesn't use a dummy texture. Also probably look into alternative ways of storing this potentially large group of descriptorSets, vulkan might not be happy with preparing for potentially NUM_OBJECTS descriptor sets.
 
 <!-- IDEAS -->
 ## Ideas

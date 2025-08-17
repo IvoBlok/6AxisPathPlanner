@@ -556,16 +556,16 @@ void RenderEngine::VulkanInternals::createRenderPass() {
 void RenderEngine::VulkanInternals::createDescriptorSetLayouts() {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
     uboLayoutBinding.binding = 0;
-    uboLayoutBinding.descriptorCount = 1;
     uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.descriptorCount = 1;
     uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-    VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = 0;
-    samplerLayoutBinding.descriptorCount = 1;
-    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    samplerLayoutBinding.pImmutableSamplers = nullptr;
-    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    VkDescriptorSetLayoutBinding textureLayoutBinding{};
+    textureLayoutBinding.binding = 0;
+    textureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    textureLayoutBinding.descriptorCount = 1;
+    textureLayoutBinding.pImmutableSamplers = nullptr;
+    textureLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     
     VkDescriptorSetLayoutBinding accumulationLayoutBinding{};
     accumulationLayoutBinding.binding = 0;
@@ -590,7 +590,7 @@ void RenderEngine::VulkanInternals::createDescriptorSetLayouts() {
         throw std::runtime_error("failed to create uniform descriptor set layout!");
     }
 
-    layoutInfo.pBindings = &samplerLayoutBinding;
+    layoutInfo.pBindings = &textureLayoutBinding;
 
     if (vkCreateDescriptorSetLayout(vulkanContext.device, &layoutInfo, nullptr, &vulkanContext.textureDescriptorSetLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture descriptor set layout!");

@@ -229,11 +229,28 @@ endif()
 # ============================================
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_definitions(robotPathPlanner PRIVATE NDEBUG)
+
+    target_compile_definitions(robotPathPlanner PRIVATE PROXSUITE_VECTORIZE)
+    target_compile_definitions(robotPathPlanner PRIVATE
+        EIGEN_VECTORIZE
+        EIGEN_VECTORIZE_AVX
+        EIGEN_VECTORIZE_AVX2
+        EIGEN_VECTORIZE_FMA
+        EIGEN_VECTORIZE_SSE4_2
+    )
+
     if(MSVC)
-        target_compile_options(robotPathPlanner PRIVATE /O2)
+        target_compile_options(robotPathPlanner PRIVATE /O2 /arch:AVX2)
     else()
-        target_compile_options(robotPathPlanner PRIVATE -O3)
+        target_compile_options(robotPathPlanner PRIVATE 
+            -O3
+            -mavx2 
+            -mfma
+            -mbmi2
+            -mf16c
+        )
     endif()
+
 else()
     if(MSVC)
         target_compile_options(robotPathPlanner PRIVATE /Zi /Od /MDd)

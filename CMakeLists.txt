@@ -33,6 +33,7 @@ endif()
 
 # Vulkan
 find_package(Vulkan REQUIRED)
+find_package(X11 REQUIRED)
 
 # Disable uninstall targets for all dependencies
 set(ADD_UNINSTALL_TARGET OFF CACHE BOOL "Skip uninstall targets")
@@ -187,6 +188,7 @@ endforeach()
 # Link Libraries
 # ============================================
 target_link_libraries(robotPathPlanner PRIVATE 
+    X11
     glfw
     ${Vulkan_LIBRARIES}
 )

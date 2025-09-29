@@ -93,7 +93,6 @@ In rough order of what I plan to do:
 - [ ] Expand on movement animation
 - [ ] Add non-planar pathing
 - [ ] Add collision control for path validation
-- [ ] Update CMakeFile to create a release executable with proper Eigen (and proxsuite) optimization
 - [ ] Update Renderer Object / shader so it doesn't require a texture when it doesn't use it / doesn't use a dummy texture. Also probably look into alternative ways of storing this potentially large group of descriptorSets, vulkan might not be happy with preparing for potentially NUM_OBJECTS descriptor sets.
 
 <!-- IDEAS -->

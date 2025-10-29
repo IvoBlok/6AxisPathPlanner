@@ -42,6 +42,8 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL "")
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "")
 set(GLFW_INSTALL OFF CACHE BOOL "")
 
+set(GLFW_BUILD_WAYLAND OFF)
+
 # GLFW
 include(FetchContent)
 FetchContent_Declare(

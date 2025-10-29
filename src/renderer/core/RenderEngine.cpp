@@ -2359,7 +2359,7 @@ void RenderEngine::recordGUI() {
             ImGui::AlignTextToFramePadding();
             bool isOpen = ImGui::TreeNodeEx("##object_node", 
                 ImGuiTreeNodeFlags_SpanAvailWidth | 
-                ImGuiTreeNodeFlags_AllowItemOverlap);
+                ImGuiTreeNodeFlags_AllowOverlap);
             
             // Name input (fixed position relative to row start)
             ImGui::SameLine(rowStartX + ImGui::GetTreeNodeToLabelSpacing());
@@ -2412,7 +2412,7 @@ void RenderEngine::recordGUI() {
             ImGui::AlignTextToFramePadding();
             bool isOpen = ImGui::TreeNodeEx("##object_node", 
                 ImGuiTreeNodeFlags_SpanAvailWidth | 
-                ImGuiTreeNodeFlags_AllowItemOverlap);
+                ImGuiTreeNodeFlags_AllowOverlap);
             
             // Name input (fixed position relative to row start)
             ImGui::SameLine(rowStartX + ImGui::GetTreeNodeToLabelSpacing());

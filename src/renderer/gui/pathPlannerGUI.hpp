@@ -37,7 +37,7 @@ public:
 
                 ImGui::PushID(std::to_string(i).c_str());
                 ImGui::AlignTextToFramePadding();
-                bool isOpen = ImGui::TreeNodeEx(treeNodeName.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap);
+                bool isOpen = ImGui::TreeNodeEx(treeNodeName.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap);
 
                 const float buttonWidth = 25.f;
                 ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - buttonWidth);
